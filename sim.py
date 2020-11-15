@@ -182,7 +182,7 @@ class Trade_Env:
         self._high = None
         self._low = None
         self._volume = None
-        self._time = None   # used for debugging only
+        self._time = None   # used for debugging only!
 
         self._state = None
         self._render = False
