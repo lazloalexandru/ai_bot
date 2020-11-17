@@ -186,7 +186,9 @@ class Trade_Env:
         _volume = tf.keras.utils.normalize(_volume).reshape(n)
         _volume = np.concatenate((padding, _volume), axis=None)
 
-        self._state = np.concatenate(([self.position_size], _open, _close, _high, _low, _volume))
+        xxx_time = (100 * _time[self.idx].time().hour + _time[self.idx].time().minute) / 1600
+
+        self._state = np.concatenate(([self.position_size], [xxx_time], _open, _close, _high, _low, _volume))
 
         return self._state
 

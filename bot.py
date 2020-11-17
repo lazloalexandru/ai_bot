@@ -13,7 +13,7 @@ import pandas as pd
 
 __active_days_file = "data\\active_days.csv"
 
-MAX_EPSILON = 1.0
+MAX_EPSILON = 0.12
 MIN_EPSILON = 0.1
 LAMBDA = 0.0001
 GAMMA = 0.99
@@ -249,7 +249,7 @@ class Trade_Env:
         _volume = tf.keras.utils.normalize(_volume).reshape(n)
         _volume = np.concatenate((padding, _volume), axis=None)
 
-        xxx_time = 100 * _time[self.idx].time().hour + _time[self.idx].time().minute
+        xxx_time = (100 * _time[self.idx].time().hour + _time[self.idx].time().minute) / 1600
 
         self._state = np.concatenate(([self.position_size], [xxx_time], _open, _close, _high, _low, _volume))
 
@@ -300,8 +300,9 @@ class Trade_Env:
 
             elif action == 2:  # SELL
                 if self.position_size == 1:
+                    FEES = 1
                     sell_price = self._close[self.idx]
-                    gain = 100 * (sell_price / self.entry_price - 1)
+                    gain = 100 * (sell_price / self.entry_price - 1) - FEES
                     self.position_size = 0
                     print("|", end="")
 
