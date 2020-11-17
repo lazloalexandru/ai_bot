@@ -29,19 +29,18 @@ def gen_add_plot(chart_data, entries, exits):
 
     adp = []
 
-    if n1 == n2:
-        for i in range(0, n1):
-            # marker for buy
-            df_markers.loc[df.loc[entries[i][0]]['Time'], 'Price'] = entries[i][1]
-            adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='green'))
-            df_markers.loc[df.loc[entries[i][0]]['Time'], 'Price'] = float('nan')
+    for i in range(0, n1):
+        # marker for buy
+        df_markers.loc[df.loc[entries[i][0]]['Time'], 'Price'] = entries[i][1]
+        adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='green'))
+        df_markers.loc[df.loc[entries[i][0]]['Time'], 'Price'] = float('nan')
 
-            # marker for sell
-            df_markers.loc[df.loc[exits[i][0]]['Time'], 'Price'] = exits[i][1]
-            adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='red'))
-            df_markers.loc[df.loc[exits[i][0]]['Time'], 'Price'] = float('nan')
-    else:
-        print(colored("Number of entries: " + str(n1) + " Number of exits: " + str(n2) + "  => Algorithm ERROR!!!! ", color='red'))
+    for i in range(0, n2):
+
+        # marker for sell
+        df_markers.loc[df.loc[exits[i][0]]['Time'], 'Price'] = exits[i][1]
+        adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='red'))
+        df_markers.loc[df.loc[exits[i][0]]['Time'], 'Price'] = float('nan')
 
     return adp
 
@@ -108,11 +107,21 @@ def get_chart_data_prepared_for_ai(mover):
 
     if df is not None:
         df.Time = pd.to_datetime(df.Time, format="%Y-%m-%d  %H:%M:%S")
+        xdate = pd.to_datetime(date, format="%Y-%m-%d")
 
         idx = get_time_index(df, date, 15, 59, 0)
 
         if idx is not None:
             df = df[:idx+1]
+
+        n = len(df)
+        xidx = None
+        for i in range(0, n):
+            if df.iloc[i]["Time"].date() != xdate:
+                xidx = i
+        if xidx is not None:
+            df = df[xidx+1:]
+            df.reset_index(drop=True, inplace=True)
 
     return df
 

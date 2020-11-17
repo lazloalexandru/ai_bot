@@ -13,8 +13,8 @@ import pandas as pd
 
 __active_days_file = "data\\active_days.csv"
 
-MAX_EPSILON = 1
-MIN_EPSILON = 0.01
+MAX_EPSILON = 1.0
+MIN_EPSILON = 0.1
 LAMBDA = 0.0001
 GAMMA = 0.99
 BATCH_SIZE = 50
@@ -53,7 +53,7 @@ class Model:
         self._optimizer = tf.train.AdamOptimizer().minimize(loss)
         self._var_init = tf.global_variables_initializer()
 
-        self._saver = tf.train.Saver(max_to_keep=5)
+        self._saver = tf.train.Saver(max_to_keep=50)
 
     def predict_one(self, state, sess):
         return sess.run(self._logits, feed_dict={self._states: state.reshape(1, self.num_states)})
@@ -71,7 +71,10 @@ class Model:
     def restore(self, sess):
         path = tf.train.latest_checkpoint('checkpoints\\')
         print("Checkpoint: ", path)
-        self._saver.restore(sess, path)
+        if path is None:
+            sess.run(self.var_init)
+        else:
+            self._saver.restore(sess, path)
 
     @property
     def num_states(self):
@@ -108,16 +111,13 @@ class Memory:
 
 
 class TrainerBot:
-    def __init__(self, sess, model, env, memory, max_eps, min_eps, decay, render=True):
+    def __init__(self, sess, model, env, memory, render=True):
         self._sess = sess
         self._env = env
         self._model = model
         self._memory = memory
         self._render = render
-        self._max_eps = max_eps
-        self._min_eps = min_eps
-        self._decay = decay
-        self._eps = self._max_eps
+        self._eps = MAX_EPSILON
         self._steps = 0
         self._reward_store = []
         self._max_x_store = []
@@ -127,9 +127,6 @@ class TrainerBot:
         tot_reward = 0
 
         while True:
-            if self._render:
-                self._env.render()
-
             action = self._choose_action(state)
             next_state, reward, done = self._env.step(action)
 
@@ -152,13 +149,19 @@ class TrainerBot:
                 self._reward_store.append(tot_reward)
                 break
 
-        print("Step {}, Account: {}, Eps: {}".format(self._steps, tot_reward, self._eps))
+        gx = 'X' * int(abs(tot_reward))
+        c = 'red' if tot_reward < 0 else 'green'
+        print("Account: ", colored("%.2f" % tot_reward, color=c), "Eps:", self._eps)
+        print(colored(gx, color=c))
+        print("\n")
 
     def _choose_action(self, state):
         if random.random() < self._eps:
             return random.randint(0, self._model.num_actions - 1)
         else:
             return np.argmax(self._model.predict_one(state, self._sess))
+
+        return np.argmax(self._model.predict_one(state, self._sess))
 
     def _replay(self):
         batch = self._memory.sample(self._model.batch_size)
@@ -204,8 +207,10 @@ class Trade_Env:
         self.num_movers = len(movers)
         self.position_size = 0
         self.entry_price = 0
+        self.entries = 0
         self.df = None
         self.idx = None
+        self.close_idx = None
 
         self._open = None
         self._close = None
@@ -244,7 +249,9 @@ class Trade_Env:
         _volume = tf.keras.utils.normalize(_volume).reshape(n)
         _volume = np.concatenate((padding, _volume), axis=None)
 
-        self._state = np.concatenate(([self.position_size], _open, _close, _high, _low, _volume))
+        xxx_time = 100 * _time[self.idx].time().hour + _time[self.idx].time().minute
+
+        self._state = np.concatenate(([self.position_size], [xxx_time], _open, _close, _high, _low, _volume))
 
         return self._state
 
@@ -256,7 +263,8 @@ class Trade_Env:
         self._low = self.df.Low.to_list()
         self._volume = self.df.Volume.to_list()
         self._time = self.df.Time.to_list()
-
+        self.entries = 0
+        self.position_size = 0
         self._calc_state()
 
         return self._state
@@ -265,28 +273,37 @@ class Trade_Env:
         self.idx += 1
         self._calc_state()
 
+        # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx])
         done = False
         gain = 0
 
-        if self.idx == self.df.index[-1]:
+        if self.idx >= self.close_idx:
+            if self.position_size == 1:
+                print(colored("XXX", color='red'), end="")
+                gain = -50
+
+            self.position_size = 0
+
             done = True
 
-            if self.position_size == 1:
-                self.position_size = 0
-                sell_price = self._close[-1]
-                gain = 100 * (sell_price / self.entry_price - 1)
+            print("   Entries:", self.entries)
         else:
             if action == 0:  # BUY
                 if self.position_size == 0:
+                    self.entries += 1
                     self.position_size = 1
                     self.entry_price = self._close[self.idx]
+                    print("-", end="")
+
             elif action == 1:  # Idle
                 gain = 0
+
             elif action == 2:  # SELL
                 if self.position_size == 1:
                     sell_price = self._close[self.idx]
                     gain = 100 * (sell_price / self.entry_price - 1)
                     self.position_size = 0
+                    print("|", end="")
 
         return self._state, gain, done
 
@@ -295,7 +312,7 @@ class Trade_Env:
         close_idx = None
 
         while (open_idx is None) or (close_idx is None):
-            rand_idx = random.randint(0, self.num_movers - 1)
+            rand_idx = random.randint(0, int(self.num_movers * 0.8))
             self.df = cu.get_chart_data_prepared_for_ai(self.movers.iloc[rand_idx])
 
             self.symbol = self.movers.iloc[rand_idx]["symbol"]
@@ -308,6 +325,8 @@ class Trade_Env:
                 close_idx = cu.get_time_index(self.df, self.date, 15, 59, 0)
 
         self.idx = open_idx
+        self.close_idx = close_idx
+
 
     @property
     def num_states(self):
@@ -333,18 +352,19 @@ def train():
         model = Model(tr.num_states, tr.num_actions, BATCH_SIZE)
         mem = Memory(50000)
 
-        with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
+        # with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
+        with tf.Session() as sess:
             model.restore(sess)
-            sess.run(model.var_init)
-            model.restore(sess)
-            bot = TrainerBot(sess, model, tr, mem, MAX_EPSILON, MIN_EPSILON, LAMBDA, False)
-            num_episodes = 10000
+
+            bot = TrainerBot(sess, model, tr, mem, False)
+            num_episodes = 5000
             cnt = 0
             while cnt < num_episodes:
                 print('Episode {} of {}'.format(cnt+1, num_episodes))
                 bot.run()
                 cnt += 1
-                model.save(sess, cnt)
+                if cnt % 100 == 0:
+                    model.save(sess, cnt)
 
             plt.plot(bot.reward_store)
             plt.show()

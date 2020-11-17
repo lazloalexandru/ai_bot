@@ -12,18 +12,11 @@ import pandas as pd
 
 __active_days_file = "data\\active_days.csv"
 
-MAX_EPSILON = 1
-MIN_EPSILON = 0.01
-LAMBDA = 0.0001
-GAMMA = 0.99
-BATCH_SIZE = 50
-
 
 class Model:
-    def __init__(self, num_states, num_actions, batch_size):
+    def __init__(self, num_states, num_actions):
         self._num_states = num_states
         self._num_actions = num_actions
-        self._batch_size = batch_size
 
         self._model_valid = False
 
@@ -67,9 +60,17 @@ class Model:
         self._saver.save(sess, "checkpoints\\my_model", global_step=step)
 
     def restore(self, sess):
+        res = False
+
         path = tf.train.latest_checkpoint('checkpoints\\')
         print("Checkpoint: ", path)
-        self._saver.restore(sess, path)
+        if path is None:
+            sess.run(self.var_init)
+        else:
+            self._saver.restore(sess, path)
+            res = True
+
+        return res
 
     @property
     def num_states(self):
@@ -80,42 +81,16 @@ class Model:
         return self._num_actions
 
     @property
-    def batch_size(self):
-        return self._batch_size
-
-    @property
     def var_init(self):
         return self._var_init
 
 
-class Memory:
-    def __init__(self, max_memory):
-        self._max_memory = max_memory
-        self._samples = []
-
-    def add_sample(self, sample):
-        self._samples.append(sample)
-        if len(self._samples) > self._max_memory:
-            self._samples.pop(0)
-
-    def sample(self, no_samples):
-        if no_samples > len(self._samples):
-            return random.sample(self._samples, len(self._samples))
-        else:
-            return random.sample(self._samples, no_samples)
-
-
 class TradeBot:
-    def __init__(self, sess, model, env, memory, max_eps, min_eps, decay, render=True):
+    def __init__(self, sess, model, env, render=True):
         self._sess = sess
         self._env = env
         self._model = model
-        self._memory = memory
         self._render = render
-        self._max_eps = max_eps
-        self._min_eps = min_eps
-        self._decay = decay
-        self._eps = self._max_eps
         self._steps = 0
         self._reward_store = []
         self._max_x_store = []
@@ -131,12 +106,6 @@ class TradeBot:
             if done:
                 next_state = None
 
-            self._memory.add_sample((state, action, reward, next_state))
-
-            # exponentially decay the eps value
-            self._steps += 1
-            self._eps = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self._steps)
-
             # move the agent to the next state and accumulate the reward
             state = next_state
             tot_reward += reward
@@ -147,7 +116,7 @@ class TradeBot:
                 self._reward_store.append(tot_reward)
                 break
 
-        print("Step {}, Account: {}, Eps: {}".format(self._steps, tot_reward, self._eps))
+        print("Account: {}".format(tot_reward))
 
     def _choose_action(self, state):
         return np.argmax(self._model.predict_one(state, self._sess))
@@ -229,6 +198,7 @@ class Trade_Env:
         self._low = self.df.Low.to_list()
         self._volume = self.df.Volume.to_list()
         self._time = self.df.Time.to_list()
+        self.position_size = 0
         self.entries = []
         self.exits = []
 
@@ -244,15 +214,16 @@ class Trade_Env:
         gain = 0
 
         if self.idx == self.df.index[-1]:
-            done = True
             if self.position_size == 1:
-                self.position_size = 0
-                sell_price = self._close[-1]
-                gain = 100 * (sell_price / self.entry_price - 1)
+                gain = -50
+                sell_price = self._close[self.idx] * 0.5
+
                 self.exits.append([self._time[self.idx], sell_price])
 
-                print(colored("   SELL %s   GAIN: %s" % (sell_price, gain), color="green" if gain > 0 else "red"))
+            self.position_size = 0
+            done = True
 
+            print("\n")
             print(colored("Trades: %s" % len(self.entries), color="green"))
 
         else:
@@ -262,14 +233,14 @@ class Trade_Env:
                     self.entry_price = self._close[self.idx]
                     self.entries.append([self._time[self.idx], self.entry_price])
                     print(self.symbol, 'BUY:', self.entry_price, end="")
-
             elif action == 1:  # Idle
-                print("___", end="")
+                # print("___", end="")
                 gain = 0
             elif action == 2:  # SELL
                 if self.position_size == 1:
+                    FEES = 1
                     sell_price = self._close[self.idx]
-                    gain = 100 * (sell_price / self.entry_price - 1)
+                    gain = 100 * (sell_price / self.entry_price - 1) - FEES
                     self.position_size = 0
                     self.exits.append([self._time[self.idx], sell_price])
 
@@ -282,8 +253,7 @@ class Trade_Env:
         close_idx = None
 
         while (open_idx is None) or (close_idx is None):
-            rand_idx = random.randint(0, self.num_movers - 1)
-            rand_idx = 2322
+            rand_idx = random.randint(int(self.num_movers * 0.8) + 1, self.num_movers - 1)
             self.df = cu.get_chart_data_prepared_for_ai(self.movers.iloc[rand_idx])
 
             self.symbol = self.movers.iloc[rand_idx]["symbol"]
@@ -329,23 +299,22 @@ def test():
 
         tr = Trade_Env(movers)
 
-        model = Model(tr.num_states, tr.num_actions, BATCH_SIZE)
-        mem = Memory(50000)
+        model = Model(tr.num_states, tr.num_actions)
 
-        with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
-            sess.run(model.var_init)
-            model.restore(sess)
-            bot = TradeBot(sess, model, tr, mem, MAX_EPSILON, MIN_EPSILON, LAMBDA, False)
-            num_episodes = 100
-            cnt = 0
-            while cnt < num_episodes:
-                print('Episode {} of {}'.format(cnt+1, num_episodes))
-                bot.run()
-                cnt += 1
+        # with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
+        with tf.Session() as sess:
+            if model.restore(sess):
+                bot = TradeBot(sess, model, tr, False)
+                num_episodes = 20
+                cnt = 0
+                while cnt < num_episodes:
+                    print('Episode {} of {}'.format(cnt+1, num_episodes))
+                    bot.run()
+                    cnt += 1
 
-            plt.plot(bot.reward_store)
-            plt.show()
-            plt.close("all")
+                plt.plot(bot.reward_store)
+                plt.show()
+                plt.close("all")
 
 
 if __name__ == "__main__":
