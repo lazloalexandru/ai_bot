@@ -212,7 +212,7 @@ class Trade_Env:
         self.idx += 1
         self._calc_state()
 
-        FEES = 1
+        FEES = 1  # in %
         done = False
         gain = 0
 

@@ -13,8 +13,8 @@ import pandas as pd
 
 __active_days_file = "data\\active_days.csv"
 
-MAX_EPSILON = 0.12
-MIN_EPSILON = 0.1
+MAX_EPSILON = 0.3
+MIN_EPSILON = 0.2
 LAMBDA = 0.0001
 GAMMA = 0.99
 BATCH_SIZE = 50
@@ -274,15 +274,18 @@ class Trade_Env:
         self._calc_state()
 
         # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx])
+
+        FEES = 1
+        base = 100
         done = False
         gain = 0
 
         if self.idx >= self.close_idx:
             if self.position_size == 1:
                 print(colored("XXX", color='red'), end="")
-                gain = -50
-
-            self.position_size = 0
+                sell_price = self._close[self.idx]
+                gain = base + 100 * (sell_price / self.entry_price - 1) - FEES
+                self.position_size = 0
 
             done = True
 
@@ -293,16 +296,18 @@ class Trade_Env:
                     self.entries += 1
                     self.position_size = 1
                     self.entry_price = self._close[self.idx]
+                    gain = base
                     print("-", end="")
 
             elif action == 1:  # Idle
-                gain = 0
+                if self.position_size == 1:
+                    sell_price = self._close[self.idx]
+                    gain = base + 100 * (sell_price / self.entry_price - 1) - FEES
 
             elif action == 2:  # SELL
                 if self.position_size == 1:
-                    FEES = 1
                     sell_price = self._close[self.idx]
-                    gain = 100 * (sell_price / self.entry_price - 1) - FEES
+                    gain = base + 100 * (sell_price / self.entry_price - 1) - FEES
                     self.position_size = 0
                     print("|", end="")
 
@@ -364,7 +369,7 @@ def train():
                 print('Episode {} of {}'.format(cnt+1, num_episodes))
                 bot.run()
                 cnt += 1
-                if cnt % 100 == 0:
+                if cnt % 50 == 0:
                     model.save(sess, cnt)
 
             plt.plot(bot.reward_store)
