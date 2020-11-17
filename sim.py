@@ -112,11 +112,11 @@ class TradeBot:
 
             # if the game is done, break the loop
             if done:
+                c = 'red' if tot_reward < 0 else 'green'
+                print(colored("Account: %.2f" % tot_reward, color=c), '\n')
                 self._env.save_traded_chart()
                 self._reward_store.append(tot_reward)
                 break
-
-        print("Account: {}".format(tot_reward))
 
     def _choose_action(self, state):
         return np.argmax(self._model.predict_one(state, self._sess))
@@ -212,22 +212,21 @@ class Trade_Env:
         self.idx += 1
         self._calc_state()
 
+        FEES = 1
         done = False
         gain = 0
 
         if self.idx == self.df.index[-1]:
             if self.position_size == 1:
-                gain = -50
-                sell_price = self._close[self.idx] * 0.5
-
+                sell_price = self._close[self.idx]
+                gain = 100 * (sell_price / self.entry_price - 1) - FEES
                 self.exits.append([self._time[self.idx], sell_price])
+                print(colored("   SELL %s   GAIN: %.2f" % (sell_price, gain), color="green" if gain > 0 else "red"))
+                print("----------------------------------")
 
             self.position_size = 0
             done = True
-
-            print("\n")
-            print(colored("Trades: %s" % len(self.entries), color="green"))
-
+            print("Trades: %s" % len(self.entries))
         else:
             if action == 0:  # BUY
                 if self.position_size == 0:
@@ -240,13 +239,12 @@ class Trade_Env:
                 gain = 0
             elif action == 2:  # SELL
                 if self.position_size == 1:
-                    FEES = 1
                     sell_price = self._close[self.idx]
                     gain = 100 * (sell_price / self.entry_price - 1) - FEES
                     self.position_size = 0
                     self.exits.append([self._time[self.idx], sell_price])
 
-                    print(colored("   SELL %s   GAIN: %s" % (sell_price, gain), color="green" if gain > 0 else "red"))
+                    print(colored("   SELL %s   GAIN: %.2f" % (sell_price, gain), color="green" if gain > 0 else "red"))
 
         return self._state, gain, done
 
