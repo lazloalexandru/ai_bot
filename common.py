@@ -13,6 +13,14 @@ __intraday_charts_dir = "data\\intraday_charts"
 __fundamentals_dir = "data\\fundamentals"
 
 
+def limit(x, mn, mx):
+    if x < mn:
+        x = mn
+    if x > mx:
+        x = mx
+    return x
+
+
 def gen_add_plot(chart_data, entries, exits):
     df = chart_data.copy()
 
@@ -45,7 +53,7 @@ def gen_add_plot(chart_data, entries, exits):
     return adp
 
 
-def show_1min_chart(df, symbol, date, info, entries, exits, save_to_dir=""):
+def show_1min_chart(df, symbol, date, info, entries, exits, rewards_b, rewards_i, save_to_dir=""):
     df = df.set_index(pd.Index(df.Time))
 
     #############################################
@@ -53,6 +61,12 @@ def show_1min_chart(df, symbol, date, info, entries, exits, save_to_dir=""):
 
     mav_list = []
     adp = gen_add_plot(df, entries, exits)
+
+    df['rewards_b'] = rewards_b
+    adp.append(mpf.make_addplot(df['rewards_b'], color='green'))
+
+    df['rewards_i'] = rewards_i
+    adp.append(mpf.make_addplot(df['rewards_i'], color='yellow'))
 
     ##################################
     # Plot charts
@@ -114,6 +128,10 @@ def get_chart_data_prepared_for_ai(mover):
         if idx is not None:
             df = df[:idx+1]
 
+        idx = get_time_index(df, date, 9, 30, 0)
+        if idx is not None:
+            df = df[idx:]
+
         n = len(df)
         xidx = None
         for i in range(0, n):
@@ -121,7 +139,8 @@ def get_chart_data_prepared_for_ai(mover):
                 xidx = i
         if xidx is not None:
             df = df[xidx+1:]
-            df.reset_index(drop=True, inplace=True)
+
+        df.reset_index(drop=True, inplace=True)
 
     return df
 

@@ -13,7 +13,7 @@ import pandas as pd
 
 __active_days_file = "data\\active_days.csv"
 
-MAX_EPSILON = 0.2
+MAX_EPSILON = 1.0
 MIN_EPSILON = 0.1
 LAMBDA = 0.0001
 GAMMA = 0.99
@@ -198,7 +198,7 @@ class TrainerBot:
         return self._max_x_store
 
 
-DAY_IN_MINUTES = 720
+DAY_IN_MINUTES = 390
 
 
 class Trade_Env:
@@ -248,9 +248,10 @@ class Trade_Env:
         _volume = tf.keras.utils.normalize(_volume).reshape(n)
         _volume = np.concatenate((padding, _volume), axis=None)
 
-        xxx_time = (100 * _time[self.idx].time().hour + _time[self.idx].time().minute) / 1600
+        # xxx_time = (100 * _time[self.idx].time().hour + _time[self.idx].time().minute) / 1600
 
-        self._state = np.concatenate(([xxx_time], _open, _close, _high, _low, _volume))
+        # self._state = np.concatenate(([xxx_time], _open, _close, _high, _low, _volume))
+        self._state = np.concatenate((_open, _close, _high, _low, _volume))
 
         return self._state
 
@@ -267,10 +268,7 @@ class Trade_Env:
 
         return self._state
 
-    def calc_reward(self):
-
-        reward = 0
-
+    def calc_reward_buy(self):
         max_g = 0
         min_g = 0
 
@@ -293,17 +291,47 @@ class Trade_Env:
         if stop:
             reward = min_g
         else:
-            if max_g > 10:
-                reward = max_g
+            reward = max_g
 
+        reward = cu.limit(reward, -20, 20)
         # print(reward)
+        return reward
+
+    def calc_reward_sell(self):
+        max_g = 0
+        min_g = 0
+
+        stop = False
+        i = self.idx + 1
+        while not stop and i < self.close_idx:
+            mn = 100 * (self._low[i] / self.entry_price - 1)
+            mx = 100 * (self._high[i] / self.entry_price - 1)
+
+            if mx > max_g:
+                max_g = mx
+
+            if mx > 5:
+                stop = True
+            else:
+                if mn < min_g:
+                    min_g = mn
+            i += 1
+
+        if stop:
+            reward = max_g
+        else:
+            reward = min_g
+
+        reward = -reward
+        reward = cu.limit(reward, -20, 20)
+
+        # print(self._time[self.idx], reward, min_g, max_g)
+
         return reward
 
     def step(self, action):
         self.idx += 1
         self._calc_state()
-
-        # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx])
 
         done = False
         reward = 0
@@ -315,12 +343,15 @@ class Trade_Env:
             if action == 0:  # BUY
                 self.entries += 1
                 self.entry_price = self._close[self.idx]
-                reward = self.calc_reward()
-                print("+", end="")
+                reward = self.calc_reward_buy()
+                print("|", end="")
 
             elif action == 1:  # Idle
-                reward = 0
-                # print("-", end="")
+                self.entry_price = self._close[self.idx]
+                reward = self.calc_reward_sell()
+                print(".", end="")
+
+        # print(self.idx, self.close_idx, self._time[self.idx], reward)
 
         return self._state, reward, done
 
@@ -330,6 +361,7 @@ class Trade_Env:
 
         while (open_idx is None) or (close_idx is None):
             rand_idx = random.randint(0, int(self.num_movers * 0.8))
+            # rand_idx = 4978
             self.df = cu.get_chart_data_prepared_for_ai(self.movers.iloc[rand_idx])
 
             self.symbol = self.movers.iloc[rand_idx]["symbol"]
@@ -389,5 +421,4 @@ def train():
 
 
 if __name__ == "__main__":
-    # test()
     train()

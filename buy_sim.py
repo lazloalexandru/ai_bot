@@ -99,6 +99,9 @@ class TradeBot:
         state = self._env.reset()
         tot_reward = 0
 
+        rewards_b = []
+        rewards_i = []
+
         while True:
             action = self._choose_action(state)
             next_state, reward, done = self._env.step(action)
@@ -110,11 +113,20 @@ class TradeBot:
             state = next_state
             tot_reward += reward
 
+            if action == 0:
+                rewards_b.append(reward)
+                rewards_i.append(float('nan'))
+            else:
+                rewards_b.append(float('nan'))
+                rewards_i.append(reward)
+
             # if the game is done, break the loop
             if done:
+                rewards_b.append(float('nan'))
+                rewards_i.append(float('nan'))
                 c = 'red' if tot_reward < 0 else 'green'
                 print(colored("Reward: %.2f" % tot_reward, color=c), '\n')
-                self._env.save_traded_chart()
+                self._env.save_traded_chart(rewards_b, rewards_i)
                 self._reward_store.append(tot_reward)
                 break
 
@@ -130,7 +142,7 @@ class TradeBot:
         return self._max_x_store
 
 
-DAY_IN_MINUTES = 720
+DAY_IN_MINUTES = 390
 
 
 class Trade_Env:
@@ -185,9 +197,10 @@ class Trade_Env:
         _volume = tf.keras.utils.normalize(_volume).reshape(n)
         _volume = np.concatenate((padding, _volume), axis=None)
 
-        xxx_time = (100 * _time[self.idx].time().hour + _time[self.idx].time().minute) / 1600
+        # xxx_time = (100 * _time[self.idx].time().hour + _time[self.idx].time().minute) / 1600
 
-        self._state = np.concatenate(([xxx_time], _open, _close, _high, _low, _volume))
+        # self._state = np.concatenate(([xxx_time], _open, _close, _high, _low, _volume))
+        self._state = np.concatenate((_open, _close, _high, _low, _volume))
 
         return self._state
 
@@ -205,10 +218,7 @@ class Trade_Env:
 
         return self._state
 
-    def calc_reward(self):
-
-        reward = 0
-
+    def calc_reward_buy(self):
         max_g = 0
         min_g = 0
 
@@ -231,10 +241,42 @@ class Trade_Env:
         if stop:
             reward = min_g
         else:
-            if max_g > 10:
-                reward = max_g
+            reward = max_g
 
+        reward = cu.limit(reward, -20, 20)
         # print(reward)
+        return reward
+
+    def calc_reward_sell(self):
+        max_g = 0
+        min_g = 0
+
+        stop = False
+        i = self.idx + 1
+        while not stop and i < self.close_idx:
+            mn = 100 * (self._low[i] / self.entry_price - 1)
+            mx = 100 * (self._high[i] / self.entry_price - 1)
+
+            if mx > max_g:
+                max_g = mx
+
+            if mx > 5:
+                stop = True
+            else:
+                if mn < min_g:
+                    min_g = mn
+            i += 1
+
+        if stop:
+            reward = max_g
+        else:
+            reward = min_g
+
+        reward = -reward
+        reward = cu.limit(reward, -20, 20)
+
+        # print(self._time[self.idx], reward, min_g, max_g)
+
         return reward
 
     def step(self, action):
@@ -251,11 +293,12 @@ class Trade_Env:
             if action == 0:  # BUY
                 self.entry_price = self._close[self.idx]
                 self.entries.append([self._time[self.idx], self.entry_price])
-                reward = self.calc_reward()
-                print("+", end="")
+                reward = self.calc_reward_buy()
+                print("|", end="")
             elif action == 1:  # Idle
-                print("-", end="")
-                reward = 0
+                self.entry_price = self._close[self.idx]
+                reward = self.calc_reward_sell()
+                print(".", end="")
 
         return self._state, reward, done
 
@@ -265,6 +308,7 @@ class Trade_Env:
 
         while (open_idx is None) or (close_idx is None):
             rand_idx = random.randint(int(self.num_movers * 0.8) + 1, self.num_movers - 1)
+            # rand_idx = 4978
             self.df = cu.get_chart_data_prepared_for_ai(self.movers.iloc[rand_idx])
 
             self.symbol = self.movers.iloc[rand_idx]["symbol"]
@@ -279,8 +323,9 @@ class Trade_Env:
         self.idx = open_idx
         self.close_idx = close_idx
 
-    def save_traded_chart(self):
-        if len(self.entries) > 0:
+    def save_traded_chart(self, rewards_b, rewards_i):
+        # if len(self.entries) > 0:
+        if True:
             images_dir_path = "trades\\"
             cu.show_1min_chart(self.df,
                                self.symbol,
@@ -288,6 +333,8 @@ class Trade_Env:
                                "",
                                self.entries,
                                [],
+                               rewards_b,
+                               rewards_i,
                                images_dir_path)
 
     @property
