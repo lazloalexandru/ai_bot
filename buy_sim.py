@@ -37,9 +37,10 @@ class Model:
         self._states = tf.placeholder(shape=[None, self._num_states], dtype=tf.float32)
         self._q_s_a = tf.placeholder(shape=[None, self._num_actions], dtype=tf.float32)
         # create a couple of fully connected hidden layers
-        fc1 = tf.layers.dense(self._states, 1000, activation=tf.nn.relu)
-        fc2 = tf.layers.dense(fc1, 1000, activation=tf.nn.relu)
-        self._logits = tf.layers.dense(fc2, self._num_actions)
+        fc1 = tf.layers.dense(self._states, 10000, activation=tf.nn.relu)
+        fc2 = tf.layers.dense(fc1, 5000, activation=tf.nn.relu)
+        fc3 = tf.layers.dense(fc2, 5000, activation=tf.nn.relu)
+        self._logits = tf.layers.dense(fc3, self._num_actions)
         loss = tf.losses.mean_squared_error(self._q_s_a, self._logits)
         self._optimizer = tf.train.AdamOptimizer().minimize(loss)
         self._var_init = tf.global_variables_initializer()
@@ -125,7 +126,7 @@ class TradeBot:
                 rewards_b.append(float('nan'))
                 rewards_i.append(float('nan'))
                 c = 'red' if tot_reward < 0 else 'green'
-                print(colored("Reward: %.2f" % tot_reward, color=c), '\n')
+                # print(colored("Reward: %.2f" % tot_reward, color=c), '\n')
                 self._env.save_traded_chart(rewards_b, rewards_i)
                 self._reward_store.append(tot_reward)
                 break
@@ -222,6 +223,8 @@ class Trade_Env:
         max_g = 0
         min_g = 0
 
+        reward = 0
+
         stop = False
         i = self.idx + 1
         while not stop and i < self.close_idx:
@@ -239,12 +242,15 @@ class Trade_Env:
             i += 1
 
         if stop:
-            reward = min_g
+            reward = -5
         else:
-            reward = max_g
+            if 5 <= max_g < 10:
+                reward = 3
+            elif 10 <= max_g < 15:
+                reward = 4
+            elif 15 <= max_g:
+                reward = 5
 
-        reward = cu.limit(reward, -20, 20)
-        # print(reward)
         return reward
 
     def calc_reward_sell(self):
@@ -275,7 +281,7 @@ class Trade_Env:
         reward = -reward
         reward = cu.limit(reward, -20, 20)
 
-        # print(self._time[self.idx], reward, min_g, max_g)
+        # print(self._time[self.idx], "%.2f" % reward, "%.2f" % min_g, "%.2f" % max_g)
 
         return reward
 
@@ -290,15 +296,19 @@ class Trade_Env:
             done = True
             print("\nEntries: %s" % len(self.entries))
         else:
+            self.entry_price = self._close[self.idx]
+            reward_b = self.calc_reward_buy()
+            reward_s = self.calc_reward_sell()
+
+            # print(self._time[self.idx], "   rb: %.2f" % reward_b)
+
             if action == 0:  # BUY
-                self.entry_price = self._close[self.idx]
                 self.entries.append([self._time[self.idx], self.entry_price])
-                reward = self.calc_reward_buy()
-                print("|", end="")
+                reward = reward_b
+                # print("|", end="")
             elif action == 1:  # Idle
-                self.entry_price = self._close[self.idx]
-                reward = self.calc_reward_sell()
-                print(".", end="")
+                reward = 0
+                # print(".", end="")
 
         return self._state, reward, done
 
@@ -308,7 +318,7 @@ class Trade_Env:
 
         while (open_idx is None) or (close_idx is None):
             rand_idx = random.randint(int(self.num_movers * 0.8) + 1, self.num_movers - 1)
-            # rand_idx = 4978
+            # rand_idx = 5196
             self.df = cu.get_chart_data_prepared_for_ai(self.movers.iloc[rand_idx])
 
             self.symbol = self.movers.iloc[rand_idx]["symbol"]
@@ -324,8 +334,8 @@ class Trade_Env:
         self.close_idx = close_idx
 
     def save_traded_chart(self, rewards_b, rewards_i):
-        # if len(self.entries) > 0:
-        if True:
+        if len(self.entries) > 0:
+        # if True:
             images_dir_path = "trades\\"
             cu.show_1min_chart(self.df,
                                self.symbol,

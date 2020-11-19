@@ -14,9 +14,9 @@ import pandas as pd
 __active_days_file = "data\\active_days.csv"
 
 MAX_EPSILON = 1.0
-MIN_EPSILON = 0.99999
+MIN_EPSILON = 0.1
 LAMBDA = 0.0001
-GAMMA = 0.99
+GAMMA = 0.999
 BATCH_SIZE = 50
 
 
@@ -46,15 +46,14 @@ class Model:
         self._states = tf.placeholder(shape=[None, self._num_states], dtype=tf.float32)
         self._q_s_a = tf.placeholder(shape=[None, self._num_actions], dtype=tf.float32)
         # create a couple of fully connected hidden layers
-        fc1 = tf.layers.dense(self._states, 10000, activation=tf.nn.relu)
-        fc2 = tf.layers.dense(fc1, 5000, activation=tf.nn.relu)
-        fc3 = tf.layers.dense(fc2, 5000, activation=tf.nn.relu)
-        self._logits = tf.layers.dense(fc3, self._num_actions)
+        fc1 = tf.layers.dense(self._states, 1000, activation=tf.nn.relu)
+        fc2 = tf.layers.dense(fc1, 1000, activation=tf.nn.relu)
+        self._logits = tf.layers.dense(fc2, self._num_actions)
         loss = tf.losses.mean_squared_error(self._q_s_a, self._logits)
         self._optimizer = tf.train.AdamOptimizer().minimize(loss)
         self._var_init = tf.global_variables_initializer()
 
-        self._saver = tf.train.Saver(max_to_keep=100)
+        self._saver = tf.train.Saver(max_to_keep=50)
 
     def predict_one(self, state, sess):
         return sess.run(self._logits, feed_dict={self._states: state.reshape(1, self.num_states)})
@@ -405,7 +404,6 @@ def train():
 
         tr = Trade_Env(movers)
 
-        print(tr.num_actions, tr.num_states)
         model = Model(tr.num_states, tr.num_actions, BATCH_SIZE)
         mem = Memory(50000)
 
@@ -420,7 +418,7 @@ def train():
                 print('Episode {} of {}'.format(cnt+1, num_episodes))
                 bot.run()
                 cnt += 1
-                if cnt % 50 == 0:
+                if cnt % 20 == 0:
                     model.save(sess, cnt)
 
             plt.plot(bot.reward_store)

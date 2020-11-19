@@ -62,11 +62,50 @@ def show_1min_chart(df, symbol, date, info, entries, exits, rewards_b, rewards_i
     mav_list = []
     adp = gen_add_plot(df, entries, exits)
 
-    df['rewards_b'] = rewards_b
-    adp.append(mpf.make_addplot(df['rewards_b'], color='green'))
+    # df['rewards_b'] = rewards_b
+    # adp.append(mpf.make_addplot(df['rewards_b'], color='green'))
 
-    df['rewards_i'] = rewards_i
-    adp.append(mpf.make_addplot(df['rewards_i'], color='yellow'))
+    # df['rewards_i'] = rewards_i
+    # adp.append(mpf.make_addplot(df['rewards_i'], color='yellow'))
+
+    ##################################
+    # Plot charts
+
+    title = info + symbol + " " + date
+
+    if save_to_dir == "":  # Display chart
+        if len(adp) > 0:
+            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
+                     volume=True, figscale=1, figratio=[16, 9], addplot=adp, title=title)
+        else:
+            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
+                     volume=True, figscale=1, figratio=[16, 9], title=title)
+    else:  # Save Chart in file
+        make_dir(save_to_dir)
+        path = save_to_dir + "\\" + symbol + '_' + date + ".png"
+
+        if len(adp) > 0:
+            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
+                     savefig=path, volume=True, figscale=2, figratio=[16, 9], addplot=adp, title=title)
+        else:
+            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
+                     savefig=path, volume=True, figscale=2, figratio=[16, 9], title=title)
+
+
+def show_1min_chart_r(df, symbol, date, info, entries, exits, rewards_b, rewards_i, save_to_dir=""):
+    df = df.set_index(pd.Index(df.Time))
+
+    #############################################
+    # Generate Add-Plots
+
+    mav_list = []
+    adp = gen_add_plot(df, entries, exits)
+
+    # df['rewards_b'] = rewards_b
+    # adp.append(mpf.make_addplot(df['rewards_b'], color='green'))
+
+    # df['rewards_i'] = rewards_i
+    # adp.append(mpf.make_addplot(df['rewards_i'], color='yellow'))
 
     ##################################
     # Plot charts

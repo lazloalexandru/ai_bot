@@ -13,11 +13,11 @@ import pandas as pd
 
 __active_days_file = "data\\active_days.csv"
 
-MAX_EPSILON = 0.3
-MIN_EPSILON = 0.2
+MAX_EPSILON = 1.0
+MIN_EPSILON = 0.9999999
 LAMBDA = 0.0001
 GAMMA = 0.99
-BATCH_SIZE = 50
+BATCH_SIZE = 1000
 
 
 class Model:
@@ -46,14 +46,15 @@ class Model:
         self._states = tf.placeholder(shape=[None, self._num_states], dtype=tf.float32)
         self._q_s_a = tf.placeholder(shape=[None, self._num_actions], dtype=tf.float32)
         # create a couple of fully connected hidden layers
-        fc1 = tf.layers.dense(self._states, 1000, activation=tf.nn.relu)
-        fc2 = tf.layers.dense(fc1, 1000, activation=tf.nn.relu)
-        self._logits = tf.layers.dense(fc2, self._num_actions)
+        fc1 = tf.layers.dense(self._states, 10000, activation=tf.nn.relu)
+        fc2 = tf.layers.dense(fc1, 5000, activation=tf.nn.relu)
+        fc3 = tf.layers.dense(fc2, 5000, activation=tf.nn.relu)
+        self._logits = tf.layers.dense(fc3, self._num_actions)
         loss = tf.losses.mean_squared_error(self._q_s_a, self._logits)
         self._optimizer = tf.train.AdamOptimizer().minimize(loss)
         self._var_init = tf.global_variables_initializer()
 
-        self._saver = tf.train.Saver(max_to_keep=50)
+        self._saver = tf.train.Saver(max_to_keep=100)
 
     def predict_one(self, state, sess):
         return sess.run(self._logits, feed_dict={self._states: state.reshape(1, self.num_states)})
@@ -134,7 +135,8 @@ class TrainerBot:
                 next_state = None
 
             self._memory.add_sample((state, action, reward, next_state))
-            self._replay()
+            if self._steps % 100 == 0:
+                self._replay()
 
             # exponentially decay the eps value
             self._steps += 1
@@ -198,7 +200,7 @@ class TrainerBot:
         return self._max_x_store
 
 
-DAY_IN_MINUTES = 720
+DAY_IN_MINUTES = 390
 
 
 class Trade_Env:
@@ -276,7 +278,6 @@ class Trade_Env:
         # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx])
 
         FEES = 1
-        base = 100
         done = False
         gain = 0
 
@@ -284,7 +285,7 @@ class Trade_Env:
             if self.position_size == 1:
                 print(colored("XXX", color='red'), end="")
                 sell_price = self._close[self.idx]
-                gain = base + 100 * (sell_price / self.entry_price - 1) - FEES
+                gain = 100 * (sell_price / self.entry_price - 1) - FEES
                 self.position_size = 0
 
             done = True
@@ -296,18 +297,13 @@ class Trade_Env:
                     self.entries += 1
                     self.position_size = 1
                     self.entry_price = self._close[self.idx]
-                    gain = base
+                    gain = 0
                     print("-", end="")
 
-            elif action == 1:  # Idle
+            elif action == 1:  # SELL
                 if self.position_size == 1:
                     sell_price = self._close[self.idx]
-                    gain = base + 100 * (sell_price / self.entry_price - 1) - FEES
-
-            elif action == 2:  # SELL
-                if self.position_size == 1:
-                    sell_price = self._close[self.idx]
-                    gain = base + 100 * (sell_price / self.entry_price - 1) - FEES
+                    gain = 100 * (sell_price / self.entry_price - 1) - FEES
                     self.position_size = 0
                     print("|", end="")
 
@@ -340,7 +336,7 @@ class Trade_Env:
 
     @property
     def num_actions(self):
-        return 3
+        return 2
 
     @property
     def get_state(self):
@@ -355,6 +351,8 @@ def train():
 
         tr = Trade_Env(movers)
 
+        print(tr.num_actions, tr.num_states)
+
         model = Model(tr.num_states, tr.num_actions, BATCH_SIZE)
         mem = Memory(50000)
 
@@ -363,13 +361,13 @@ def train():
             model.restore(sess)
 
             bot = TrainerBot(sess, model, tr, mem, False)
-            num_episodes = 5000
+            num_episodes = 20000
             cnt = 0
             while cnt < num_episodes:
                 print('Episode {} of {}'.format(cnt+1, num_episodes))
                 bot.run()
                 cnt += 1
-                if cnt % 50 == 0:
+                if cnt % 200 == 0:
                     model.save(sess, cnt)
 
             plt.plot(bot.reward_store)

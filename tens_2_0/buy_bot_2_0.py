@@ -14,17 +14,16 @@ import pandas as pd
 __active_days_file = "data\\active_days.csv"
 
 MAX_EPSILON = 1.0
-MIN_EPSILON = 0.99999
+MIN_EPSILON = 0.1
 LAMBDA = 0.0001
-GAMMA = 0.99
+GAMMA = 0.999
 BATCH_SIZE = 50
 
 
 class Model:
-    def __init__(self, num_states, num_actions, batch_size):
+    def __init__(self, num_states, num_actions):
         self._num_states = num_states
         self._num_actions = num_actions
-        self._batch_size = batch_size
 
         self._model_valid = False
 
@@ -37,34 +36,29 @@ class Model:
         self._optimizer = None
         self._var_init = None
 
-        self._saver = None
-
         # now setup the model
+        self.model = None
         self._define_model()
 
     def _define_model(self):
-        self._states = tf.placeholder(shape=[None, self._num_states], dtype=tf.float32)
-        self._q_s_a = tf.placeholder(shape=[None, self._num_actions], dtype=tf.float32)
-        # create a couple of fully connected hidden layers
-        fc1 = tf.layers.dense(self._states, 10000, activation=tf.nn.relu)
-        fc2 = tf.layers.dense(fc1, 5000, activation=tf.nn.relu)
-        fc3 = tf.layers.dense(fc2, 5000, activation=tf.nn.relu)
-        self._logits = tf.layers.dense(fc3, self._num_actions)
-        loss = tf.losses.mean_squared_error(self._q_s_a, self._logits)
-        self._optimizer = tf.train.AdamOptimizer().minimize(loss)
-        self._var_init = tf.global_variables_initializer()
+        self.model = tf.keras.models.Sequential([
+            tf.keras.layers.DenseConv2D(16, (5, 3), activation='relu', input_shape=(5, 390, 1)),
+            tf.keras.layers.MaxPooling2D(2, 2),
+            tf.keras.layers.Conv2D(32, (3, 3), activation='relu'),
+            tf.keras.layers.MaxPooling2D(2, 2),
+            tf.keras.layers.Flatten(),
+            tf.keras.layers.Dense(128, activation=tf.nn.relu),
+            tf.keras.layers.Dense(self._num_actions, activation=tf.nn.softmax)
+        ])
 
-        self._saver = tf.train.Saver(max_to_keep=100)
+    def predict_one(self, state):
+        return self.model.predict([state])
 
-    def predict_one(self, state, sess):
-        return sess.run(self._logits, feed_dict={self._states: state.reshape(1, self.num_states)})
-
-    def predict_batch(self, states, sess):
-        return sess.run(self._logits, feed_dict={self._states: states})
+    def predict_batch(self, states):
+        return self.model.predict(states)
 
     def train_batch(self, sess, x_batch, y_batch):
-        sess.run(self._optimizer, feed_dict={self._states: x_batch, self._q_s_a: y_batch})
-        self._model_valid = True
+        self.model.fit(x_batch, y_batch, epochs=1)
 
     def save(self, sess, step):
         self._saver.save(sess, "checkpoints\\my_model", global_step=step)
@@ -84,10 +78,6 @@ class Model:
     @property
     def num_actions(self):
         return self._num_actions
-
-    @property
-    def batch_size(self):
-        return self._batch_size
 
     @property
     def var_init(self):
@@ -162,10 +152,8 @@ class TrainerBot:
         else:
             return np.argmax(self._model.predict_one(state, self._sess))
 
-        return np.argmax(self._model.predict_one(state, self._sess))
-
     def _replay(self):
-        batch = self._memory.sample(self._model.batch_size)
+        batch = self._memory.sample(BATCH_SIZE)
         states = np.array([val[0] for val in batch])
         next_states = np.array([(np.zeros(self._model.num_states) if val[3] is None else val[3]) for val in batch])
         # predict Q(s,a) given the batch of states
@@ -250,9 +238,9 @@ class Trade_Env:
         _volume = np.concatenate((padding, _volume), axis=None)
 
         # xxx_time = (100 * _time[self.idx].time().hour + _time[self.idx].time().minute) / 1600
-
         # self._state = np.concatenate(([xxx_time], _open, _close, _high, _low, _volume))
         self._state = np.concatenate((_open, _close, _high, _low, _volume))
+        self._state = self._state.reshape(5, 390, 1)
 
         return self._state
 
@@ -405,14 +393,11 @@ def train():
 
         tr = Trade_Env(movers)
 
-        print(tr.num_actions, tr.num_states)
-        model = Model(tr.num_states, tr.num_actions, BATCH_SIZE)
+        model = Model(tr.num_states, tr.num_actions)
         mem = Memory(50000)
 
         # with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
         with tf.Session() as sess:
-            model.restore(sess)
-
             bot = TrainerBot(sess, model, tr, mem, False)
             num_episodes = 5000
             cnt = 0
@@ -420,8 +405,6 @@ def train():
                 print('Episode {} of {}'.format(cnt+1, num_episodes))
                 bot.run()
                 cnt += 1
-                if cnt % 50 == 0:
-                    model.save(sess, cnt)
 
             plt.plot(bot.reward_store)
             plt.show()
@@ -429,4 +412,21 @@ def train():
 
 
 if __name__ == "__main__":
-    train()
+    movers = pd.read_csv(__active_days_file)
+    tr = Trade_Env(movers)
+
+    state = tr.reset()
+
+    mem = Memory(50000)
+    mem.add_sample((state, 99, 77, state))
+    mem.add_sample((state, 33, 77, state))
+
+    batch = mem.sample(BATCH_SIZE)
+    states = np.array([val[0] for val in batch])
+    next_states = np.array([(val[3]) for val in batch])
+
+    print(next_states.shape)
+    print(state.shape)
+    # train()
+
+

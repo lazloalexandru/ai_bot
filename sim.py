@@ -37,9 +37,10 @@ class Model:
         self._states = tf.placeholder(shape=[None, self._num_states], dtype=tf.float32)
         self._q_s_a = tf.placeholder(shape=[None, self._num_actions], dtype=tf.float32)
         # create a couple of fully connected hidden layers
-        fc1 = tf.layers.dense(self._states, 1000, activation=tf.nn.relu)
-        fc2 = tf.layers.dense(fc1, 1000, activation=tf.nn.relu)
-        self._logits = tf.layers.dense(fc2, self._num_actions)
+        fc1 = tf.layers.dense(self._states, 10000, activation=tf.nn.relu)
+        fc2 = tf.layers.dense(fc1, 5000, activation=tf.nn.relu)
+        fc3 = tf.layers.dense(fc2, 5000, activation=tf.nn.relu)
+        self._logits = tf.layers.dense(fc3, self._num_actions)
         loss = tf.losses.mean_squared_error(self._q_s_a, self._logits)
         self._optimizer = tf.train.AdamOptimizer().minimize(loss)
         self._var_init = tf.global_variables_initializer()
@@ -48,13 +49,6 @@ class Model:
 
     def predict_one(self, state, sess):
         return sess.run(self._logits, feed_dict={self._states: state.reshape(1, self.num_states)})
-
-    def predict_batch(self, states, sess):
-        return sess.run(self._logits, feed_dict={self._states: states})
-
-    def train_batch(self, sess, x_batch, y_batch):
-        sess.run(self._optimizer, feed_dict={self._states: x_batch, self._q_s_a: y_batch})
-        self._model_valid = True
 
     def save(self, sess, step):
         self._saver.save(sess, "checkpoints\\my_model", global_step=step)
@@ -130,7 +124,7 @@ class TradeBot:
         return self._max_x_store
 
 
-DAY_IN_MINUTES = 720
+DAY_IN_MINUTES = 390
 
 
 class Trade_Env:
@@ -234,10 +228,7 @@ class Trade_Env:
                     self.entry_price = self._close[self.idx]
                     self.entries.append([self._time[self.idx], self.entry_price])
                     print(self.symbol, 'BUY:', self.entry_price, end="")
-            elif action == 1:  # Idle
-                # print("___", end="")
-                gain = 0
-            elif action == 2:  # SELL
+            elif action == 1:  # SELL
                 if self.position_size == 1:
                     sell_price = self._close[self.idx]
                     gain = 100 * (sell_price / self.entry_price - 1) - FEES
@@ -276,6 +267,8 @@ class Trade_Env:
                                "",
                                self.entries,
                                self.exits,
+                               [],
+                               [],
                                images_dir_path)
 
     @property
@@ -284,7 +277,7 @@ class Trade_Env:
 
     @property
     def num_actions(self):
-        return 3
+        return 2
 
     @property
     def get_state(self):
