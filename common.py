@@ -5,12 +5,19 @@ import matplotlib.pyplot as plt
 import mplfinance as mpf
 import datetime
 import shutil
+import numpy as np
 
 
 __data_dir = "\\data"
 __daily_charts_dir = "data\\daily_charts"
 __intraday_charts_dir = "data\\intraday_charts"
 __fundamentals_dir = "data\\fundamentals"
+__active_days_file = "data\\active_days.csv"
+
+__normalized_states_root_dir = "normalized_states"
+__normalized_states_dir = __normalized_states_root_dir + "\\intraday_charts"
+
+DAY_IN_MINUTES = 390
 
 
 def limit(x, mn, mx):
@@ -53,7 +60,7 @@ def gen_add_plot(chart_data, entries, exits):
     return adp
 
 
-def show_1min_chart(df, symbol, date, info, entries, exits, rewards_b, rewards_i, save_to_dir=""):
+def show_1min_chart(df, symbol, date, info, entries, exits, rewards_b, rewards_i, save_to_dir=None):
     df = df.set_index(pd.Index(df.Time))
 
     #############################################
@@ -73,7 +80,7 @@ def show_1min_chart(df, symbol, date, info, entries, exits, rewards_b, rewards_i
 
     title = info + symbol + " " + date
 
-    if save_to_dir == "":  # Display chart
+    if save_to_dir is None:  # Display chart
         if len(adp) > 0:
             mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
                      volume=True, figscale=1, figratio=[16, 9], addplot=adp, title=title)
@@ -151,10 +158,7 @@ def get_time_index(df, date, h, m, s):
     return idx
 
 
-def get_chart_data_prepared_for_ai(mover):
-    symbol = mover["symbol"]
-    date = mover["date"]
-
+def get_chart_data_prepared_for_ai(symbol, date):
     date = str(date).replace("-", "")
     df = get_intraday_chart_for(symbol, date)
 
@@ -325,7 +329,6 @@ def save_intraday_data(symbol, filename, df):
         df.to_csv(filename, index=False)
 
 
-
 def database_info():
     print("\nDatabase Info:")
     data = get_list_of_symbols_with_daily_chart()
@@ -334,3 +337,58 @@ def database_info():
     print(" - " + str(len(data)) + " Intraday charts")
     data = get_list_of_symbols_with_intraday_chart()
     print(" - " + str(len(data)) + " stocks with Intraday chart samples")
+
+
+def normalize(x):
+    mn = min(x)
+    mx = max(x)
+    range_ = mx - mn
+    # print(mn, mx)
+    x = x - mn
+    if range_ > 0:
+        x = x / range_
+    return x
+
+
+def calc_normalized_state(o, c, h, l, v, idx):
+    """ idx - is the candle index in range 0 ... 390 """
+
+    price = np.concatenate((o, c, h, l))
+    price = normalize(price)
+
+    n = len(o)
+    price = price.reshape(4, n)
+    o = price[0]
+    c = price[1]
+    h = price[2]
+    l = price[3]
+
+    v = normalize(np.array(v))
+
+    padding_size = DAY_IN_MINUTES - len(o)
+    padding = [0] * padding_size
+
+    o = np.concatenate((padding, o))
+    c = np.concatenate((padding, c))
+    h = np.concatenate((padding, h))
+    l = np.concatenate((padding, l))
+    v = np.concatenate((padding, v))
+
+    state = np.concatenate((o, c, h, l, v, [idx / DAY_IN_MINUTES]))
+
+    return state
+
+
+def get_normalized_states(symbol, date):
+    result = None
+
+    dx = date.replace("-", "")
+    path = __normalized_states_dir + "\\" + symbol + "\\" + symbol + '_' + dx + ".dat"
+
+    if os.path.isfile(path):
+        xxx = np.fromfile(path)
+        result = xxx.reshape(DAY_IN_MINUTES, 5 * DAY_IN_MINUTES + 1)
+    else:
+        print(colored('Warning! Normalized data for ' + symbol + " " + date + ' not available', color='yellow'))
+
+    return result

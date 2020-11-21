@@ -1,28 +1,22 @@
+import datetime
 import os
+
 import numpy as np
 import tensorflow.compat.v1 as tf
 from termcolor import colored
 import common as cu
+tf.compat.v1.disable_eager_execution()
 import matplotlib.pylab as plt
 import random
 import math
 import pandas as pd
 
-tf.compat.v1.disable_eager_execution()
-
-__active_days_file = "data\\active_days.csv"
 
 MAX_EPSILON = 1.0
-MIN_EPSILON = 0.01
-LAMBDA = 0.000005
+MIN_EPSILON = 0.9999
+LAMBDA = 0.00001
 GAMMA = 0.99
-
-BATCH_SIZE = 1000
-TRAINING_START = 30000
-TRAINING_STEP = 100
-
-EPISODES = 25000
-SAVE_EPISODE_STEP = 500
+BATCH_SIZE = 500
 
 
 class Model:
@@ -117,14 +111,14 @@ class Memory:
 
 
 class TrainerBot:
-    def __init__(self, sess, model, env, memory, render=True):
+    def __init__(self, sess, model, env, memory):
         self._sess = sess
         self._env = env
         self._model = model
         self._memory = memory
-        self._render = render
         self._eps = MAX_EPSILON
         self._steps = 0
+        self._cnt = 0
         self._reward_store = []
         self._max_x_store = []
 
@@ -132,7 +126,7 @@ class TrainerBot:
         state = self._env.reset()
         tot_reward = 0
 
-        if self._steps > TRAINING_START:
+        if self._steps > 20000:
             print("Training Active. Step:", self._steps)
         else:
             print("Random Simulation. Step:", self._steps)
@@ -145,13 +139,16 @@ class TrainerBot:
                 next_state = None
 
             self._memory.add_sample((state, action, reward, next_state))
-            if self._steps > TRAINING_START:
-                if self._steps % TRAINING_STEP == 0:
+            if self._steps > 20000:
+                if self._steps % 100 == 0:
                     self._replay()
+
+            if self._steps % 10 == 0:
+                self._cnt += 1
 
             # exponentially decay the eps value
             self._steps += 1
-            self._eps = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self._steps)
+            self._eps = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self._cnt)
 
             # move the agent to the next state and accumulate the reward
             state = next_state
@@ -170,11 +167,11 @@ class TrainerBot:
 
     def _choose_action(self, state):
         if random.random() < self._eps:
-            return random.randint(0, self._model.num_actions - 1)
+            action = random.randint(0, self._model.num_actions - 1)
         else:
-            return np.argmax(self._model.predict_one(state, self._sess))
+            action = np.argmax(self._model.predict_one(state, self._sess))
 
-        return np.argmax(self._model.predict_one(state, self._sess))
+        return action
 
     def _replay(self):
         batch = self._memory.sample(self._model.batch_size)
@@ -215,122 +212,109 @@ class Trade_Env:
     def __init__(self, movers):
         self.movers = movers
         self.num_movers = len(movers)
-        self.position_size = 0
+
+        self._entries = 0
+        self._position_size = 0
         self.entry_price = 0
-        self.entries = 0
-        self.df = None
-        self.idx = None
-        self.open_idx = None
-        self.close_idx = None
 
-        self._open = None
-        self._close = None
-        self._high = None
-        self._low = None
-        self._volume = None
-        self._time = None   # used for debugging only
+        self.idx = 0
 
-        self._state = None
-        self._render = False
+        self._chart_states = None
 
         self.reset()
 
-    def _calc_state(self):
-        _time = self._time[:self.idx + 1]
-
-        n = len(_time)
-
-        padding_size = cu.DAY_IN_MINUTES - len(_time)
-        padding = [0] * padding_size
-
-        o = self._open[:self.idx + 1]
-        c = self._close[:self.idx + 1]
-        h = self._high[:self.idx + 1]
-        l = self._low[:self.idx + 1]
-        v = self._volume[:self.idx + 1]
-
-        state = cu.calc_normalized_state(o, c, h, l, v, self.idx - self.open_idx)
-
-        self._state = np.concatenate(([self.position_size], state))
-
     def reset(self):
+        self._entries = 0
+        self._position_size = 0
+        self.entry_price = 0
+
+        self.idx = 0
+
+        self._chart_states = None
+
         self._pick_chart()
-        self._open = self.df.Open.to_list()
-        self._close = self.df.Close.to_list()
-        self._high = self.df.High.to_list()
-        self._low = self.df.Low.to_list()
-        self._volume = self.df.Volume.to_list()
-        self._time = self.df.Time.to_list()
 
-        self.entries = 0
-        self.position_size = 0
-        self._calc_state()
+        print(self._chart_states[0].shape)
+        return np.concatenate(([self._position_size], self._chart_states[0]))
 
-        return self._state
+    def get_close_price(self):
+        state = self._chart_states[self.idx]
+        state = state[:-1]
+        state = state.reshape(5, cu.DAY_IN_MINUTES)
+        c = state[1]
+
+        return c[-1]
+
+    def calc_gain(self):
+        sell_price = self.get_close_price()
+        if self.entry_price > 0:
+            gain = 100 * (sell_price - self.entry_price) / self.entry_price - FEES
 
     def step(self, action):
         self.idx += 1
-        self._calc_state()
-
-        # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx])
 
         FEES = 1
         done = False
         gain = 0
 
-        if self.idx >= self.close_idx:
-            if self.position_size == 1:
+        if self.idx >= cu.DAY_IN_MINUTES - 1:
+            if self._position_size == 1:
                 print(colored("XXX", color='red'), end="")
-                sell_price = self._close[self.idx]
+
+                sell_price = self.get_close_price()
+
                 gain = 100 * (sell_price / self.entry_price - 1) - FEES
-                self.position_size = 0
+                self._position_size = 0
 
             done = True
 
-            print("   Entries:", self.entries)
+            print("   Entries:", self._entries)
         else:
             if action == 0:  # BUY
-                if self.position_size == 0:
-                    self.entries += 1
-                    self.position_size = 1
-                    self.entry_price = self._close[self.idx]
+                if self._position_size == 0:
+                    self._entries += 1
+                    self._position_size = 1
+                    self.entry_price = self.get_close_price()
                     gain = 0
                     print("-", end="")
 
             elif action == 1:  # SELL
-                if self.position_size == 1:
-                    sell_price = self._close[self.idx]
+                if self._position_size == 1:
+                    sell_price = self.get_close_price()
                     gain = 100 * (sell_price / self.entry_price - 1) - FEES
-                    self.position_size = 0
+                    self._position_size = 0
                     print("|", end="")
 
-        return self._state, gain, done
+        state = np.concatenate(([self._position_size], self._chart_states[self.idx]))
+        return state, gain, done
 
     def _pick_chart(self):
-        open_idx = None
-        close_idx = None
+        n = len(self.movers)
+        if n > 0:
+            num_tries = 0
 
-        while (open_idx is None) or (close_idx is None):
-            rand_idx = random.randint(0, int(self.num_movers * 0.8))
-            self.symbol = self.movers.iloc[rand_idx]["symbol"]
-            self.date = self.movers.iloc[rand_idx]["date"]
+            while num_tries < n and self._chart_states is None:
+                num_tries += 1  # needed to avoid infinite loop if files are missing
 
-            self.df = cu.get_chart_data_prepared_for_ai(self.symbol, self.date)
+                rand_idx = random.randint(0, int(self.num_movers * 0.8))
 
-            print(self.symbol, self.date)
+                symbol = self.movers.iloc[rand_idx]['symbol']
+                date_ = self.movers.iloc[rand_idx]['date']
+                self._chart_states = cu.get_normalized_states(symbol, date_)
 
-            if self.df is not None:
-                open_idx = cu.get_time_index(self.df, self.date, 9, 30, 0)
-                close_idx = cu.get_time_index(self.df, self.date, 15, 59, 0)
-
-        self.open_idx = open_idx
-        self.close_idx = close_idx
-
-        self.idx = open_idx
+                if self._chart_states is not None:
+                    self.symbol = self.movers.iloc[rand_idx]["symbol"]
+                    self.date = self.movers.iloc[rand_idx]["date"]
+                    print(self.symbol, self.date)
 
     @property
     def num_states(self):
-        return len(self._state)
+        res = None
+
+        if self._chart_states is not None:
+            res = len(self._chart_states[0])
+
+        return res
 
     @property
     def num_actions(self):
@@ -342,10 +326,10 @@ class Trade_Env:
 
 
 def train():
-    if not os.path.isfile(__active_days_file):
-        print(colored("ERROR: " + __active_days_file + " not found!", color="red"))
+    if not os.path.isfile(cu.__active_days_file):
+        print(colored("ERROR: " + cu.__active_days_file + " not found!", color="red"))
     else:
-        movers = pd.read_csv(__active_days_file)
+        movers = pd.read_csv(cu.__active_days_file)
 
         tr = Trade_Env(movers)
 
@@ -358,14 +342,14 @@ def train():
         with tf.Session() as sess:
             model.restore(sess)
 
-            bot = TrainerBot(sess, model, tr, mem, False)
-            num_episodes = EPISODES
+            bot = TrainerBot(sess, model, tr, mem)
+            num_episodes = 10000
             cnt = 0
             while cnt < num_episodes:
                 print('Episode {} of {}'.format(cnt+1, num_episodes))
                 bot.run()
                 cnt += 1
-                if cnt % SAVE_EPISODE_STEP == 0:
+                if cnt % 500 == 0:
                     model.save(sess, cnt)
 
             plt.plot(bot.reward_store)
@@ -374,5 +358,4 @@ def train():
 
 
 if __name__ == "__main__":
-    # test()
     train()

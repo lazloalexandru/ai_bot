@@ -9,7 +9,7 @@ import multiprocessing as mp
 import numpy as np
 
 
-__active_days_file = "data\\active_days.csv"
+__active_days_file = "data\\active_days_ext.csv"
 
 
 def _get_active_days_for(symbol, params):
@@ -26,7 +26,7 @@ def _get_active_days_for(symbol, params):
             gap = round(gap * 100)  # gap up in percents
 
             range_ = (df.loc[i]['High'] - df.loc[i]['Low']) / df.loc[i]['Low']
-            range_ = round(range_ * 100)  # gap up in percents
+            range_ = round(range_ * 100)  # in percents
 
             #####################################################################
             #  DEBUG
@@ -43,6 +43,10 @@ def _get_active_days_for(symbol, params):
                 t = df["Time"][df.index[i]].strftime("%Y-%m-%d")
                 print(symbol, t)
                 relevant_days_list.append([gap, t, symbol])
+            elif range_ > params['min_range'] and df.loc[i, 'High'] > params['day_high_above'] and (df.loc[i, 'Volume'] > params['min_range_volume']):
+                t = df["Time"][df.index[i]].strftime("%Y-%m-%d")
+                print(symbol, t, "     <---")
+                relevant_days_list.append([range_, t, symbol])
 
     print(symbol + " Relevant Days (Gap-Ups + Big movers): " + str(int(len(relevant_days_list))))
     return relevant_days_list
@@ -84,6 +88,8 @@ def get_default_params():
         'day_open_above': 1,
         'min_gap_up': 10,
         'min_gap_up_volume': 1000000,
+        'min_range': 20,
+        'min_range_volume': 20000000,
     }
 
     return params

@@ -231,7 +231,7 @@ class Trade_Env:
             elif action == 1:  # SELL
                 if self.position_size == 1:
                     sell_price = self._close[self.idx]
-                    gain = 100 * (sell_price / self.entry_price - 1) - FEES
+                    gain = 100 * (sell_price / self.entry_price - 1)
                     self.position_size = 0
                     self.exits.append([self._time[self.idx], sell_price])
 
@@ -284,6 +284,34 @@ class Trade_Env:
         return self._state
 
 
+def stats(gains):
+    plus = sum(x > 0 for x in gains)
+    splus = sum(x for x in gains if x > 0)
+    minus = sum(x < 0 for x in gains)
+    sminus = sum(x for x in gains if x < 0)
+
+    num_trades = len(gains)
+    success_rate = None if (plus + minus) == 0 else round(100 * (plus / (plus + minus)))
+    rr = None if plus == 0 or minus == 0 else -(splus / plus) / (sminus / minus)
+
+    avg_win = None if plus == 0 else splus / plus
+    avg_loss = None if minus == 0 else sminus / minus
+
+    if len(gains) > 0:
+        print("")
+        print("Nr Trades:", num_trades)
+        print("Success Rate:", success_rate, "%")
+        print("R/R:", "N/A" if rr is None else "%.2f" % rr)
+        print("Winners:", plus, " Avg. Win:", "N/A" if avg_win is None else "%.2f" % avg_win + "%")
+        print("Losers:", minus, " Avg. Loss:", "N/A" if avg_loss is None else "%.2f" % avg_loss + "%")
+        print("")
+
+    x = list(range(0, len(gains)))
+    plt.bar(x, gains)
+    plt.show()
+    plt.close("all")
+
+
 def test():
     if not os.path.isfile(__active_days_file):
         print(colored("ERROR: " + __active_days_file + " not found!", color="red"))
@@ -298,16 +326,14 @@ def test():
         with tf.Session() as sess:
             if model.restore(sess):
                 bot = TradeBot(sess, model, tr, False)
-                num_episodes = 20
+                num_episodes = 10
                 cnt = 0
                 while cnt < num_episodes:
                     print('Episode {} of {}'.format(cnt+1, num_episodes))
                     bot.run()
                     cnt += 1
 
-                plt.plot(bot.reward_store)
-                plt.show()
-                plt.close("all")
+                stats(bot.reward_store)
 
 
 if __name__ == "__main__":
