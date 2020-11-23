@@ -1,13 +1,15 @@
 import os
+import mplfinance as mpf
 import numpy as np
 import tensorflow.compat.v1 as tf
 from termcolor import colored
 import common as cu
+tf.compat.v1.disable_eager_execution()
 import matplotlib.pylab as plt
 import random
+import math
 import pandas as pd
 
-tf.compat.v1.disable_eager_execution()
 __active_days_file = "data\\active_days.csv"
 
 
@@ -47,6 +49,13 @@ class Model:
 
     def predict_one(self, state, sess):
         return sess.run(self._logits, feed_dict={self._states: state.reshape(1, self.num_states)})
+
+    def predict_batch(self, states, sess):
+        return sess.run(self._logits, feed_dict={self._states: states})
+
+    def train_batch(self, sess, x_batch, y_batch):
+        sess.run(self._optimizer, feed_dict={self._states: x_batch, self._q_s_a: y_batch})
+        self._model_valid = True
 
     def save(self, sess, step):
         self._saver.save(sess, "checkpoints\\my_model", global_step=step)
@@ -91,6 +100,9 @@ class TradeBot:
         state = self._env.reset()
         tot_reward = 0
 
+        rewards_b = []
+        rewards_s = []
+
         while True:
             action = self._choose_action(state)
             next_state, reward, done = self._env.step(action)
@@ -102,15 +114,22 @@ class TradeBot:
             state = next_state
             tot_reward += reward
 
+            if action == 0:
+                rewards_b.append(reward)
+                rewards_s.append(float('nan'))
+            else:
+                rewards_b.append(float('nan'))
+                rewards_s.append(reward)
+
             # if the game is done, break the loop
             if done:
+                rewards_b.append(float('nan'))
+                rewards_s.append(float('nan'))
                 c = 'red' if tot_reward < 0 else 'green'
-                print(colored("Account: %.2f" % tot_reward, color=c), '\n')
-                self._env.save_traded_chart()
+                # print(colored("Reward: %.2f" % tot_reward, color=c), '\n')
+                self._env.save_traded_chart(rewards_b, rewards_s)
                 self._reward_store.append(tot_reward)
                 break
-
-        return tot_reward
 
     def _choose_action(self, state):
         return np.argmax(self._model.predict_one(state, self._sess))
@@ -124,16 +143,12 @@ class TradeBot:
         return self._max_x_store
 
 
-DAY_IN_MINUTES = 390
-
-
 class Trade_Env:
     def __init__(self, movers):
         self.movers = movers
         self.num_movers = len(movers)
 
-        self.buy_prices = []
-        self.num_trades = 0
+        self.entry_price = 0
 
         self.df = None
         self.symbol = None
@@ -153,7 +168,6 @@ class Trade_Env:
         self._render = False
 
         self.entries = []
-        self.exits = []
 
         self.reset()
 
@@ -167,6 +181,7 @@ class Trade_Env:
         v = self._volume[:self.idx + 1]
 
         state = cu.calc_normalized_state(o, c, h, l, v, self.idx - self.open_idx)
+
         self._state = state
 
     def reset(self):
@@ -177,62 +192,52 @@ class Trade_Env:
         self._low = self.df.Low.to_list()
         self._volume = self.df.Volume.to_list()
         self._time = self.df.Time.to_list()
-
         self.entries = []
-        self.exits = []
-
-        self.buy_prices = []
-        self.num_trades = 0
 
         self._calc_state()
 
         return self._state
 
+    def calc_reward_buy(self):
+        reward = 0
+        risk = -5
+
+        stop = False
+        i = self.idx + 1
+        while not stop and i < self.close_idx:
+            mn = 100 * (self._low[i] / self.entry_price - 1)
+            mx = 100 * (self._high[i] / self.entry_price - 1)
+
+            if mn < risk:
+                risk = mn
+
+            if mx > reward:
+                reward = mx
+            i += 1
+
+        return (reward / abs(risk)) - 2
+
     def step(self, action):
         self.idx += 1
         self._calc_state()
 
-        FEES = 1  # in %
         done = False
-        gain = 0
+        reward = 0
 
-        num_positions = len(self.buy_prices)
         if self.idx == self.df.index[-1]:
-            if num_positions > 0:
-                self.num_trades += num_positions
-
-                avg_price = sum(self.buy_prices) / num_positions
-
-                sell_price = self._close[self.idx]
-                gain = 100 * (sell_price / avg_price - 1)
-                gain = gain * num_positions
-
-                self.exits.append([self._time[self.idx], sell_price])
-                print(self.symbol, 'BUY:', avg_price, end="")
-                print(colored("   SELL %.2f  x  %s   GAIN: %.2f" % (sell_price, num_positions, gain), color="green" if gain > 0 else "red"))
-
             done = True
-            print("Trades:", self.num_trades)
+            print("\nEntries: %s" % len(self.entries))
         else:
+            self.entry_price = self._close[self.idx]
+            # print(self._time[self.idx], "   rb: %.2f" % reward_b)
+
             if action == 0:  # BUY
-                self.buy_prices.append(self._close[self.idx])
-                self.entries.append([self._time[self.idx], self._close[self.idx]])
-            elif action == 1:  # SELL
-                if num_positions > 0:
-                    self.num_trades += 1
-                    sell_price = self._close[self.idx]
-                    entry_price = self.buy_prices.pop()
-                    gain = 100 * (sell_price / entry_price - 1) - FEES
+                self.entries.append([self._time[self.idx], self.entry_price])
+                reward = self.calc_reward_buy()
+            elif action == 1:  # Idle
+                reward = 0
 
-                    self.exits.append([self._time[self.idx], sell_price])
-
-                    print(self.symbol, 'BUY:', entry_price, end="")
-                    c = "green" if gain > 0 else "red"
-                    print(colored("   SELL %.2f   GAIN: %.2f" % (sell_price, gain), color=c))
-            elif action == 2:  # IDLE
-                gain = 0
-
-        return self._state, gain, done
+        return self._state, reward, done
 
     def _pick_chart(self):
         open_idx = None
@@ -257,7 +262,8 @@ class Trade_Env:
 
         self.idx = open_idx
 
-    def save_traded_chart(self):
+    def save_traded_chart(self, rewards_b, rewards_i):
+        # if True:
         if len(self.entries) > 0:
             images_dir_path = "trades\\"
             cu.show_1min_chart(self.df,
@@ -265,9 +271,9 @@ class Trade_Env:
                                self.date,
                                "",
                                self.entries,
-                               self.exits,
                                [],
-                               [],
+                               rewards_b,
+                               rewards_i,
                                images_dir_path)
 
     @property
@@ -276,39 +282,11 @@ class Trade_Env:
 
     @property
     def num_actions(self):
-        return 3
+        return 2
 
     @property
     def get_state(self):
         return self._state
-
-
-def stats(gains):
-    plus = sum(x > 0 for x in gains)
-    splus = sum(x for x in gains if x > 0)
-    minus = sum(x < 0 for x in gains)
-    sminus = sum(x for x in gains if x < 0)
-
-    num_trades = len(gains)
-    success_rate = None if (plus + minus) == 0 else round(100 * (plus / (plus + minus)))
-    rr = None if plus == 0 or minus == 0 else -(splus / plus) / (sminus / minus)
-
-    avg_win = None if plus == 0 else splus / plus
-    avg_loss = None if minus == 0 else sminus / minus
-
-    if len(gains) > 0:
-        print("")
-        print("Nr Trades:", num_trades)
-        print("Success Rate:", success_rate, "%")
-        print("R/R:", "N/A" if rr is None else "%.2f" % rr)
-        print("Winners:", plus, " Avg. Win:", "N/A" if avg_win is None else "%.2f" % avg_win + "%")
-        print("Losers:", minus, " Avg. Loss:", "N/A" if avg_loss is None else "%.2f" % avg_loss + "%")
-        print("")
-
-    x = list(range(0, len(gains)))
-    plt.bar(x, gains)
-    plt.show()
-    plt.close("all")
 
 
 def test():
@@ -325,14 +303,16 @@ def test():
         with tf.Session() as sess:
             if model.restore(sess):
                 bot = TradeBot(sess, model, tr, False)
-                num_episodes = 10
+                num_episodes = 20
                 cnt = 0
                 while cnt < num_episodes:
                     print('Episode {} of {}'.format(cnt+1, num_episodes))
                     bot.run()
                     cnt += 1
 
-                stats(bot.reward_store)
+                plt.plot(bot.reward_store)
+                plt.show()
+                plt.close("all")
 
 
 if __name__ == "__main__":

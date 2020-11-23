@@ -13,20 +13,18 @@ tf.compat.v1.disable_eager_execution()
 __active_days_file = "data\\active_days.csv"
 
 MAX_EPSILON = 1.0
-MIN_EPSILON = 0.05
-LAMBDA = 0.00005
+MIN_EPSILON = 0.1
+LAMBDA = 0.0001
 GAMMA = 0.99
 
-EPISODES = 1000
+EPISODES = 100
 SAVE_EPISODE_STEP = 50
-MEMORY = 10000
 
+MEMORY_SIZE = 1000
+BATCH_SIZE = 100
 
-BATCH_SIZE = 200
-TRAINING_START = 500
-TRAINING_STEP = 10
-
-STATS_PER_STEP = 10
+TRAINING_START = 390
+TRAINING_STEP = 20
 
 
 class Model:
@@ -55,7 +53,7 @@ class Model:
         self._states = tf.placeholder(shape=[None, self._num_states], dtype=tf.float32)
         self._q_s_a = tf.placeholder(shape=[None, self._num_actions], dtype=tf.float32)
         # create a couple of fully connected hidden layers
-        fc1 = tf.layers.dense(self._states, 2000, activation=tf.nn.relu)
+        fc1 = tf.layers.dense(self._states, 1000, activation=tf.nn.relu)
         fc2 = tf.layers.dense(fc1, 500, activation=tf.nn.relu)
         fc3 = tf.layers.dense(fc2, 500, activation=tf.nn.relu)
         self._logits = tf.layers.dense(fc3, self._num_actions)
@@ -130,28 +128,26 @@ class TrainerBot:
         self._eps = MAX_EPSILON
         self._steps = 0
         self._reward_store = []
-        self._total_gain_store = []
+        self._max_x_store = []
 
-    def run(self, predict_100=False):
+    def run(self):
         state = self._env.reset()
         tot_reward = 0
 
         if self._steps > TRAINING_START:
-            print("Training Active. Step:", self._steps, "Eps:", self._eps)
+            print("Training Active. Step:", self._steps)
         else:
-            print("Random Simulation. Step:", self._steps, "Eps:", self._eps)
+            print("Random Simulation. Step:", self._steps)
 
         while True:
-            action = self._choose_action(state, predict_100)
+            action = self._choose_action(state)
             next_state, reward, done = self._env.step(action)
 
             if done:
                 next_state = None
 
-            if not predict_100:
-                self._memory.add_sample((state, action, reward, next_state))
-
-            if self._steps > TRAINING_START and not predict_100:
+            self._memory.add_sample((state, action, reward, next_state))
+            if self._steps > TRAINING_START:
                 if self._steps % TRAINING_STEP == 0:
                     self._replay()
 
@@ -165,35 +161,24 @@ class TrainerBot:
 
             # if the game is done, break the loop
             if done:
-                if predict_100:
-                    self._total_gain_store.append(tot_reward)
-                else:
-                    self._reward_store.append(tot_reward)
+                self._reward_store.append(tot_reward)
                 break
 
-        if predict_100:
-            gx = '-' * int(abs(tot_reward))
-            c = 'red' if tot_reward < 0 else 'green'
-            print("Account: ", colored("%.2f" % tot_reward, color=c))
-            print(colored(gx, color=c))
-            print("\n")
+        c = 'red' if tot_reward < 0 else 'green'
+        print("Account: ", colored("%.2f" % tot_reward, color=c), "Eps:", self._eps)
+        '''
+        gx = 'X' * int(abs(tot_reward))
+        print(colored(gx, color=c))
+        print("\n")
+        '''
+
+    def _choose_action(self, state):
+        if random.random() < self._eps:
+            return random.randint(0, self._model.num_actions - 1)
         else:
-            gx = 'X' * int(abs(tot_reward))
-            c = 'red' if tot_reward < 0 else 'green'
-            print("Account: ", colored("%.2f" % tot_reward, color=c))
-            print(colored(gx, color=c))
-            print("\n")
-
-        return tot_reward
-
-    def _choose_action(self, state, predict_100):
-        if predict_100:
             return np.argmax(self._model.predict_one(state, self._sess))
-        else:
-            if random.random() < self._eps:
-                return random.randint(0, self._model.num_actions - 1)
-            else:
-                return np.argmax(self._model.predict_one(state, self._sess))
+
+        return np.argmax(self._model.predict_one(state, self._sess))
 
     def _replay(self):
         batch = self._memory.sample(self._model.batch_size)
@@ -226,18 +211,16 @@ class TrainerBot:
         return self._reward_store
 
     @property
-    def performance_store(self):
-        return self._total_gain_store
+    def max_x_store(self):
+        return self._max_x_store
 
 
 class Trade_Env:
     def __init__(self, movers):
         self.movers = movers
         self.num_movers = len(movers)
-
-        self.buy_prices = []
-        self.num_trades = 0
-
+        self.entry_price = 0
+        self.entries = 0
         self.df = None
         self.idx = None
         self.open_idx = None
@@ -251,7 +234,6 @@ class Trade_Env:
         self._time = None   # used for debugging only
 
         self._state = None
-        self._render = False
 
         self.reset()
 
@@ -265,9 +247,8 @@ class Trade_Env:
         v = self._volume[:self.idx + 1]
 
         state = cu.calc_normalized_state(o, c, h, l, v, self.idx - self.open_idx)
-        self._state = state
 
-        # self._state = np.concatenate(([self.position_size], state))
+        self._state = state
 
     def reset(self):
         self._pick_chart()
@@ -278,12 +259,29 @@ class Trade_Env:
         self._volume = self.df.Volume.to_list()
         self._time = self.df.Time.to_list()
 
-        self.buy_prices = []
-        self.num_trades = 0
-
+        self.entries = 0
         self._calc_state()
 
         return self._state
+
+    def calc_reward_buy(self):
+        reward = 0
+        risk = -1
+
+        stop = False
+        i = self.idx + 1
+        while not stop and i < self.close_idx:
+            mn = 100 * (self._low[i] / self.entry_price - 1)
+            mx = 100 * (self._high[i] / self.entry_price - 1)
+
+            if mn < risk:
+                risk = mn
+
+            if mx > reward:
+                reward = mx
+            i += 1
+
+        return (reward / abs(risk)) - 2
 
     def step(self, action):
         self.idx += 1
@@ -293,38 +291,21 @@ class Trade_Env:
 
         FEES = 1
         done = False
-        gain = 0
-
-        num_positions = len(self.buy_prices)
+        reward = 0
 
         if self.idx >= self.close_idx:
-            if num_positions > 0:
-                self.num_trades += num_positions
-                avg_price = sum(self.buy_prices) / num_positions
-
-                sell_price = self._close[self.idx]
-                gain = -10  # 100 * (sell_price / avg_price - 1)
-                gain = gain * num_positions
-
-                print(colored("XXX", color='red'), end="")
-
             done = True
-            print("\nTrades:", self.num_trades)
+            print("Entries:", self.entries)
         else:
             if action == 0:  # BUY
-                self.buy_prices.append(self._close[self.idx])
-                print(".", end="")
-            elif action == 1:  # SELL
-                if num_positions > 0:
-                    self.num_trades += 1
-                    sell_price = self._close[self.idx]
-                    entry_price = self.buy_prices.pop()
-                    gain = 100 * (sell_price / entry_price - 1) - FEES
-                    print("|", end="")
-            elif action == 2:  # IDLE
-                gain = 0
+                self.entries += 1
+                self.entry_price = self._close[self.idx]
+                reward = self.calc_reward_buy()
 
-        return self._state, gain, done
+            elif action == 1:  # SELL
+                reward = 0
+
+        return self._state, reward, done
 
     def _pick_chart(self):
         open_idx = None
@@ -355,7 +336,7 @@ class Trade_Env:
 
     @property
     def num_actions(self):
-        return 3
+        return 2
 
     @property
     def get_state(self):
@@ -373,7 +354,7 @@ def train():
         print(tr.num_actions, tr.num_states)
 
         model = Model(tr.num_states, tr.num_actions, BATCH_SIZE)
-        mem = Memory(MEMORY)
+        mem = Memory(MEMORY_SIZE)
 
         # with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
         with tf.Session() as sess:
@@ -383,20 +364,14 @@ def train():
             num_episodes = EPISODES
             cnt = 0
             while cnt < num_episodes:
-                print('Episode {} of {}'.format(cnt+1, num_episodes))
+                print('\nEpisode {} of {}'.format(cnt+1, num_episodes))
                 bot.run()
                 cnt += 1
                 if cnt % SAVE_EPISODE_STEP == 0:
                     model.save(sess, cnt)
 
-                if cnt % STATS_PER_STEP == 0:
-                    bot.run(predict_100=True)
-
-            plt.plot(bot.performance_store)
-            plt.show()
             plt.plot(bot.reward_store)
             plt.show()
-
             plt.close("all")
 
 

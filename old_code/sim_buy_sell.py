@@ -1,13 +1,15 @@
 import os
+import mplfinance as mpf
 import numpy as np
 import tensorflow.compat.v1 as tf
 from termcolor import colored
 import common as cu
+tf.compat.v1.disable_eager_execution()
 import matplotlib.pylab as plt
 import random
+import math
 import pandas as pd
 
-tf.compat.v1.disable_eager_execution()
 __active_days_file = "data\\active_days.csv"
 
 
@@ -35,9 +37,9 @@ class Model:
         self._states = tf.placeholder(shape=[None, self._num_states], dtype=tf.float32)
         self._q_s_a = tf.placeholder(shape=[None, self._num_actions], dtype=tf.float32)
         # create a couple of fully connected hidden layers
-        fc1 = tf.layers.dense(self._states, 1000, activation=tf.nn.relu)
-        fc2 = tf.layers.dense(fc1, 500, activation=tf.nn.relu)
-        fc3 = tf.layers.dense(fc2, 500, activation=tf.nn.relu)
+        fc1 = tf.layers.dense(self._states, 10000, activation=tf.nn.relu)
+        fc2 = tf.layers.dense(fc1, 5000, activation=tf.nn.relu)
+        fc3 = tf.layers.dense(fc2, 5000, activation=tf.nn.relu)
         self._logits = tf.layers.dense(fc3, self._num_actions)
         loss = tf.losses.mean_squared_error(self._q_s_a, self._logits)
         self._optimizer = tf.train.AdamOptimizer().minimize(loss)
@@ -110,8 +112,6 @@ class TradeBot:
                 self._reward_store.append(tot_reward)
                 break
 
-        return tot_reward
-
     def _choose_action(self, state):
         return np.argmax(self._model.predict_one(state, self._sess))
 
@@ -132,15 +132,13 @@ class Trade_Env:
         self.movers = movers
         self.num_movers = len(movers)
 
-        self.buy_prices = []
-        self.num_trades = 0
+        self.position_size = 0
+        self.entry_price = 0
 
         self.df = None
         self.symbol = None
         self.date = None
         self.idx = None
-        self.open_idx = None
-        self.close_idx = None
 
         self._open = None
         self._close = None
@@ -160,14 +158,33 @@ class Trade_Env:
     def _calc_state(self):
         _time = self._time[:self.idx + 1]
 
-        o = self._open[:self.idx + 1]
-        c = self._close[:self.idx + 1]
-        h = self._high[:self.idx + 1]
-        l = self._low[:self.idx + 1]
-        v = self._volume[:self.idx + 1]
+        n = len(_time)
 
-        state = cu.calc_normalized_state(o, c, h, l, v, self.idx - self.open_idx)
-        self._state = state
+        padding_size = DAY_IN_MINUTES - len(_time)
+        padding = [0] * padding_size
+
+        _open = self._open[:self.idx + 1]
+        _close = self._close[:self.idx + 1]
+        _high = self._high[:self.idx + 1]
+        _low = self._low[:self.idx + 1]
+
+        _price = [_open, _close, _high, _low]
+        _price = tf.keras.utils.normalize(_price)
+
+        _open = np.concatenate((padding, _price[0].reshape(n)))
+        _close = np.concatenate((padding, _price[1].reshape(n)))
+        _high = np.concatenate((padding, _price[2].reshape(n)))
+        _low = np.concatenate((padding, _price[3].reshape(n)))
+
+        _volume = self._volume[:self.idx + 1]
+        _volume = tf.keras.utils.normalize(_volume).reshape(n)
+        _volume = np.concatenate((padding, _volume), axis=None)
+
+        xxx_time = (100 * _time[self.idx].time().hour + _time[self.idx].time().minute) / 1600
+
+        self._state = np.concatenate(([self.position_size], [xxx_time], _open, _close, _high, _low, _volume))
+
+        return self._state
 
     def reset(self):
         self._pick_chart()
@@ -177,12 +194,9 @@ class Trade_Env:
         self._low = self.df.Low.to_list()
         self._volume = self.df.Volume.to_list()
         self._time = self.df.Time.to_list()
-
+        self.position_size = 0
         self.entries = []
         self.exits = []
-
-        self.buy_prices = []
-        self.num_trades = 0
 
         self._calc_state()
 
@@ -196,41 +210,32 @@ class Trade_Env:
         done = False
         gain = 0
 
-        num_positions = len(self.buy_prices)
         if self.idx == self.df.index[-1]:
-            if num_positions > 0:
-                self.num_trades += num_positions
-
-                avg_price = sum(self.buy_prices) / num_positions
-
+            if self.position_size == 1:
                 sell_price = self._close[self.idx]
-                gain = 100 * (sell_price / avg_price - 1)
-                gain = gain * num_positions
-
+                gain = 100 * (sell_price / self.entry_price - 1) - FEES
                 self.exits.append([self._time[self.idx], sell_price])
-                print(self.symbol, 'BUY:', avg_price, end="")
-                print(colored("   SELL %.2f  x  %s   GAIN: %.2f" % (sell_price, num_positions, gain), color="green" if gain > 0 else "red"))
+                print(colored("   SELL %s   GAIN: %.2f" % (sell_price, gain), color="green" if gain > 0 else "red"))
+                print("----------------------------------")
 
+            self.position_size = 0
             done = True
-            print("Trades:", self.num_trades)
+            print("Trades: %s" % len(self.entries))
         else:
             if action == 0:  # BUY
-                self.buy_prices.append(self._close[self.idx])
-                self.entries.append([self._time[self.idx], self._close[self.idx]])
+                if self.position_size == 0:
+                    self.position_size = 1
+                    self.entry_price = self._close[self.idx]
+                    self.entries.append([self._time[self.idx], self.entry_price])
+                    print(self.symbol, 'BUY:', self.entry_price, end="")
             elif action == 1:  # SELL
-                if num_positions > 0:
-                    self.num_trades += 1
+                if self.position_size == 1:
                     sell_price = self._close[self.idx]
-                    entry_price = self.buy_prices.pop()
-                    gain = 100 * (sell_price / entry_price - 1) - FEES
-
+                    gain = 100 * (sell_price / self.entry_price - 1)
+                    self.position_size = 0
                     self.exits.append([self._time[self.idx], sell_price])
 
-                    print(self.symbol, 'BUY:', entry_price, end="")
-                    c = "green" if gain > 0 else "red"
-                    print(colored("   SELL %.2f   GAIN: %.2f" % (sell_price, gain), color=c))
-            elif action == 2:  # IDLE
-                gain = 0
+                    print(colored("   SELL %s   GAIN: %.2f" % (sell_price, gain), color="green" if gain > 0 else "red"))
 
         return self._state, gain, done
 
@@ -239,7 +244,7 @@ class Trade_Env:
         close_idx = None
 
         while (open_idx is None) or (close_idx is None):
-            rand_idx = random.randint(0, int(self.num_movers * 0.8))
+            rand_idx = random.randint(int(self.num_movers * 0.8) + 1, self.num_movers - 1)
             rand_idx = 2300
             self.symbol = self.movers.iloc[rand_idx]["symbol"]
             self.date = self.movers.iloc[rand_idx]["date"]
@@ -251,9 +256,6 @@ class Trade_Env:
             if self.df is not None:
                 open_idx = cu.get_time_index(self.df, self.date, 9, 30, 0)
                 close_idx = cu.get_time_index(self.df, self.date, 15, 59, 0)
-
-        self.open_idx = open_idx
-        self.close_idx = close_idx
 
         self.idx = open_idx
 
@@ -276,7 +278,7 @@ class Trade_Env:
 
     @property
     def num_actions(self):
-        return 3
+        return 2
 
     @property
     def get_state(self):
