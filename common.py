@@ -20,6 +20,34 @@ __normalized_states_dir = __normalized_states_root_dir + "\\intraday_charts"
 DAY_IN_MINUTES = 390
 
 
+def stats(gains):
+    plus = sum(x > 0 for x in gains)
+    splus = sum(x for x in gains if x > 0)
+    minus = sum(x < 0 for x in gains)
+    sminus = sum(x for x in gains if x < 0)
+
+    num_trades = len(gains)
+    success_rate = None if (plus + minus) == 0 else round(100 * (plus / (plus + minus)))
+    rr = None if plus == 0 or minus == 0 else -(splus / plus) / (sminus / minus)
+
+    avg_win = None if plus == 0 else splus / plus
+    avg_loss = None if minus == 0 else sminus / minus
+
+    if len(gains) > 0:
+        print("")
+        print("Nr Trades:", num_trades)
+        print("Success Rate:", success_rate, "%")
+        print("R/R:", "N/A" if rr is None else "%.2f" % rr)
+        print("Winners:", plus, " Avg. Win:", "N/A" if avg_win is None else "%.2f" % avg_win + "%")
+        print("Losers:", minus, " Avg. Loss:", "N/A" if avg_loss is None else "%.2f" % avg_loss + "%")
+        print("")
+
+    x = list(range(0, len(gains)))
+    plt.bar(x, gains)
+    plt.show()
+    plt.close("all")
+
+
 def limit(x, mn, mx):
     if x < mn:
         x = mn
@@ -60,7 +88,7 @@ def gen_add_plot(chart_data, entries, exits):
     return adp
 
 
-def show_1min_chart(df, symbol, date, info, entries, exits, rewards_b, rewards_i, save_to_dir=None):
+def show_1min_chart(df, symbol, date, info, entries, exits, rewards_b, rewards_i, save_to_dir=None, filename=None):
     df = df.set_index(pd.Index(df.Time))
 
     #############################################
@@ -89,46 +117,10 @@ def show_1min_chart(df, symbol, date, info, entries, exits, rewards_b, rewards_i
                      volume=True, figscale=1, figratio=[16, 9], title=title)
     else:  # Save Chart in file
         make_dir(save_to_dir)
-        path = save_to_dir + "\\" + symbol + '_' + date + ".png"
-
-        if len(adp) > 0:
-            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
-                     savefig=path, volume=True, figscale=2, figratio=[16, 9], addplot=adp, title=title)
+        if filename is None:
+            path = save_to_dir + "\\" + symbol + '_' + date + ".png"
         else:
-            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
-                     savefig=path, volume=True, figscale=2, figratio=[16, 9], title=title)
-
-
-def show_1min_chart_r(df, symbol, date, info, entries, exits, rewards_b, rewards_i, save_to_dir=""):
-    df = df.set_index(pd.Index(df.Time))
-
-    #############################################
-    # Generate Add-Plots
-
-    mav_list = []
-    adp = gen_add_plot(df, entries, exits)
-
-    # df['rewards_b'] = rewards_b
-    # adp.append(mpf.make_addplot(df['rewards_b'], color='green'))
-
-    # df['rewards_i'] = rewards_i
-    # adp.append(mpf.make_addplot(df['rewards_i'], color='yellow'))
-
-    ##################################
-    # Plot charts
-
-    title = info + symbol + " " + date
-
-    if save_to_dir == "":  # Display chart
-        if len(adp) > 0:
-            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
-                     volume=True, figscale=1, figratio=[16, 9], addplot=adp, title=title)
-        else:
-            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
-                     volume=True, figscale=1, figratio=[16, 9], title=title)
-    else:  # Save Chart in file
-        make_dir(save_to_dir)
-        path = save_to_dir + "\\" + symbol + '_' + date + ".png"
+            path = save_to_dir + "\\" + filename + ".png"
 
         if len(adp) > 0:
             mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,

@@ -7,117 +7,27 @@ import matplotlib.pylab as plt
 import random
 import math
 import pandas as pd
+from model import Model
+from ai_memory import Memory
 
 tf.compat.v1.disable_eager_execution()
 
 __active_days_file = "data\\active_days.csv"
 
-MAX_EPSILON = 1.0
+MAX_EPSILON = 1.00
 MIN_EPSILON = 0.05
-LAMBDA = 0.00005
+LAMBDA = 0.00001
 GAMMA = 0.99
 
 EPISODES = 1000
 SAVE_EPISODE_STEP = 50
-MEMORY = 10000
-
 
 BATCH_SIZE = 200
 TRAINING_START = 500
 TRAINING_STEP = 10
+MEMORY = 50000
 
-STATS_PER_STEP = 10
-
-
-class Model:
-    def __init__(self, num_states, num_actions, batch_size):
-        self._num_states = num_states
-        self._num_actions = num_actions
-        self._batch_size = batch_size
-
-        self._model_valid = False
-
-        # define the placeholders
-        self._states = None
-        self._actions = None
-
-        # the output operations
-        self._logits = None
-        self._optimizer = None
-        self._var_init = None
-
-        self._saver = None
-
-        # now setup the model
-        self._define_model()
-
-    def _define_model(self):
-        self._states = tf.placeholder(shape=[None, self._num_states], dtype=tf.float32)
-        self._q_s_a = tf.placeholder(shape=[None, self._num_actions], dtype=tf.float32)
-        # create a couple of fully connected hidden layers
-        fc1 = tf.layers.dense(self._states, 2000, activation=tf.nn.relu)
-        fc2 = tf.layers.dense(fc1, 500, activation=tf.nn.relu)
-        fc3 = tf.layers.dense(fc2, 500, activation=tf.nn.relu)
-        self._logits = tf.layers.dense(fc3, self._num_actions)
-        loss = tf.losses.mean_squared_error(self._q_s_a, self._logits)
-        self._optimizer = tf.train.AdamOptimizer().minimize(loss)
-        self._var_init = tf.global_variables_initializer()
-
-        self._saver = tf.train.Saver(max_to_keep=100)
-
-    def predict_one(self, state, sess):
-        return sess.run(self._logits, feed_dict={self._states: state.reshape(1, self.num_states)})
-
-    def predict_batch(self, states, sess):
-        return sess.run(self._logits, feed_dict={self._states: states})
-
-    def train_batch(self, sess, x_batch, y_batch):
-        sess.run(self._optimizer, feed_dict={self._states: x_batch, self._q_s_a: y_batch})
-        self._model_valid = True
-
-    def save(self, sess, step):
-        self._saver.save(sess, "checkpoints\\my_model", global_step=step)
-
-    def restore(self, sess):
-        path = tf.train.latest_checkpoint('checkpoints\\')
-        print("Checkpoint: ", path)
-        if path is None:
-            sess.run(self.var_init)
-        else:
-            self._saver.restore(sess, path)
-
-    @property
-    def num_states(self):
-        return self._num_states
-
-    @property
-    def num_actions(self):
-        return self._num_actions
-
-    @property
-    def batch_size(self):
-        return self._batch_size
-
-    @property
-    def var_init(self):
-        return self._var_init
-
-
-class Memory:
-    def __init__(self, max_memory):
-        self._max_memory = max_memory
-        self._samples = []
-
-    def add_sample(self, sample):
-        self._samples.append(sample)
-        if len(self._samples) > self._max_memory:
-            self._samples.pop(0)
-
-    def sample(self, no_samples):
-        if no_samples > len(self._samples):
-            return random.sample(self._samples, len(self._samples))
-        else:
-            return random.sample(self._samples, no_samples)
+STATS_PER_STEP = 50
 
 
 class TrainerBot:
@@ -130,33 +40,38 @@ class TrainerBot:
         self._eps = MAX_EPSILON
         self._steps = 0
         self._reward_store = []
-        self._total_gain_store = []
+        self._performance_store = []
 
-    def run(self, predict_100=False):
+    def run(self, full_predict_mode=False):
         state = self._env.reset()
         tot_reward = 0
 
         if self._steps > TRAINING_START:
-            print("Training Active. Step:", self._steps, "Eps:", self._eps)
+            if full_predict_mode:
+                print("Measurement Step:", self._steps, "Eps:", self._eps)
+            else:
+                print("Training Active. Step:", self._steps, "Eps:", self._eps)
         else:
             print("Random Simulation. Step:", self._steps, "Eps:", self._eps)
 
         while True:
-            action = self._choose_action(state, predict_100)
+            action = self._choose_action(state, full_predict_mode)
             next_state, reward, done = self._env.step(action)
 
             if done:
                 next_state = None
 
-            if not predict_100:
+            if not full_predict_mode:
                 self._memory.add_sample((state, action, reward, next_state))
 
-            if self._steps > TRAINING_START and not predict_100:
+            if self._steps > TRAINING_START and not full_predict_mode:
                 if self._steps % TRAINING_STEP == 0:
                     self._replay()
 
             # exponentially decay the eps value
-            self._steps += 1
+            if not full_predict_mode:
+                self._steps += 1
+
             self._eps = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self._steps)
 
             # move the agent to the next state and accumulate the reward
@@ -165,20 +80,21 @@ class TrainerBot:
 
             # if the game is done, break the loop
             if done:
-                if predict_100:
-                    self._total_gain_store.append(tot_reward)
+                if full_predict_mode:
+                    self._performance_store.append(tot_reward)
+                    print("Performance:", tot_reward, self._performance_store[-1])
                 else:
                     self._reward_store.append(tot_reward)
                 break
 
-        if predict_100:
-            gx = '-' * int(abs(tot_reward))
+        if full_predict_mode:
+            gx = 'X' * int(abs(tot_reward))
             c = 'red' if tot_reward < 0 else 'green'
             print("Account: ", colored("%.2f" % tot_reward, color=c))
             print(colored(gx, color=c))
             print("\n")
         else:
-            gx = 'X' * int(abs(tot_reward))
+            gx = '*' * int(abs(tot_reward))
             c = 'red' if tot_reward < 0 else 'green'
             print("Account: ", colored("%.2f" % tot_reward, color=c))
             print(colored(gx, color=c))
@@ -186,8 +102,8 @@ class TrainerBot:
 
         return tot_reward
 
-    def _choose_action(self, state, predict_100):
-        if predict_100:
+    def _choose_action(self, state, full_prediction_mode):
+        if full_prediction_mode:
             return np.argmax(self._model.predict_one(state, self._sess))
         else:
             if random.random() < self._eps:
@@ -227,7 +143,7 @@ class TrainerBot:
 
     @property
     def performance_store(self):
-        return self._total_gain_store
+        return self._performance_store
 
 
 class Trade_Env:
@@ -390,8 +306,10 @@ def train():
                     model.save(sess, cnt)
 
                 if cnt % STATS_PER_STEP == 0:
-                    bot.run(predict_100=True)
+                    bot.run(full_predict_mode=True)
 
+            print(bot.performance_store)
+            print(bot.reward_store)
             plt.plot(bot.performance_store)
             plt.show()
             plt.plot(bot.reward_store)
