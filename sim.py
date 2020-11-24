@@ -4,13 +4,13 @@ import tensorflow.compat.v1 as tf
 from termcolor import colored
 import pandas as pd
 from model import Model
-from sim_env import Trade_Env
-import train_bot
+from env import Trade_Env
+import train
 
 tf.compat.v1.disable_eager_execution()
 
 
-class TradeBot:
+class SimBot:
     def __init__(self, sess, model, env, model_path):
         self._sess = sess
         self._env = env
@@ -64,13 +64,13 @@ def test():
     else:
         movers = pd.read_csv(__active_days_file)
 
-        tr = Trade_Env(movers)
+        tr = Trade_Env(movers, simulation_mode=True)
 
-        model = Model(tr.num_states, tr.num_actions, train_bot.get_params())
+        model = Model(tr.num_states, tr.num_actions, train.get_params())
 
         with tf.Session() as sess:
             if model.restore(sess):
-                bot = TradeBot(sess, model, tr, model.path)
+                bot = SimBot(sess, model, tr, model.path)
                 num_episodes = 10
                 cnt = 0
                 while cnt < num_episodes:

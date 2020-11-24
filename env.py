@@ -4,7 +4,7 @@ import random
 
 
 class Trade_Env:
-    def __init__(self, movers):
+    def __init__(self, movers, simulation_mode=True):
         self.movers = movers
         self.num_movers = len(movers)
 
@@ -12,6 +12,8 @@ class Trade_Env:
         self.num_trades = 0
 
         self.df = None
+        self.symbol = None
+        self.date = None
         self.idx = None
         self.open_idx = None
         self.close_idx = None
@@ -25,6 +27,11 @@ class Trade_Env:
 
         self._state = None
         self._render = False
+
+        self.entries = []
+        self.exits = []
+
+        self.simulation_mode = simulation_mode
 
         self.reset()
 
@@ -40,8 +47,6 @@ class Trade_Env:
         state = cu.calc_normalized_state(o, c, h, l, v, self.idx - self.open_idx)
         self._state = state
 
-        # self._state = np.concatenate(([self.position_size], state))
-
     def reset(self):
         self._pick_chart()
         self._open = self.df.Open.to_list()
@@ -50,6 +55,9 @@ class Trade_Env:
         self._low = self.df.Low.to_list()
         self._volume = self.df.Volume.to_list()
         self._time = self.df.Time.to_list()
+
+        self.entries = []
+        self.exits = []
 
         self.buy_prices = []
         self.num_trades = 0
@@ -64,39 +72,56 @@ class Trade_Env:
 
         # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx])
 
-        FEES = 1
+        FEES = 1  # in %
         done = False
         gain = 0
 
         num_positions = len(self.buy_prices)
-
         if self.idx >= self.close_idx:
             if num_positions > 0:
                 self.num_trades += num_positions
-                ############################################################
-                # avg_price = sum(self.buy_prices) / num_positions
-                # sell_price = self._close[self.idx]
-                # gain = 100 * (sell_price / avg_price - 1)
-                ############################################################
+                avg_price = sum(self.buy_prices) / num_positions
+                sell_price = self._close[self.idx]
 
-                gain = -10  # 100 * (sell_price / avg_price - 1)
+                if self.simulation_mode:
+                    gain = 100 * (sell_price / avg_price - 1)
+                else:
+                    gain = -10
+
                 gain = gain * num_positions
 
-                print(colored("XXX", color='red'), end="")
+                if self.simulation_mode:
+                    self.exits.append([self._time[self.idx], sell_price])
+                    print(self.symbol, 'BUY:', avg_price, end="")
+                    print(colored("   SELL %.2f  x  %s   GAIN: %.2f" % (sell_price, num_positions, gain), color="green" if gain > 0 else "red"))
+                else:
+                    print(colored("XXX", color='red'), end="")
 
             done = True
-            print("\nTrades:", self.num_trades)
+            print("Trades:", self.num_trades)
         else:
             if action == 0:  # BUY
                 self.buy_prices.append(self._close[self.idx])
-                print(".", end="")
+                if self.simulation_mode:
+                    self.entries.append([self._time[self.idx], self._close[self.idx]])
+                else:
+                    print(".", end="")
             elif action == 1:  # SELL
                 if num_positions > 0:
                     self.num_trades += 1
                     sell_price = self._close[self.idx]
                     entry_price = self.buy_prices.pop()
                     gain = 100 * (sell_price / entry_price - 1) - FEES
-                    print("|", end="")
+
+                    if self.simulation_mode:
+                        self.exits.append([self._time[self.idx], sell_price])
+
+                        print(self.symbol, 'BUY:', entry_price, end="")
+                        c = "green" if gain > 0 else "red"
+                        print(colored("   SELL %.2f   GAIN: %.2f" % (sell_price, gain), color=c))
+                    else:
+                        print("|", end="")
+
             elif action == 2:  # IDLE
                 gain = 0
 
@@ -108,7 +133,7 @@ class Trade_Env:
 
         while (open_idx is None) or (close_idx is None):
             rand_idx = random.randint(0, int(self.num_movers * 0.8))
-            rand_idx = 2300
+            # rand_idx = 5450
             self.symbol = self.movers.iloc[rand_idx]["symbol"]
             self.date = self.movers.iloc[rand_idx]["date"]
 
@@ -124,6 +149,21 @@ class Trade_Env:
         self.close_idx = close_idx
 
         self.idx = open_idx
+
+    def save_traded_chart(self, filename=None):
+        if len(self.entries) > 0:
+
+            images_dir_path = "trades\\"
+            cu.show_1min_chart(self.df,
+                               self.symbol,
+                               self.date,
+                               "",
+                               self.entries,
+                               self.exits,
+                               [],
+                               [],
+                               images_dir_path,
+                               filename)
 
     @property
     def num_states(self):

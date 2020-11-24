@@ -8,7 +8,7 @@ import math
 import pandas as pd
 from model import Model
 from ai_memory import Memory
-from train_env import Trade_Env
+from env import Trade_Env
 
 tf.compat.v1.disable_eager_execution()
 
@@ -27,6 +27,7 @@ class TrainerBot:
         self._MIN_EPSILON = self._params['MIN_EPSILON']
         self._LAMBDA = self._params['LAMBDA']
         self._GAMMA = self._params['GAMMA']
+        self._TRAINING_START = self._params['TRAINING_START']
 
         self._steps = 0
         self._reward_store = []
@@ -38,7 +39,7 @@ class TrainerBot:
         state = self._env.reset()
         tot_reward = 0
 
-        if self._steps > self._params['TRAINING_START']:
+        if self._steps > self._TRAINING_START:
             if full_predict_mode:
                 print("Measurement Step:", self._steps, "Eps:", self._eps)
             else:
@@ -56,7 +57,7 @@ class TrainerBot:
             if not full_predict_mode:
                 self._memory.add_sample((state, action, reward, next_state))
 
-            if self._steps > self._params['TRAINING_START'] and not full_predict_mode:
+            if self._steps > self._TRAINING_START and not full_predict_mode:
                 if self._steps % self._params['TRAINING_STEP'] == 0:
                     self._replay()
 
@@ -189,12 +190,14 @@ def get_params():
 
         'GAMMA': 0.99,
         'EPISODES': 1000,
-        'CHECKPOINT_AT_EPISODE_STEP': 50,
+        'CHECKPOINT_AT_EPISODE_STEP': 1,
         'MAX_CHECKPOINTS': 50,
+
         'BATCH_SIZE': 200,
         'TRAINING_START': 500,
         'TRAINING_STEP': 10,
         'MEMORY': 50000,
+
         'STATS_PER_STEP': 50,
         'active_days_file': "data\\active_days.csv"
     }
