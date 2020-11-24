@@ -58,7 +58,7 @@ class TrainerBot:
                 self._memory.add_sample((state, action, reward, next_state))
 
             if self._steps > self._TRAINING_START and not full_predict_mode:
-                if self._steps % self._params['TRAINING_STEP'] == 0:
+                if self._steps % self._params['STEPS_BEFORE_TRAINING'] == 0:
                     self._replay()
 
             # exponentially decay the eps value
@@ -148,7 +148,9 @@ def train(params):
 
         movers = pd.read_csv(active_days_file)
 
-        tr = Trade_Env(movers)
+        tr = Trade_Env(movers,
+                       sim_chart_index=None,
+                       simulation_mode=False)
 
         print(tr.num_actions, tr.num_states)
 
@@ -184,19 +186,19 @@ def train(params):
 
 def get_params():
     params = {
-        'MAX_EPSILON': 1.00,
-        'MIN_EPSILON': 0.05,
+        'MAX_EPSILON': 0.2,
+        'MIN_EPSILON': 0.1,
         'LAMBDA': 0.00001,
-
         'GAMMA': 0.99,
-        'EPISODES': 1000,
-        'CHECKPOINT_AT_EPISODE_STEP': 1,
-        'MAX_CHECKPOINTS': 50,
 
         'BATCH_SIZE': 200,
-        'TRAINING_START': 500,
-        'TRAINING_STEP': 10,
-        'MEMORY': 50000,
+        'TRAINING_START': 10000,
+        'STEPS_BEFORE_TRAINING': 100,
+        'MEMORY': 100000,
+
+        'EPISODES': 10000,
+        'CHECKPOINT_AT_EPISODE_STEP': 200,
+        'MAX_CHECKPOINTS': 50,
 
         'STATS_PER_STEP': 50,
         'active_days_file': "data\\active_days.csv"

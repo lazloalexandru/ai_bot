@@ -4,7 +4,10 @@ import random
 
 
 class Trade_Env:
-    def __init__(self, movers, simulation_mode=True):
+    def __init__(self, movers, sim_chart_index=None, simulation_mode=True):
+
+        self.sim_chart_index = sim_chart_index
+
         self.movers = movers
         self.num_movers = len(movers)
 
@@ -132,8 +135,11 @@ class Trade_Env:
         close_idx = None
 
         while (open_idx is None) or (close_idx is None):
-            rand_idx = random.randint(0, int(self.num_movers * 0.8))
-            # rand_idx = 5450
+            if self.sim_chart_index is None:
+                rand_idx = random.randint(0, int(self.num_movers * 0.8))
+            else:
+                rand_idx = self.sim_chart_index
+
             self.symbol = self.movers.iloc[rand_idx]["symbol"]
             self.date = self.movers.iloc[rand_idx]["date"]
 
