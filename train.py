@@ -149,7 +149,7 @@ def train(params):
         movers = pd.read_csv(active_days_file)
 
         tr = Trade_Env(movers,
-                       sim_chart_index=None,
+                       sim_chart_index=2300,
                        simulation_mode=False)
 
         print(tr.num_actions, tr.num_states)
@@ -186,18 +186,18 @@ def train(params):
 
 def get_params():
     params = {
-        'MAX_EPSILON': 0.2,
+        'MAX_EPSILON': 1.0,
         'MIN_EPSILON': 0.1,
         'LAMBDA': 0.00001,
         'GAMMA': 0.99,
 
         'BATCH_SIZE': 200,
-        'TRAINING_START': 10000,
+        'TRAINING_START': 1000,
         'STEPS_BEFORE_TRAINING': 100,
         'MEMORY': 100000,
 
-        'EPISODES': 10000,
-        'CHECKPOINT_AT_EPISODE_STEP': 200,
+        'EPISODES': 1000,
+        'CHECKPOINT_AT_EPISODE_STEP': 50,
         'MAX_CHECKPOINTS': 50,
 
         'STATS_PER_STEP': 50,

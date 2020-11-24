@@ -1,3 +1,4 @@
+import numpy as np
 from termcolor import colored
 import common as cu
 import random
@@ -13,6 +14,8 @@ class Trade_Env:
 
         self.buy_prices = []
         self.num_trades = 0
+        self.buy_locations_vector = [0] * cu.DAY_IN_MINUTES
+        self.buy_indexes = []
 
         self.df = None
         self.symbol = None
@@ -48,7 +51,7 @@ class Trade_Env:
         v = self._volume[:self.idx + 1]
 
         state = cu.calc_normalized_state(o, c, h, l, v, self.idx - self.open_idx)
-        self._state = state
+        self._state = np.concatenate((self.buy_locations_vector, state))
 
     def reset(self):
         self._pick_chart()
@@ -62,6 +65,8 @@ class Trade_Env:
         self.entries = []
         self.exits = []
 
+        self.buy_locations_vector = [0] * cu.DAY_IN_MINUTES
+        self.buy_indexes = []
         self.buy_prices = []
         self.num_trades = 0
 
@@ -71,7 +76,6 @@ class Trade_Env:
 
     def step(self, action):
         self.idx += 1
-        self._calc_state()
 
         # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx])
 
@@ -83,6 +87,9 @@ class Trade_Env:
         if self.idx >= self.close_idx:
             if num_positions > 0:
                 self.num_trades += num_positions
+
+                self.buy_locations_vector[self.idx] = [0] * cu.DAY_IN_MINUTES
+
                 avg_price = sum(self.buy_prices) / num_positions
                 sell_price = self._close[self.idx]
 
@@ -101,10 +108,13 @@ class Trade_Env:
                     print(colored("XXX", color='red'), end="")
 
             done = True
-            print("Trades:", self.num_trades)
+            print("  Trades:", self.num_trades)
         else:
             if action == 0:  # BUY
                 self.buy_prices.append(self._close[self.idx])
+                self.buy_indexes.append(self.idx)
+                self.buy_locations_vector[self.idx] = 1
+
                 if self.simulation_mode:
                     self.entries.append([self._time[self.idx], self._close[self.idx]])
                 else:
@@ -112,8 +122,12 @@ class Trade_Env:
             elif action == 1:  # SELL
                 if num_positions > 0:
                     self.num_trades += 1
-                    sell_price = self._close[self.idx]
+
                     entry_price = self.buy_prices.pop()
+                    buy_index = self.buy_indexes.pop()
+                    self.buy_locations_vector[buy_index] = 0
+
+                    sell_price = self._close[self.idx]
                     gain = 100 * (sell_price / entry_price - 1) - FEES
 
                     if self.simulation_mode:
@@ -128,6 +142,7 @@ class Trade_Env:
             elif action == 2:  # IDLE
                 gain = 0
 
+        self._calc_state()
         return self._state, gain, done
 
     def _pick_chart(self):
