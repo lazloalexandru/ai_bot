@@ -35,31 +35,26 @@ class TrainerBot:
 
         self._render = render
 
-    def run(self, full_predict_mode=False):
+    def run(self):
         state = self._env.reset()
         tot_reward = 0
 
         if self._steps > self._TRAINING_START:
-            if full_predict_mode:
-                print("Measurement Step:", self._steps, "Eps:", self._eps)
-            else:
-                print("Training Active. Step:", self._steps, "Eps:", self._eps)
+            print("Training Active. Step:", self._steps, "Eps:", self._eps)
         else:
             print("Random Simulation. Step:", self._steps, "Eps:", self._eps)
 
         done = False
         while not done:
-            action = self._choose_action(state, full_predict_mode)
+            action = self._choose_action(state)
             next_state, reward, done = self._env.step(action)
 
             if done:
                 next_state = None
 
-            if not full_predict_mode:
-                self._memory.add_sample((state, action, reward, next_state))
+            self._memory.add_sample((state, action, reward, next_state))
 
-            if not full_predict_mode:
-                self._steps += 1
+            self._steps += 1
 
             self._eps = self._MIN_EPSILON + (self._MAX_EPSILON - self._MIN_EPSILON) * math.exp(-self._LAMBDA * self._steps)
 
@@ -67,36 +62,23 @@ class TrainerBot:
             state = next_state
             tot_reward += reward
 
-        if full_predict_mode:
-            self._performance_store.append(tot_reward)
-            print("Performance:", tot_reward, self._performance_store[-1])
+        if self._steps > self._TRAINING_START:
+            self._replay()
 
-            gx = 'X' * int(abs(tot_reward))
-            c = 'red' if tot_reward < 0 else 'green'
-            print("Account: ", colored("%.2f" % tot_reward, color=c))
-            print(colored(gx, color=c))
-            print("\n")
-        else:
-            if self._steps > self._TRAINING_START:
-                self._replay()
-
-            self._reward_store.append(tot_reward)
-            gx = '*' * int(abs(tot_reward))
-            c = 'red' if tot_reward < 0 else 'green'
-            print("Account: ", colored("%.2f" % tot_reward, color=c))
-            print(colored(gx, color=c))
-            print("\n")
+        self._reward_store.append(tot_reward)
+        gx = '*' * int(abs(tot_reward))
+        c = 'red' if tot_reward < 0 else 'green'
+        print("Account: ", colored("%.2f" % tot_reward, color=c))
+        print(colored(gx, color=c))
+        print("\n")
 
         return tot_reward
 
-    def _choose_action(self, state, full_prediction_mode):
-        if full_prediction_mode:
-            return np.argmax(self._model.predict_one(state, self._sess))
+    def _choose_action(self, state):
+        if random.random() < self._eps:
+            return random.randint(0, self._model.num_actions - 1)
         else:
-            if random.random() < self._eps:
-                return random.randint(0, self._model.num_actions - 1)
-            else:
-                return np.argmax(self._model.predict_one(state, self._sess))
+            return np.argmax(self._model.predict_one(state, self._sess))
 
     def _replay(self):
         batch = self._memory.sample(self._model.batch_size)
@@ -180,7 +162,7 @@ def train(params):
 
 def get_params():
     params = {
-        'MAX_EPSILON': 1.0,
+        'MAX_EPSILON': 0.12,
         'MIN_EPSILON': 0.1,
         'LAMBDA': 0.00001,
         'GAMMA': 0.99,
