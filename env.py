@@ -97,12 +97,13 @@ class Trade_Env:
                 if not self.simulation_mode:
                     gain -= 50
 
+                unit_gain = gain
                 gain = gain * num_positions
 
                 if self.simulation_mode:
                     self.exits.append([self._time[self.idx], sell_price])
-                    print(self.symbol, 'BUY:', avg_price, end="")
-                    print(colored("   SELL %.2f  x  %s   GAIN: %.2f" % (sell_price, num_positions, gain), color="green" if gain > 0 else "red"))
+                    print(self.symbol, ' BUY: %.2f' % avg_price, end="")
+                    print(colored("   SELL %.2f   GAIN: %.2f x %s => %.2f" % (sell_price, unit_gain, num_positions, gain), color="green" if gain > 0 else "red"))
                 else:
                     print(colored("XXX", color='red'), end="")
 
