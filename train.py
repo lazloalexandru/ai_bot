@@ -82,23 +82,20 @@ class TrainerBot:
 
     def _replay(self):
         batch = self._memory.sample(self._model.batch_size)
+
         states = np.array([val[0] for val in batch])
         next_states = np.array([(np.zeros(self._model.num_states) if val[3] is None else val[3]) for val in batch])
-        # predict Q(s,a) given the batch of states
-        q_s_a = self._model.predict_batch(states, self._sess)
-        # predict Q(s',a') - so that we can do gamma * max(Q(s'a')) below
-        q_s_a_d = self._model.predict_batch(next_states, self._sess)
-        # setup training arrays
+
+        q_s_a = self._model.predict_batch(states, self._sess)  # predict Q(s,a) given the batch of states
+        q_s_a_d = self._model.predict_batch(next_states, self._sess)  # predict Q(s',a') - so that we can do gamma * max(Q(s'a')) below
+
         x = np.zeros((len(batch), self._model.num_states))
         y = np.zeros((len(batch), self._model.num_actions))
+
         for i, b in enumerate(batch):
             state, action, reward, next_state = b[0], b[1], b[2], b[3]
-            # get the current q values for all actions in state
             current_q = q_s_a[i]
-            # update the q value for action
             if next_state is None:
-                # in this case, the game completed after action, so there is no max Q(s',a')
-                # prediction possible
                 current_q[action] = reward
             else:
                 current_q[action] = reward + self._GAMMA * np.amax(q_s_a_d[i])
@@ -121,12 +118,9 @@ def train(params):
     if not os.path.isfile(active_days_file):
         print(colored("ERROR: " + active_days_file + " not found!", color="red"))
     else:
-
         movers = pd.read_csv(active_days_file)
 
-        tr = Trade_Env(movers,
-                       sim_chart_index=None,
-                       simulation_mode=False)
+        tr = Trade_Env(movers, sim_chart_index=None, simulation_mode=False)
 
         print(tr.num_actions, tr.num_states)
 
@@ -146,9 +140,6 @@ def train(params):
                 cnt += 1
                 if cnt % params['CHECKPOINT_AT_EPISODE_STEP'] == 0:
                     model.save(sess, cnt)
-
-                # if cnt % params['STATS_PER_STEP'] == 0:
-                #    bot.run(full_predict_mode=True)
 
             print(bot.performance_store)
             print(bot.reward_store)
