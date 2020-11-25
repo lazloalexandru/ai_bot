@@ -92,11 +92,10 @@ class Trade_Env:
 
                 avg_price = sum(self.buy_prices) / num_positions
                 sell_price = self._close[self.idx]
+                gain = 100 * (sell_price / avg_price - 1) - FEES
 
-                if self.simulation_mode:
-                    gain = 100 * (sell_price / avg_price - 1)
-                else:
-                    gain = -10
+                if not self.simulation_mode:
+                    gain -= 50
 
                 gain = gain * num_positions
 

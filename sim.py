@@ -65,7 +65,7 @@ def test():
         movers = pd.read_csv(__active_days_file)
 
         tr = Trade_Env(movers,
-                       sim_chart_index=2300,
+                       sim_chart_index=None,
                        simulation_mode=True)
 
         model = Model(tr.num_states, tr.num_actions, train.get_params())
@@ -73,7 +73,7 @@ def test():
         with tf.Session() as sess:
             if model.restore(sess):
                 bot = SimBot(sess, model, tr, model.path)
-                num_episodes = 1
+                num_episodes = 10
                 cnt = 0
                 while cnt < num_episodes:
                     print('Episode {} of {}'.format(cnt+1, num_episodes))

@@ -47,7 +47,8 @@ class TrainerBot:
         else:
             print("Random Simulation. Step:", self._steps, "Eps:", self._eps)
 
-        while True:
+        done = False
+        while not done:
             action = self._choose_action(state, full_predict_mode)
             next_state, reward, done = self._env.step(action)
 
@@ -57,11 +58,6 @@ class TrainerBot:
             if not full_predict_mode:
                 self._memory.add_sample((state, action, reward, next_state))
 
-            if self._steps > self._TRAINING_START and not full_predict_mode:
-                if self._steps % self._params['STEPS_BEFORE_TRAINING'] == 0:
-                    self._replay()
-
-            # exponentially decay the eps value
             if not full_predict_mode:
                 self._steps += 1
 
@@ -71,22 +67,20 @@ class TrainerBot:
             state = next_state
             tot_reward += reward
 
-            # if the game is done, break the loop
-            if done:
-                if full_predict_mode:
-                    self._performance_store.append(tot_reward)
-                    print("Performance:", tot_reward, self._performance_store[-1])
-                else:
-                    self._reward_store.append(tot_reward)
-                break
-
         if full_predict_mode:
+            self._performance_store.append(tot_reward)
+            print("Performance:", tot_reward, self._performance_store[-1])
+
             gx = 'X' * int(abs(tot_reward))
             c = 'red' if tot_reward < 0 else 'green'
             print("Account: ", colored("%.2f" % tot_reward, color=c))
             print(colored(gx, color=c))
             print("\n")
         else:
+            if self._steps > self._TRAINING_START:
+                self._replay()
+
+            self._reward_store.append(tot_reward)
             gx = '*' * int(abs(tot_reward))
             c = 'red' if tot_reward < 0 else 'green'
             print("Account: ", colored("%.2f" % tot_reward, color=c))
@@ -149,7 +143,7 @@ def train(params):
         movers = pd.read_csv(active_days_file)
 
         tr = Trade_Env(movers,
-                       sim_chart_index=2300,
+                       sim_chart_index=None,
                        simulation_mode=False)
 
         print(tr.num_actions, tr.num_states)
@@ -191,13 +185,12 @@ def get_params():
         'LAMBDA': 0.00001,
         'GAMMA': 0.99,
 
-        'BATCH_SIZE': 200,
-        'TRAINING_START': 1000,
-        'STEPS_BEFORE_TRAINING': 100,
+        'BATCH_SIZE': 2000,
+        'TRAINING_START': 10000,
         'MEMORY': 100000,
 
-        'EPISODES': 1000,
-        'CHECKPOINT_AT_EPISODE_STEP': 50,
+        'EPISODES': 10000,
+        'CHECKPOINT_AT_EPISODE_STEP': 500,
         'MAX_CHECKPOINTS': 50,
 
         'STATS_PER_STEP': 50,
