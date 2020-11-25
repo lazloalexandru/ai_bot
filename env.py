@@ -149,10 +149,16 @@ class Trade_Env:
         close_idx = None
 
         while (open_idx is None) or (close_idx is None):
-            if self.sim_chart_index is None:
-                rand_idx = random.randint(0, int(self.num_movers * 0.8))
+            if self.simulation_mode:
+                if self.sim_chart_index is None:
+                    rand_idx = random.randint(int(self.num_movers * 0.8) + 1, self.num_movers - 1)
+                else:
+                    rand_idx = self.sim_chart_index
             else:
-                rand_idx = self.sim_chart_index
+                if self.sim_chart_index is None:
+                    rand_idx = random.randint(0, int(self.num_movers * 0.8))
+                else:
+                    rand_idx = self.sim_chart_index
 
             self.symbol = self.movers.iloc[rand_idx]["symbol"]
             self.date = self.movers.iloc[rand_idx]["date"]
