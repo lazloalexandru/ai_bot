@@ -137,9 +137,6 @@ class Trade_Env:
                 sell_price = self._close[self.idx]
                 gain = 100 * (sell_price / avg_price - 1) - FEES
 
-                if not self.simulation_mode:
-                    gain -= 50
-
                 unit_gain = gain
                 gain = gain * num_positions
 

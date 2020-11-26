@@ -45,7 +45,7 @@ _, _, h, w = env.state_shape
 print("Input Size: ", h, w)
 
 target_net = DQN(h, w, n_actions).to(device)
-target_net.load_state_dict(torch.load("checkpoints\\model_100"))
+target_net.load_state_dict(torch.load("checkpoints\\params_11000"))
 target_net.eval()
 
 

@@ -1,13 +1,9 @@
-from datetime import datetime
-
 from env import Trade_Env
 import math
 import random
-import numpy as np
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
-from itertools import count
 from ai_memory import ReplayMemory
 from ai_memory import Transition
 import torch
@@ -15,8 +11,6 @@ from model import DQN
 import torch.optim as optim
 import torch.nn.functional as F
 
-
-# set up matplotlib
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
     from IPython import display
@@ -36,20 +30,19 @@ BATCH_SIZE = 2000
 MIN_SAMPLES_TO_START_TRAINING = 10000
 MEMORY_SIZE = 100000
 
-GAMMA = 0.99
 MAX_EPSILON = 1.0
 MIN_EPSILON = 0.1
 LAMBDA = 0.001
+GAMMA = 0.99
+
 TARGET_UPDATE = 10
 
-
-# Get number of actions from gym action space
 n_actions = env.num_actions
-
 _, _, h, w = env.state_shape
 print("Input Size: ", h, w)
 
 policy_net = DQN(h, w, n_actions).to(device)
+# policy_net.load_state_dict(torch.load("checkpoints\\params_11000"))
 
 target_net = DQN(h, w, n_actions).to(device)
 target_net.load_state_dict(policy_net.state_dict())
@@ -133,7 +126,7 @@ def optimize_model():
 eps_threshold = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * steps_done)
 
 
-num_episodes = 10000
+num_episodes = 50000
 for i_episode in range(num_episodes):
     # Initialize the environment and state
     state = env.reset()
@@ -142,11 +135,12 @@ for i_episode in range(num_episodes):
 
     total_profit = 0
 
-    print("\nEpisode:", i_episode, "      eps:", eps_threshold)
-    if len(memory) < MIN_SAMPLES_TO_START_TRAINING:
+    print("Episode:", i_episode, "      eps:", eps_threshold)
+    gathering_samples = len(memory) < MIN_SAMPLES_TO_START_TRAINING
+    if gathering_samples:
         print("Gathering samples ...")
     else:
-        print("Training Started")
+        print("Training!")
 
     done = False
     while not done:
@@ -169,15 +163,18 @@ for i_episode in range(num_episodes):
         # Perform one step of the optimization (on the target network)
     optimize_model()
 
-    episode_profits.append(total_profit)
+    if not gathering_samples:
+        episode_profits.append(total_profit)
+
     plot_durations()
 
+    print("Profit: ", total_profit, "\n")
     # Update the target network, copying all weights and biases in DQN
     if i_episode % TARGET_UPDATE == 0:
         target_net.load_state_dict(policy_net.state_dict())
 
-    if i_episode % 50 == 0:
-        path = "checkpoints\\model_" + str(i_episode)
+    if i_episode % 500 == 0:
+        path = "checkpoints\\params_" + str(i_episode)
         torch.save(target_net.state_dict(), path)
 
 print('Complete')
