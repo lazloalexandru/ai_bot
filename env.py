@@ -2,10 +2,49 @@ import numpy as np
 from termcolor import colored
 import common as cu
 import random
+import torch
+
+DATA_ROWS = 7
+DAY_IN_MINUTES = 390
+
+
+def calc_normalized_state(o, c, h, l, v, b, idx):
+    """ idx - is the candle index in range 0 ... 390 """
+
+    price = np.concatenate((o, c, h, l))
+    price = cu.normalize(price)
+
+    n = len(o)
+    price = price.reshape(4, n)
+    o = price[0]
+    c = price[1]
+    h = price[2]
+    l = price[3]
+
+    t = []
+    for i in range(0, idx+1):
+        t.append(i / DAY_IN_MINUTES)
+
+    v = cu.normalize(np.array(v))
+
+    padding_size = DAY_IN_MINUTES - len(o)
+    padding = [0] * padding_size
+
+    o = np.concatenate((padding, o))
+    c = np.concatenate((padding, c))
+    h = np.concatenate((padding, h))
+    l = np.concatenate((padding, l))
+    v = np.concatenate((padding, v))
+    t = np.concatenate((padding, t))
+    b = np.concatenate((padding, b))
+
+    state = np.concatenate((o, c, h, l, v, t, b))
+
+    return state
 
 
 class Trade_Env:
-    def __init__(self, movers, sim_chart_index=None, simulation_mode=True):
+    def __init__(self, movers, simulation_mode, sim_chart_index=None):
 
         self.sim_chart_index = sim_chart_index
 
@@ -14,7 +53,7 @@ class Trade_Env:
 
         self.buy_prices = []
         self.num_trades = 0
-        self.buy_locations_vector = [0] * cu.DAY_IN_MINUTES
+        self.buy_locations_vector = [0]
         self.buy_indexes = []
 
         self.df = None
@@ -50,8 +89,13 @@ class Trade_Env:
         l = self._low[:self.idx + 1]
         v = self._volume[:self.idx + 1]
 
-        state = cu.calc_normalized_state(o, c, h, l, v, self.idx - self.open_idx)
-        self._state = np.concatenate((self.buy_locations_vector, state))
+        s = calc_normalized_state(o, c, h, l, v, self.buy_locations_vector, self.idx - self.open_idx)
+        s = np.reshape(s, (DATA_ROWS, DAY_IN_MINUTES))
+
+        self._state = torch.tensor(s, dtype=torch.float).unsqueeze(0).unsqueeze(0).to("cuda")
+
+        # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx], self.buy_locations_vector)
+        # print(self.idx, self.buy_locations_vector, self.buy_indexes)
 
     def reset(self):
         self._pick_chart()
@@ -65,30 +109,29 @@ class Trade_Env:
         self.entries = []
         self.exits = []
 
-        self.buy_locations_vector = [0] * cu.DAY_IN_MINUTES
+        self.buy_locations_vector = [0]
         self.buy_indexes = []
         self.buy_prices = []
         self.num_trades = 0
 
         self._calc_state()
 
+        # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx])
+
         return self._state
 
     def step(self, action):
-        self.idx += 1
-
-        # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx])
+        # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx], len(self.buy_locations_vector))
 
         FEES = 1  # in %
         done = False
         gain = 0
 
         num_positions = len(self.buy_prices)
-        if self.idx >= self.close_idx:
+        if self.idx == self.close_idx:
             if num_positions > 0:
                 self.num_trades += num_positions
-
-                self.buy_locations_vector[self.idx] = [0] * cu.DAY_IN_MINUTES
+                self.buy_locations_vector = [0] * DAY_IN_MINUTES
 
                 avg_price = sum(self.buy_prices) / num_positions
                 sell_price = self._close[self.idx]
@@ -110,10 +153,13 @@ class Trade_Env:
             done = True
             print("  Trades:", self.num_trades)
         else:
+            self.buy_locations_vector.append(0)
+
             if action == 0:  # BUY
                 self.buy_prices.append(self._close[self.idx])
-                self.buy_indexes.append(self.idx)
-                self.buy_locations_vector[self.idx] = 1
+                buy_index = len(self.buy_locations_vector)-2
+                self.buy_indexes.append(buy_index)
+                self.buy_locations_vector[buy_index] = 1
 
                 if self.simulation_mode:
                     self.entries.append([self._time[self.idx], self._close[self.idx]])
@@ -141,6 +187,8 @@ class Trade_Env:
 
             elif action == 2:  # IDLE
                 gain = 0
+
+            self.idx += 1
 
         self._calc_state()
         return self._state, gain, done
@@ -180,6 +228,8 @@ class Trade_Env:
     def save_traded_chart(self, filename=None):
         if len(self.entries) > 0:
 
+            filename = self.symbol
+
             images_dir_path = "trades\\"
             cu.show_1min_chart(self.df,
                                self.symbol,
@@ -201,5 +251,9 @@ class Trade_Env:
         return 3
 
     @property
-    def get_state(self):
+    def state(self):
         return self._state
+
+    @property
+    def state_shape(self):
+        return self._state.shape

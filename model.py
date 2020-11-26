@@ -1,80 +1,41 @@
-import tensorflow.compat.v1 as tf
+import torch.nn as nn
+import torch.nn.functional as F
 
 
-class Model:
-    def __init__(self, num_states, num_actions, params):
-        self._num_states = num_states
-        self._num_actions = num_actions
-        self._batch_size = params['BATCH_SIZE']
-        self._MAX_CHECKPOINTS = params['MAX_CHECKPOINTS']
+class DQN(nn.Module):
+    def __init__(self, h, w, outputs):
+        super(DQN, self).__init__()
+        f = 150
+        self.conv1 = nn.Conv2d(1, f, kernel_size=(7, 3), stride=1)
+        self.bn1 = nn.BatchNorm2d(f)
+        self.conv2 = nn.Conv2d(f, f, kernel_size=(1, 3), stride=1)
+        self.bn2 = nn.BatchNorm2d(f)
+        self.conv3 = nn.Conv2d(f, f, kernel_size=(1, 3), stride=1)
+        self.bn3 = nn.BatchNorm2d(f)
+        self.conv4 = nn.Conv2d(f, f, kernel_size=(1, 3), stride=1)
+        self.bn4 = nn.BatchNorm2d(f)
+        self.conv5 = nn.Conv2d(f, f, kernel_size=(1, 3), stride=1)
+        self.bn5 = nn.BatchNorm2d(f)
 
-        self.path = None
+        def conv2d_size_out(size, kernel_size=3):
+            return size - kernel_size + 1
 
-        # define the placeholders
-        self._states = None
-        self._actions = None
+        convw = conv2d_size_out(w)
+        convw = conv2d_size_out(convw)
+        convw = conv2d_size_out(convw)
+        convw = conv2d_size_out(convw)
+        convw = conv2d_size_out(convw)
+        convh = 1
 
-        # the output operations
-        self._logits = None
-        self._optimizer = None
-        self._var_init = None
+        linear_input_size = convw * convh * f
+        print("Dense Layer %s x %s" % (linear_input_size, outputs))
 
-        self._saver = None
+        self.head = nn.Linear(linear_input_size, outputs)
 
-        # now setup the model
-        self._define_model()
-
-    def _define_model(self):
-        self._states = tf.placeholder(shape=[None, self._num_states], dtype=tf.float32)
-        self._q_s_a = tf.placeholder(shape=[None, self._num_actions], dtype=tf.float32)
-        # create a couple of fully connected hidden layers
-        fc1 = tf.layers.dense(self._states, 10000, activation=tf.nn.relu)
-        fc2 = tf.layers.dense(fc1, 5000, activation=tf.nn.relu)
-        fc3 = tf.layers.dense(fc2, 5000, activation=tf.nn.relu)
-        self._logits = tf.layers.dense(fc3, self._num_actions)
-        loss = tf.losses.mean_squared_error(self._q_s_a, self._logits)
-        self._optimizer = tf.train.AdamOptimizer().minimize(loss)
-        self._var_init = tf.global_variables_initializer()
-
-        self._saver = tf.train.Saver(max_to_keep=self._MAX_CHECKPOINTS)
-
-    def predict_one(self, state, sess):
-        return sess.run(self._logits, feed_dict={self._states: state.reshape(1, self.num_states)})
-
-    def predict_batch(self, states, sess):
-        return sess.run(self._logits, feed_dict={self._states: states})
-
-    def train_batch(self, sess, x_batch, y_batch):
-        sess.run(self._optimizer, feed_dict={self._states: x_batch, self._q_s_a: y_batch})
-
-    def save(self, sess, step):
-        self._saver.save(sess, "checkpoints\\my_model", global_step=step)
-
-    def restore(self, sess):
-        res = False
-
-        self.path = tf.train.latest_checkpoint('checkpoints\\')
-        print("Checkpoint: ", self.path)
-        if self.path is None:
-            sess.run(self.var_init)
-        else:
-            self._saver.restore(sess, self.path)
-            res = True
-
-        return res
-
-    @property
-    def num_states(self):
-        return self._num_states
-
-    @property
-    def num_actions(self):
-        return self._num_actions
-
-    @property
-    def batch_size(self):
-        return self._batch_size
-
-    @property
-    def var_init(self):
-        return self._var_init
+    def forward(self, x):
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.relu(self.bn4(self.conv4(x)))
+        x = F.relu(self.bn5(self.conv5(x)))
+        return self.head(x.view(x.size(0), -1))

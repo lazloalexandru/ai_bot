@@ -1,86 +1,113 @@
-import os
-import numpy as np
-import tensorflow.compat.v1 as tf
-from termcolor import colored
-import pandas as pd
-from model import Model
+from datetime import datetime
+
 from env import Trade_Env
-import train
-
-tf.compat.v1.disable_eager_execution()
-
-
-class SimBot:
-    def __init__(self, sess, model, env, model_path):
-        self._sess = sess
-        self._env = env
-        self._model = model
-        self._model_path = model_path.replace("checkpoints\\", "")
-        self._steps = 0
-        self._reward_store = []
-        self._max_x_store = []
-
-    def run(self):
-        state = self._env.reset()
-        tot_reward = 0
-
-        while True:
-            action = self._choose_action(state)
-            next_state, reward, done = self._env.step(action)
-
-            if done:
-                next_state = None
-
-            state = next_state
-            tot_reward += reward
-
-            if done:
-                c = 'red' if tot_reward < 0 else 'green'
-                print(colored("Account: %.2f" % tot_reward, color=c), '\n')
-                # self._env.save_traded_chart(self._model_path)
-                self._env.save_traded_chart()
-                self._reward_store.append(tot_reward)
-                break
-
-        return tot_reward
-
-    def _choose_action(self, state):
-        return np.argmax(self._model.predict_one(state, self._sess))
-
-    @property
-    def reward_store(self):
-        return self._reward_store
-
-    @property
-    def max_x_store(self):
-        return self._max_x_store
+import math
+import random
+import pandas as pd
+import matplotlib
+import matplotlib.pyplot as plt
+from ai_memory import Transition
+import torch
+from model import DQN
+import torch.nn.functional as F
 
 
-def test():
-    __active_days_file = "data\\active_days.csv"
-
-    if not os.path.isfile(__active_days_file):
-        print(colored("ERROR: " + __active_days_file + " not found!", color="red"))
-    else:
-        movers = pd.read_csv(__active_days_file)
-
-        tr = Trade_Env(movers,
-                       sim_chart_index=None,
-                       simulation_mode=True)
-
-        model = Model(tr.num_states, tr.num_actions, train.get_params())
-
-        with tf.Session() as sess:
-            if model.restore(sess):
-                bot = SimBot(sess, model, tr, model.path)
-                num_episodes = 10
-                cnt = 0
-                while cnt < num_episodes:
-                    print('Episode {} of {}'.format(cnt+1, num_episodes))
-                    bot.run()
-                    cnt += 1
-                # cu.stats(bot.reward_store)
+# set up matplotlib
+is_ipython = 'inline' in matplotlib.get_backend()
+if is_ipython:
+    from IPython import display
 
 
-if __name__ == "__main__":
-    test()
+print("CUDA Available: ", torch.cuda.is_available())
+
+# if gpu is to be used
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+movers = pd.read_csv('data\\active_days.csv')
+env = Trade_Env(movers, simulation_mode=True)
+
+
+BATCH_SIZE = 2000
+MIN_SAMPLES_TO_START_TRAINING = 10000
+MEMORY_SIZE = 100000
+
+GAMMA = 0.99
+MAX_EPSILON = 1.0
+MIN_EPSILON = 0.1
+LAMBDA = 0.001
+TARGET_UPDATE = 10
+
+
+# Get number of actions from gym action space
+n_actions = env.num_actions
+
+_, _, h, w = env.state_shape
+print("Input Size: ", h, w)
+
+target_net = DQN(h, w, n_actions).to(device)
+target_net.load_state_dict(torch.load("checkpoints\\model_100"))
+target_net.eval()
+
+
+def select_action(s):
+    return target_net(s).max(1)[1].view(1, 1)
+
+
+episode_profits = []
+
+
+def plot_durations():
+    plt.figure(2)
+    plt.clf()
+    durations_t = torch.tensor(episode_profits, dtype=torch.float)
+    plt.title('Training...')
+    plt.xlabel('Episode')
+    plt.ylabel('Profit')
+    plt.plot(durations_t.numpy())
+    # Take 100 episode averages and plot them too
+    if len(durations_t) >= 100:
+        means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
+        means = torch.cat((torch.zeros(99), means))
+        plt.plot(means.numpy())
+
+    plt.pause(0.001)  # pause a bit so that plots are updated
+    if is_ipython:
+        display.clear_output(wait=True)
+        display.display(plt.gcf())
+
+
+num_episodes = 10
+for i_episode in range(num_episodes):
+    # Initialize the environment and state
+    state = env.reset()
+
+    total_profit = 0
+
+    print("\nEpisode:", i_episode)
+
+    done = False
+    while not done:
+        # Select and perform an action
+        action = select_action(state)
+        next_state, reward, done = env.step(action.item())
+        total_profit += reward
+        reward = torch.tensor([reward], device=device)
+
+        # Observe new state
+        if done:
+            next_state = None
+
+        # Move to the next state
+        state = next_state
+
+        # Perform one step of the optimization (on the target network)
+
+    env.save_traded_chart()
+    episode_profits.append(total_profit)
+
+plot_durations()
+
+print('Complete')
+# env.render()
+# env.close()
+plt.show()

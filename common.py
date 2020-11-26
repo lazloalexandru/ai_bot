@@ -17,8 +17,6 @@ __active_days_file = "data\\active_days.csv"
 __normalized_states_root_dir = "normalized_states"
 __normalized_states_dir = __normalized_states_root_dir + "\\intraday_charts"
 
-DAY_IN_MINUTES = 390
-
 
 def stats(gains):
     plus = sum(x > 0 for x in gains)
@@ -340,47 +338,3 @@ def normalize(x):
     if range_ > 0:
         x = x / range_
     return x
-
-
-def calc_normalized_state(o, c, h, l, v, idx):
-    """ idx - is the candle index in range 0 ... 390 """
-
-    price = np.concatenate((o, c, h, l))
-    price = normalize(price)
-
-    n = len(o)
-    price = price.reshape(4, n)
-    o = price[0]
-    c = price[1]
-    h = price[2]
-    l = price[3]
-
-    v = normalize(np.array(v))
-
-    padding_size = DAY_IN_MINUTES - len(o)
-    padding = [0] * padding_size
-
-    o = np.concatenate((padding, o))
-    c = np.concatenate((padding, c))
-    h = np.concatenate((padding, h))
-    l = np.concatenate((padding, l))
-    v = np.concatenate((padding, v))
-
-    state = np.concatenate((o, c, h, l, v, [idx / DAY_IN_MINUTES]))
-
-    return state
-
-
-def get_normalized_states(symbol, date):
-    result = None
-
-    dx = date.replace("-", "")
-    path = __normalized_states_dir + "\\" + symbol + "\\" + symbol + '_' + dx + ".dat"
-
-    if os.path.isfile(path):
-        xxx = np.fromfile(path)
-        result = xxx.reshape(DAY_IN_MINUTES, 5 * DAY_IN_MINUTES + 1)
-    else:
-        print(colored('Warning! Normalized data for ' + symbol + " " + date + ' not available', color='yellow'))
-
-    return result

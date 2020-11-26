@@ -1,18 +1,26 @@
 import random
+from collections import namedtuple
 
 
-class Memory:
-    def __init__(self, max_memory):
-        self._max_memory = max_memory
-        self._samples = []
+Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
 
-    def add_sample(self, sample):
-        self._samples.append(sample)
-        if len(self._samples) > self._max_memory:
-            self._samples.pop(0)
 
-    def sample(self, no_samples):
-        if no_samples > len(self._samples):
-            return random.sample(self._samples, len(self._samples))
-        else:
-            return random.sample(self._samples, no_samples)
+class ReplayMemory(object):
+
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.memory = []
+        self.position = 0
+
+    def push(self, *args):
+        """Saves a transition."""
+        if len(self.memory) < self.capacity:
+            self.memory.append(None)
+        self.memory[self.position] = Transition(*args)
+        self.position = (self.position + 1) % self.capacity
+
+    def sample(self, batch_size):
+        return random.sample(self.memory, batch_size)
+
+    def __len__(self):
+        return len(self.memory)

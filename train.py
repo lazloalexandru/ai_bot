@@ -1,177 +1,187 @@
-import os
-import numpy as np
-import tensorflow.compat.v1 as tf
-from termcolor import colored
-import matplotlib.pylab as plt
-import random
-import math
-import pandas as pd
-from model import Model
-from ai_memory import Memory
+from datetime import datetime
+
 from env import Trade_Env
-
-tf.compat.v1.disable_eager_execution()
-
-
-class TrainerBot:
-    def __init__(self, sess, model, env, memory, params, render=True):
-        self._sess = sess
-        self._env = env
-        self._model = model
-        self._memory = memory
-
-        self._params = params
-
-        self._eps = self._params['MAX_EPSILON']
-        self._MAX_EPSILON = self._params['MAX_EPSILON']
-        self._MIN_EPSILON = self._params['MIN_EPSILON']
-        self._LAMBDA = self._params['LAMBDA']
-        self._GAMMA = self._params['GAMMA']
-        self._TRAINING_START = self._params['TRAINING_START']
-
-        self._steps = 0
-        self._reward_store = []
-        self._performance_store = []
-
-        self._render = render
-
-    def run(self):
-        state = self._env.reset()
-        tot_reward = 0
-
-        if self._steps > self._TRAINING_START:
-            print("Training Active. Step:", self._steps, "Eps:", self._eps)
-        else:
-            print("Random Simulation. Step:", self._steps, "Eps:", self._eps)
-
-        done = False
-        while not done:
-            action = self._choose_action(state)
-            next_state, reward, done = self._env.step(action)
-
-            if done:
-                next_state = None
-
-            self._memory.add_sample((state, action, reward, next_state))
-
-            self._steps += 1
-
-            self._eps = self._MIN_EPSILON + (self._MAX_EPSILON - self._MIN_EPSILON) * math.exp(-self._LAMBDA * self._steps)
-
-            # move the agent to the next state and accumulate the reward
-            state = next_state
-            tot_reward += reward
-
-        if self._steps > self._TRAINING_START:
-            self._replay()
-
-        self._reward_store.append(tot_reward)
-        gx = '*' * int(abs(tot_reward))
-        c = 'red' if tot_reward < 0 else 'green'
-        print("Account: ", colored("%.2f" % tot_reward, color=c))
-        print(colored(gx, color=c))
-        print("\n")
-
-        return tot_reward
-
-    def _choose_action(self, state):
-        if random.random() < self._eps:
-            return random.randint(0, self._model.num_actions - 1)
-        else:
-            return np.argmax(self._model.predict_one(state, self._sess))
-
-    def _replay(self):
-        batch = self._memory.sample(self._model.batch_size)
-
-        states = np.array([val[0] for val in batch])
-        next_states = np.array([(np.zeros(self._model.num_states) if val[3] is None else val[3]) for val in batch])
-
-        q_s_a = self._model.predict_batch(states, self._sess)  # predict Q(s,a) given the batch of states
-        q_s_a_d = self._model.predict_batch(next_states, self._sess)  # predict Q(s',a') - so that we can do gamma * max(Q(s'a')) below
-
-        x = np.zeros((len(batch), self._model.num_states))
-        y = np.zeros((len(batch), self._model.num_actions))
-
-        for i, b in enumerate(batch):
-            state, action, reward, next_state = b[0], b[1], b[2], b[3]
-            current_q = q_s_a[i]
-            if next_state is None:
-                current_q[action] = reward
-            else:
-                current_q[action] = reward + self._GAMMA * np.amax(q_s_a_d[i])
-            x[i] = state
-            y[i] = current_q
-        self._model.train_batch(self._sess, x, y)
-
-    @property
-    def reward_store(self):
-        return self._reward_store
-
-    @property
-    def performance_store(self):
-        return self._performance_store
+import math
+import random
+import numpy as np
+import pandas as pd
+import matplotlib
+import matplotlib.pyplot as plt
+from itertools import count
+from ai_memory import ReplayMemory
+from ai_memory import Transition
+import torch
+from model import DQN
+import torch.optim as optim
+import torch.nn.functional as F
 
 
-def train(params):
+# set up matplotlib
+is_ipython = 'inline' in matplotlib.get_backend()
+if is_ipython:
+    from IPython import display
 
-    active_days_file = params['active_days_file']
-    if not os.path.isfile(active_days_file):
-        print(colored("ERROR: " + active_days_file + " not found!", color="red"))
+plt.ion()
+
+print("CUDA Available: ", torch.cuda.is_available())
+
+# if gpu is to be used
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+movers = pd.read_csv('data\\active_days.csv')
+env = Trade_Env(movers, simulation_mode=False)
+
+
+BATCH_SIZE = 2000
+MIN_SAMPLES_TO_START_TRAINING = 10000
+MEMORY_SIZE = 100000
+
+GAMMA = 0.99
+MAX_EPSILON = 1.0
+MIN_EPSILON = 0.1
+LAMBDA = 0.001
+TARGET_UPDATE = 10
+
+
+# Get number of actions from gym action space
+n_actions = env.num_actions
+
+_, _, h, w = env.state_shape
+print("Input Size: ", h, w)
+
+policy_net = DQN(h, w, n_actions).to(device)
+
+target_net = DQN(h, w, n_actions).to(device)
+target_net.load_state_dict(policy_net.state_dict())
+target_net.eval()
+
+optimizer = optim.SGD(policy_net.parameters(), lr=0.001, momentum=0.9)
+memory = ReplayMemory(MEMORY_SIZE)
+
+
+steps_done = 0
+eps_threshold = 0
+
+
+def select_action(state):
+    sample = random.random()
+    global eps_threshold
+
+    eps_threshold = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * steps_done)
+    if sample < eps_threshold:
+        return torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long)
     else:
-        movers = pd.read_csv(active_days_file)
-
-        tr = Trade_Env(movers, sim_chart_index=None, simulation_mode=False)
-
-        print(tr.num_actions, tr.num_states)
-
-        model = Model(tr.num_states, tr.num_actions, params)
-        mem = Memory(params['MEMORY'])
-
-        # with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
-        with tf.Session() as sess:
-            model.restore(sess)
-
-            bot = TrainerBot(sess, model, tr, mem, params, False)
-            num_episodes = params['EPISODES']
-            cnt = 0
-            while cnt < num_episodes:
-                print('Episode {} of {}'.format(cnt+1, num_episodes))
-                bot.run()
-                cnt += 1
-                if cnt % params['CHECKPOINT_AT_EPISODE_STEP'] == 0:
-                    model.save(sess, cnt)
-
-            print(bot.performance_store)
-            print(bot.reward_store)
-            plt.plot(bot.performance_store)
-            plt.show()
-            plt.plot(bot.reward_store)
-            plt.show()
-
-            plt.close("all")
+        with torch.no_grad():
+            # t.max(1) will return largest column value of each row.
+            # second column on max result is index of where max element was
+            # found, so we pick action with the larger expected reward.
+            return policy_net(state).max(1)[1].view(1, 1)
 
 
-def get_params():
-    params = {
-        'MAX_EPSILON': 0.12,
-        'MIN_EPSILON': 0.1,
-        'LAMBDA': 0.00001,
-        'GAMMA': 0.99,
-
-        'BATCH_SIZE': 2000,
-        'TRAINING_START': 10000,
-        'MEMORY': 100000,
-
-        'EPISODES': 10000,
-        'CHECKPOINT_AT_EPISODE_STEP': 500,
-        'MAX_CHECKPOINTS': 50,
-
-        'STATS_PER_STEP': 50,
-        'active_days_file': "data\\active_days.csv"
-    }
-
-    return params
+episode_profits = []
 
 
-if __name__ == "__main__":
-    train(get_params())
+def plot_durations():
+    plt.figure(2)
+    plt.clf()
+    durations_t = torch.tensor(episode_profits, dtype=torch.float)
+    plt.title('Training...')
+    plt.xlabel('Episode')
+    plt.ylabel('Profit')
+    plt.plot(durations_t.numpy())
+    # Take 100 episode averages and plot them too
+    if len(durations_t) >= 100:
+        means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
+        means = torch.cat((torch.zeros(99), means))
+        plt.plot(means.numpy())
+
+    plt.pause(0.001)  # pause a bit so that plots are updated
+    if is_ipython:
+        display.clear_output(wait=True)
+        display.display(plt.gcf())
+
+
+def optimize_model():
+    if len(memory) < MIN_SAMPLES_TO_START_TRAINING:
+        return
+    transitions = memory.sample(BATCH_SIZE)
+    batch = Transition(*zip(*transitions))
+
+    # Compute a mask of non-final states and concatenate the batch elements
+    # (a final state would've been the one after which simulation ended)
+    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), device=device, dtype=torch.bool)
+    non_final_next_states = torch.cat([s for s in batch.next_state if s is not None])
+    state_batch = torch.cat(batch.state)
+    action_batch = torch.cat(batch.action)
+    reward_batch = torch.cat(batch.reward)
+
+    state_action_values = policy_net(state_batch).gather(1, action_batch)
+
+    next_state_values = torch.zeros(BATCH_SIZE, device=device)
+    next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach()
+    expected_state_action_values = (next_state_values * GAMMA) + reward_batch
+
+    loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
+
+    optimizer.zero_grad()
+    loss.backward()
+    for param in policy_net.parameters():
+        param.grad.data.clamp_(-1, 1)
+    optimizer.step()
+
+
+eps_threshold = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * steps_done)
+
+
+num_episodes = 10000
+for i_episode in range(num_episodes):
+    # Initialize the environment and state
+    state = env.reset()
+
+    steps_done += 1
+
+    total_profit = 0
+
+    print("\nEpisode:", i_episode, "      eps:", eps_threshold)
+    if len(memory) < MIN_SAMPLES_TO_START_TRAINING:
+        print("Gathering samples ...")
+    else:
+        print("Training Started")
+
+    done = False
+    while not done:
+        # Select and perform an action
+        action = select_action(state)
+        next_state, reward, done = env.step(action.item())
+        total_profit += reward
+        reward = torch.tensor([reward], device=device)
+
+        # Observe new state
+        if done:
+            next_state = None
+
+        # Store the transition in memory
+        memory.push(state, action, next_state, reward)
+
+        # Move to the next state
+        state = next_state
+
+        # Perform one step of the optimization (on the target network)
+    optimize_model()
+
+    episode_profits.append(total_profit)
+    plot_durations()
+
+    # Update the target network, copying all weights and biases in DQN
+    if i_episode % TARGET_UPDATE == 0:
+        target_net.load_state_dict(policy_net.state_dict())
+
+    if i_episode % 50 == 0:
+        path = "checkpoints\\model_" + str(i_episode)
+        torch.save(target_net.state_dict(), path)
+
+print('Complete')
+# env.render()
+# env.close()
+plt.ioff()
+plt.show()

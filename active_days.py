@@ -96,7 +96,7 @@ def get_default_params():
 
 
 def generate_active_days_file():
-    movers = find_active_days_mp(get_default_params(), 10)
+    movers = find_active_days_mp(get_default_params(), 16)
 
     print(movers)
 
