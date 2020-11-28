@@ -330,11 +330,15 @@ def database_info():
 
 
 def normalize(x):
-    mn = min(x)
-    mx = max(x)
-    range_ = mx - mn
-    # print(mn, mx)
-    x = x - mn
-    if range_ > 0:
-        x = x / range_
+    if len(x) > 1:
+        mn = min(x)
+        mx = max(x)
+        range_ = mx - mn
+        # print(mn, mx)
+        x = x - mn
+        if range_ > 0:
+            x = x / range_
+    elif len(x) == 1:
+        x = [1.0]
+
     return x

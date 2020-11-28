@@ -8,7 +8,7 @@ DATA_ROWS = 7
 DAY_IN_MINUTES = 390
 
 
-def calc_normalized_state(o, c, h, l, v, b, idx):
+def calc_normalized_state(o, c, h, l, v, b, idx, debug=False):
     """ idx - is the candle index in range 0 ... 390 """
 
     price = np.concatenate((o, c, h, l))
@@ -27,8 +27,15 @@ def calc_normalized_state(o, c, h, l, v, b, idx):
 
     v = cu.normalize(np.array(v))
 
-    padding_size = DAY_IN_MINUTES - len(o)
+    padding_size = DAY_IN_MINUTES - (idx + 1)
     padding = [0] * padding_size
+
+    if debug:
+        print('len(t):', len(t))
+        print('len(o)', len(o))
+        print('len(v)', len(v))
+        print('len(b)', len(b))
+        print('padding_size:', padding_size)
 
     o = np.concatenate((padding, o))
     c = np.concatenate((padding, c))
@@ -37,6 +44,12 @@ def calc_normalized_state(o, c, h, l, v, b, idx):
     v = np.concatenate((padding, v))
     t = np.concatenate((padding, t))
     b = np.concatenate((padding, b))
+
+    if debug:
+        print('padded len(t):', len(t))
+        print('padded len(o)', len(o))
+        print('padded len(v)', len(v))
+        print('padded len(b)', len(b))
 
     state = np.concatenate((o, c, h, l, v, t, b))
 
@@ -59,9 +72,8 @@ class Trade_Env:
         self.df = None
         self.symbol = None
         self.date = None
-        self.idx = None
-        self.open_idx = None
-        self.close_idx = None
+
+        self.idx = 0
 
         self._open = None
         self._close = None
@@ -69,6 +81,8 @@ class Trade_Env:
         self._low = None
         self._volume = None
         self._time = None   # used for debugging only
+
+        self._normalized_close = None
 
         self._state = None
         self._render = False
@@ -78,10 +92,8 @@ class Trade_Env:
 
         self.simulation_mode = simulation_mode
 
-        self.reset()
-
     def _calc_state(self):
-        _time = self._time[:self.idx + 1]
+        _time = self._time[:self.idx]
 
         o = self._open[:self.idx + 1]
         c = self._close[:self.idx + 1]
@@ -89,8 +101,12 @@ class Trade_Env:
         l = self._low[:self.idx + 1]
         v = self._volume[:self.idx + 1]
 
-        s = calc_normalized_state(o, c, h, l, v, self.buy_locations_vector, self.idx - self.open_idx)
+        print("calc_state len(o)", len(o), "idx:", self.idx)
+
+        s = calc_normalized_state(o, c, h, l, v, self.buy_locations_vector, self.idx, debug=True)
         s = np.reshape(s, (DATA_ROWS, DAY_IN_MINUTES))
+
+        self._normalized_close = s[1]
 
         self._state = torch.tensor(s, dtype=torch.float).unsqueeze(0).unsqueeze(0).to("cuda")
 
@@ -106,6 +122,8 @@ class Trade_Env:
         self._volume = self.df.Volume.to_list()
         self._time = self.df.Time.to_list()
 
+        self.idx = 0
+
         self.entries = []
         self.exits = []
 
@@ -114,21 +132,24 @@ class Trade_Env:
         self.buy_prices = []
         self.num_trades = 0
 
+        print("RESET", self.idx, self._time[-1], self._time[self.idx], len(self.buy_locations_vector))
+
         self._calc_state()
 
         # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx])
 
         return self._state
 
-    def step(self, action):
-        # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx], len(self.buy_locations_vector))
+    def step(self, action, debug=False):
+        # if debug:
+        print("STEP", self.idx, self._time[-1], self._time[self.idx], len(self.buy_locations_vector))
 
         FEES = 1  # in %
         done = False
         gain = 0
 
         num_positions = len(self.buy_prices)
-        if self.idx == self.close_idx:
+        if self.idx == DAY_IN_MINUTES:
             if num_positions > 0:
                 self.num_trades += num_positions
                 self.buy_locations_vector = [0] * DAY_IN_MINUTES
@@ -150,11 +171,9 @@ class Trade_Env:
             done = True
             print("  Trades:", self.num_trades)
         else:
-            self.buy_locations_vector.append(0)
-
             if action == 0:  # BUY
                 self.buy_prices.append(self._close[self.idx])
-                buy_index = len(self.buy_locations_vector)-2
+                buy_index = len(self.buy_locations_vector)-1
                 self.buy_indexes.append(buy_index)
                 self.buy_locations_vector[buy_index] = 1
 
@@ -185,9 +204,12 @@ class Trade_Env:
             elif action == 2:  # IDLE
                 gain = 0
 
+        self._calc_state()
+
+        if self.idx < DAY_IN_MINUTES - 1:
+            self.buy_locations_vector.append(0)
             self.idx += 1
 
-        self._calc_state()
         return self._state, gain, done
 
     def _pick_chart(self):
@@ -216,11 +238,6 @@ class Trade_Env:
             if self.df is not None:
                 open_idx = cu.get_time_index(self.df, self.date, 9, 30, 0)
                 close_idx = cu.get_time_index(self.df, self.date, 15, 59, 0)
-
-        self.open_idx = open_idx
-        self.close_idx = close_idx
-
-        self.idx = open_idx
 
     def save_traded_chart(self, filename=None):
         if len(self.entries) > 0:

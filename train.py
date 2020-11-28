@@ -30,8 +30,8 @@ BATCH_SIZE = 2000
 MIN_SAMPLES_TO_START_TRAINING = 10000
 MEMORY_SIZE = 100000
 
-MAX_EPSILON = 1.0
-MIN_EPSILON = 0.1
+MAX_EPSILON = 0.10000
+MIN_EPSILON = 0.05
 LAMBDA = 0.001
 GAMMA = 0.99
 
@@ -42,7 +42,7 @@ _, _, h, w = env.state_shape
 print("Input Size: ", h, w)
 
 policy_net = DQN(h, w, n_actions).to(device)
-# policy_net.load_state_dict(torch.load("checkpoints\\params_11000"))
+policy_net.load_state_dict(torch.load("checkpoints\\params_13500"))
 
 target_net = DQN(h, w, n_actions).to(device)
 target_net.load_state_dict(policy_net.state_dict())
@@ -126,7 +126,7 @@ def optimize_model():
 eps_threshold = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * steps_done)
 
 
-num_episodes = 50000
+num_episodes = 50000 + 1
 for i_episode in range(num_episodes):
     # Initialize the environment and state
     state = env.reset()
