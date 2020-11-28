@@ -102,7 +102,7 @@ for i_episode in range(num_episodes):
 
         # Perform one step of the optimization (on the target network)
 
-    env.save_traded_chart()
+    env.save_chart()
     episode_profits.append(total_profit)
 
 plot_durations()

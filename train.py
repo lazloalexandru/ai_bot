@@ -10,6 +10,7 @@ import torch
 from model import DQN
 import torch.optim as optim
 import torch.nn.functional as F
+import os
 
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
@@ -30,8 +31,8 @@ BATCH_SIZE = 2000
 MIN_SAMPLES_TO_START_TRAINING = 10000
 MEMORY_SIZE = 100000
 
-MAX_EPSILON = 0.10000
-MIN_EPSILON = 0.05
+MAX_EPSILON = 1.0
+MIN_EPSILON = 0.1
 LAMBDA = 0.001
 GAMMA = 0.99
 
@@ -42,7 +43,11 @@ _, _, h, w = env.state_shape
 print("Input Size: ", h, w)
 
 policy_net = DQN(h, w, n_actions).to(device)
-policy_net.load_state_dict(torch.load("checkpoints\\params_13500"))
+
+checkpoint_path = "checkpoints\\params_13500"
+
+if os.path.isfile(checkpoint_path):
+    policy_net.load_state_dict(torch.load(checkpoint_path))
 
 target_net = DQN(h, w, n_actions).to(device)
 target_net.load_state_dict(policy_net.state_dict())
@@ -114,7 +119,7 @@ def optimize_model():
     next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach()
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
-    loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
+    loss = F.smooth_l1_loss(state_action_values.float(), expected_state_action_values.unsqueeze(1).float())
 
     optimizer.zero_grad()
     loss.backward()
@@ -173,7 +178,7 @@ for i_episode in range(num_episodes):
     if i_episode % TARGET_UPDATE == 0:
         target_net.load_state_dict(policy_net.state_dict())
 
-    if i_episode % 500 == 0:
+    if i_episode > 0 and i_episode % 1000 == 0:
         path = "checkpoints\\params_" + str(i_episode)
         torch.save(target_net.state_dict(), path)
 

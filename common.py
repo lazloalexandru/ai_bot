@@ -54,7 +54,7 @@ def limit(x, mn, mx):
     return x
 
 
-def gen_add_plot(chart_data, entries, exits):
+def gen_add_plot_normalized(chart_data, entries, exits):
     df = chart_data.copy()
 
     n = len(df)
@@ -71,29 +71,30 @@ def gen_add_plot(chart_data, entries, exits):
     adp = []
 
     for i in range(0, n1):
-        # marker for buy
-        df_markers.loc[df.loc[entries[i][0]]['Time'], 'Price'] = entries[i][1]
+        df_markers.loc[df.loc[entries[i][0]]['Time'], 'Price'] = df.loc[entries[i][0]]['Close']
+
+    if n1 > 0:
         adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='green'))
-        df_markers.loc[df.loc[entries[i][0]]['Time'], 'Price'] = float('nan')
+
+    df_markers.Price = [float('nan')] * n
 
     for i in range(0, n2):
+        df_markers.loc[df.loc[exits[i][0]]['Time'], 'Price'] = df.loc[exits[i][0]]['Close']
 
-        # marker for sell
-        df_markers.loc[df.loc[exits[i][0]]['Time'], 'Price'] = exits[i][1]
+    if n2 > 0:
         adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='red'))
-        df_markers.loc[df.loc[exits[i][0]]['Time'], 'Price'] = float('nan')
 
     return adp
 
 
-def show_1min_chart(df, symbol, date, info, entries, exits, rewards_b, rewards_i, save_to_dir=None, filename=None):
+def show_1min_chart_normalized(df, idx, symbol, date, info, entries, exits, rewards_b, rewards_i, save_to_dir=None, filename=None):
     df = df.set_index(pd.Index(df.Time))
 
     #############################################
     # Generate Add-Plots
 
     mav_list = []
-    adp = gen_add_plot(df, entries, exits)
+    adp = gen_add_plot_normalized(df, entries, exits)
 
     # df['rewards_b'] = rewards_b
     # adp.append(mpf.make_addplot(df['rewards_b'], color='green'))

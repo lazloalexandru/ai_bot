@@ -108,7 +108,7 @@ class TradeBot:
             if done:
                 c = 'red' if tot_reward < 0 else 'green'
                 print(colored("Account: %.2f" % tot_reward, color=c), '\n')
-                self._env.save_traded_chart()
+                self._env.save_chart()
                 self._reward_store.append(tot_reward)
                 break
 

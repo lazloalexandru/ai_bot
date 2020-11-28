@@ -64,36 +64,14 @@ def test2():
         'Low': l,
         'Volume': v})
 
-    cu.show_1min_chart(dx, symbol, date, "", [], [], [], [], None)
-
-
-def show_state(state, t, symbol, date):
-    state = state[:-1]
-
-    state = state.reshape(5, DAY_IN_MINUTES)
-    o = state[0]
-    c = state[1]
-    h = state[2]
-    l = state[3]
-    v = state[4]
-
-    dx = pd.DataFrame({
-        'Time': t,
-        'Open': o,
-        'Close': c,
-        'High': h,
-        'Low': l,
-        'Volume': v})
-
-    cu.show_1min_chart(dx, symbol, date, "", [], [], [], [], None)
+    cu.show_1min_chart(dx, idx, symbol, date, "", [], [], [], [], None)
 
 
 def test4():
     movers = pd.read_csv('data\\active_days.csv')
     env = Trade_Env(movers, simulation_mode=True)
 
-    env.reset()
-    s, _, _ = env.step(2, debug=True)
+    env.reset(debug=True)
     s, _, _ = env.step(2, debug=True)
     s, _, _ = env.step(0, debug=True)
     s, _, _ = env.step(0, debug=True)
@@ -106,22 +84,21 @@ def test4():
     s, _, _ = env.step(0, debug=True)
 
     for i in range(390):
-        s, _, _ = env.step(2, debug=True)
+        s, _, _ = env.step(2, debug=False)
 
     s = s.to("cpu")
     print(s.shape)
 
-    env.save_traded_chart()
-
-    z = np.reshape(s, (7, 390))
-    print(z)
+    env.save_chart()
 
 
 def test5():
     movers = pd.read_csv('data\\active_days.csv')
     env = Trade_Env(movers, simulation_mode=True)
 
-    z = env.reset()
+    s, _, _ = env.step(0, debug=True)
+
+    z = env.reset(debug=True)
     print(z)
     for i in range(0, 395):
         print("-------------", i)
@@ -131,7 +108,7 @@ def test5():
         z = np.reshape(s, (7, 390))
         print(z)
 
-    env.save_traded_chart()
+    env.save_chart()
 
 
 def test6():
@@ -144,5 +121,5 @@ def test6():
     print(x)
 
 
-test5()
+test4()
 

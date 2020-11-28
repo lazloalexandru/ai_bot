@@ -3,6 +3,7 @@ from termcolor import colored
 import common as cu
 import random
 import torch
+import pandas as pd
 
 DATA_ROWS = 7
 DAY_IN_MINUTES = 390
@@ -31,6 +32,7 @@ def calc_normalized_state(o, c, h, l, v, b, idx, debug=False):
     padding = [0] * padding_size
 
     if debug:
+        print("calc_normalized_state")
         print('len(t):', len(t))
         print('len(o)', len(o))
         print('len(v)', len(v))
@@ -58,7 +60,6 @@ def calc_normalized_state(o, c, h, l, v, b, idx, debug=False):
 
 class Trade_Env:
     def __init__(self, movers, simulation_mode, sim_chart_index=None):
-
         self.sim_chart_index = sim_chart_index
 
         self.movers = movers
@@ -82,7 +83,7 @@ class Trade_Env:
         self._volume = None
         self._time = None   # used for debugging only
 
-        self._normalized_close = None
+        self._normalized_close = []
 
         self._state = None
         self._render = False
@@ -92,28 +93,22 @@ class Trade_Env:
 
         self.simulation_mode = simulation_mode
 
-    def _calc_state(self):
-        _time = self._time[:self.idx]
+        self.reset()
 
-        o = self._open[:self.idx + 1]
-        c = self._close[:self.idx + 1]
-        h = self._high[:self.idx + 1]
-        l = self._low[:self.idx + 1]
-        v = self._volume[:self.idx + 1]
+    def _init_normalised_clsose(self, debug):
+        o = self._open
+        c = self._close
+        h = self._high
+        l = self._low
+        v = self._volume
+        b = [0] * DAY_IN_MINUTES
 
-        print("calc_state len(o)", len(o), "idx:", self.idx)
-
-        s = calc_normalized_state(o, c, h, l, v, self.buy_locations_vector, self.idx, debug=True)
+        s = calc_normalized_state(o, c, h, l, v, b, DAY_IN_MINUTES-1, debug)
         s = np.reshape(s, (DATA_ROWS, DAY_IN_MINUTES))
 
         self._normalized_close = s[1]
 
-        self._state = torch.tensor(s, dtype=torch.float).unsqueeze(0).unsqueeze(0).to("cuda")
-
-        # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx], self.buy_locations_vector)
-        # print(self.idx, self.buy_locations_vector, self.buy_indexes)
-
-    def reset(self):
+    def reset(self, debug=False):
         self._pick_chart()
         self._open = self.df.Open.to_list()
         self._close = self.df.Close.to_list()
@@ -121,6 +116,8 @@ class Trade_Env:
         self._low = self.df.Low.to_list()
         self._volume = self.df.Volume.to_list()
         self._time = self.df.Time.to_list()
+
+        self._init_normalised_clsose(debug)
 
         self.idx = 0
 
@@ -132,85 +129,116 @@ class Trade_Env:
         self.buy_prices = []
         self.num_trades = 0
 
-        print("RESET", self.idx, self._time[-1], self._time[self.idx], len(self.buy_locations_vector))
+        if debug:
+            print("RESET", self.idx, self._time[-1], self._time[self.idx], len(self.buy_locations_vector))
 
-        self._calc_state()
-
-        # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx])
+        self._calc_state(debug)
 
         return self._state
 
-    def step(self, action, debug=False):
-        # if debug:
-        print("STEP", self.idx, self._time[-1], self._time[self.idx], len(self.buy_locations_vector))
+    def _calc_state(self, debug):
+        _time = self._time[:self.idx]
 
-        FEES = 1  # in %
+        o = self._open[:self.idx + 1]
+        c = self._close[:self.idx + 1]
+        h = self._high[:self.idx + 1]
+        l = self._low[:self.idx + 1]
+        v = self._volume[:self.idx + 1]
+
+        if debug:
+            print("calc_state len(o)", len(o), "idx:", self.idx)
+
+        s = calc_normalized_state(o, c, h, l, v, self.buy_locations_vector, self.idx, debug)
+        s = np.reshape(s, (DATA_ROWS, DAY_IN_MINUTES))
+
+        self._state = torch.tensor(s, dtype=torch.float).unsqueeze(0).unsqueeze(0).to("cuda")
+
+        # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx], self.buy_locations_vector)
+        # print(self.idx, self.buy_locations_vector, self.buy_indexes)
+
+    def step(self, action, debug=False):
+        if debug:
+            print("STEP", self.idx, self._time[-1], self._time[self.idx], len(self.buy_locations_vector))
+
         done = False
-        gain = 0
+        reward = 0
 
         num_positions = len(self.buy_prices)
-        if self.idx == DAY_IN_MINUTES:
+        if self.idx == DAY_IN_MINUTES - 1:
             if num_positions > 0:
                 self.num_trades += num_positions
-                self.buy_locations_vector = [0] * DAY_IN_MINUTES
 
                 avg_price = sum(self.buy_prices) / num_positions
-                sell_price = self._close[self.idx]
-                gain = 100 * (sell_price / avg_price - 1) - FEES
+                sell_price = self._normalized_close[self.idx]
 
-                unit_gain = gain
-                gain = gain * num_positions
+                self.buy_prices = self.buy_prices + [1] * len(self.buy_prices)
+                self.buy_prices *= 10
+                ap = sum(self.buy_prices) / num_positions
+                sp = 10*(sell_price + 1)
+                reward = 100 * (sp / ap - 1)
+
+                unit_gain = reward
+                reward = reward * num_positions
+
+                # Close all positions
+                self.buy_locations_vector = [0] * DAY_IN_MINUTES
+                self.buy_prices = []
+                self.buy_indexes = []
 
                 if self.simulation_mode:
+                    c = "green" if reward > 0 else "red"
                     self.exits.append([self._time[self.idx], sell_price])
-                    print(self.symbol, ' BUY: %.2f' % avg_price, end="")
-                    print(colored("   SELL %.2f   GAIN: %.2f x %s => %.2f" % (sell_price, unit_gain, num_positions, gain), color="green" if gain > 0 else "red"))
+                    print(colored("%s  BUY: %.2f (%.2f)" % (self.symbol, avg_price, ap), color=c), end="")
+                    print(colored("   SELL %.2f (%.2f)   REWARD: %.2f x %s => %.2f" % (sell_price, sp, unit_gain, num_positions, reward), color=c))
                 else:
                     print(colored("XXX", color='red'), end="")
 
             done = True
             print("  Trades:", self.num_trades)
-        else:
+        elif self.idx < DAY_IN_MINUTES:
             if action == 0:  # BUY
-                self.buy_prices.append(self._close[self.idx])
+                buy_price = self._normalized_close[self.idx]
+                self.buy_prices.append(buy_price)
                 buy_index = len(self.buy_locations_vector)-1
                 self.buy_indexes.append(buy_index)
                 self.buy_locations_vector[buy_index] = 1
 
                 if self.simulation_mode:
-                    self.entries.append([self._time[self.idx], self._close[self.idx]])
+                    self.entries.append([self._time[self.idx], buy_price])
                 else:
                     print(".", end="")
             elif action == 1:  # SELL
                 if num_positions > 0:
                     self.num_trades += 1
 
-                    entry_price = self.buy_prices.pop()
+                    buy_price = self.buy_prices.pop()
                     buy_index = self.buy_indexes.pop()
                     self.buy_locations_vector[buy_index] = 0
 
-                    sell_price = self._close[self.idx]
-                    gain = 100 * (sell_price / entry_price - 1) - FEES
+                    sell_price = self._normalized_close[self.idx]
+
+                    bp = 10 * (buy_price + 1)
+                    sp = 10 * (sell_price + 1)
+                    reward = 100 * (sp / bp - 1)
 
                     if self.simulation_mode:
                         self.exits.append([self._time[self.idx], sell_price])
 
-                        print(self.symbol, 'BUY:', entry_price, end="")
-                        c = "green" if gain > 0 else "red"
-                        print(colored("   SELL %.2f   GAIN: %.2f" % (sell_price, gain), color=c))
+                        c = "green" if reward > 0 else "red"
+                        print(colored("%s  BUY: %.2f (%.2f)" % (self.symbol, buy_price, bp), color=c), end="")
+                        print(colored("   SELL %.2f (%.2f)   REWARD: %.2f" % (sell_price, sp, reward), color=c))
                     else:
                         print("|", end="")
 
             elif action == 2:  # IDLE
-                gain = 0
-
-        self._calc_state()
+                reward = 0
 
         if self.idx < DAY_IN_MINUTES - 1:
             self.buy_locations_vector.append(0)
             self.idx += 1
 
-        return self._state, gain, done
+        self._calc_state(debug)
+        return self._state, reward, done
 
     def _pick_chart(self):
         open_idx = None
@@ -239,22 +267,50 @@ class Trade_Env:
                 open_idx = cu.get_time_index(self.df, self.date, 9, 30, 0)
                 close_idx = cu.get_time_index(self.df, self.date, 15, 59, 0)
 
-    def save_traded_chart(self, filename=None):
-        if len(self.entries) > 0:
+    def save_chart(self, filename=None):
+        # if len(self.entries) > 0:
+        if True:
+            print("save_chart -> len(time)", len(self._time), len(self.entries))
+
+            state = self._state.reshape(7, DAY_IN_MINUTES)
+            s = state.to(torch.device("cpu")).numpy()
+
+            o = s[0]
+            c = s[1]
+            h = s[2]
+            l = s[3]
+            v = s[4]
+            t = self._time[0:self.idx+1]
+
+            from_idx = -(self.idx + 1)
+            o = o[from_idx:]
+            c = c[from_idx:]
+            h = h[from_idx:]
+            l = l[from_idx:]
+            v = v[from_idx:]
+            print("save_chart   ->  idx:", self.idx, len(o), len(t))
+
+            dx = pd.DataFrame({
+                'Time': t,
+                'Open': o,
+                'Close': c,
+                'High': h,
+                'Low': l,
+                'Volume': v})
 
             filename = self.symbol
-
             images_dir_path = "trades\\"
-            cu.show_1min_chart(self.df,
-                               self.symbol,
-                               self.date,
-                               "",
-                               self.entries,
-                               self.exits,
-                               [],
-                               [],
-                               images_dir_path,
-                               filename)
+            cu.show_1min_chart_normalized(dx,
+                                          self.idx,
+                                          self.symbol,
+                                          self.date,
+                                          "",
+                                          self.entries,
+                                          self.exits,
+                                          [],
+                                          [],
+                                          images_dir_path,
+                                          filename)
 
     @property
     def num_states(self):
