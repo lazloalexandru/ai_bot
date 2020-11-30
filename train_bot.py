@@ -3,9 +3,6 @@ from termcolor import colored
 from env import Trade_Env
 import math
 import random
-import pandas as pd
-import matplotlib
-import matplotlib.pyplot as plt
 from ai_memory import ReplayMemory
 from ai_memory import Transition
 import torch
@@ -17,20 +14,18 @@ import os
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-BATCH_SIZE = 5000
+BATCH_SIZE = 10000
 MIN_SAMPLES_TO_START_TRAINING = 10000
 MEMORY_SIZE = 100000
 
 MAX_EPSILON = 1.0
-MIN_EPSILON = 0.05
+MIN_EPSILON = 0.1
 LAMBDA = 0.001
 GAMMA = 0.99
 
 LEARNING_RATE = 0.0001
 
 TARGET_UPDATE = 10
-
-EPISODES = 5000
 
 
 class TrainerBot:

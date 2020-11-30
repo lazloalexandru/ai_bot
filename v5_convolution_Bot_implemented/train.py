@@ -45,7 +45,7 @@ def do_training(num_episodes, save_step):
 
     movers = pd.read_csv('data\\active_days.csv')
     env = Trade_Env(movers, simulation_mode=False)
-    _, h, w = env.state_shape
+    _, _, h, w = env.state_shape
     print("State Shape: ", h, w)
 
     bot = TrainerBot(h, w, env.num_actions)

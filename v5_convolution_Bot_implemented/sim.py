@@ -16,13 +16,13 @@ def simulate():
     movers = pd.read_csv('data\\active_days.csv')
     env = Trade_Env(movers, simulation_mode=True, sim_chart_index=6611)
     n_actions = env.num_actions
-    h, w = env.state_shape
+    _, h, w = env.state_shape
     print("Input Size: ", h, w)
 
     episode_profits = []
 
-    train_steps = 100
-    STEP = 10
+    train_steps = 5000
+    STEP = 500
 
     num_episodes = int(train_steps / STEP)
     for i_episode in range(1, num_episodes + 1):
@@ -39,7 +39,7 @@ def simulate():
         env = Trade_Env(movers, simulation_mode=True, sim_chart_index=6511)
         state = env.reset()
 
-        total_profit = 0.0
+        total_profit = 0
 
         print("\nEpisode:", i_episode)
 

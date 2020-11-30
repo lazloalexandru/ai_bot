@@ -143,7 +143,6 @@ class Trade_Env:
             print("calc_state len(o)", len(o), "idx:", self.idx)
 
         s = build_state_vector(o, c, h, l, v, self.buy_locations_vector, self.idx, debug)
-        s = np.reshape(s, (DATA_ROWS, DAY_IN_MINUTES))
 
         self._state = torch.tensor(s, dtype=torch.float).unsqueeze(0).unsqueeze(0).to("cuda")
 
@@ -324,4 +323,5 @@ class Trade_Env:
 
     @property
     def state_shape(self):
-        return self._state.shape
+        _, _h, _w = self._state.shape
+        return _h, _w
