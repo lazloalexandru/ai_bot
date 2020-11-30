@@ -1,9 +1,15 @@
+from datetime import datetime
+
 from env import Trade_Env
+import math
+import random
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
+from ai_memory import Transition
 import torch
 from model import DQN
+import torch.nn.functional as F
 
 
 # set up matplotlib
@@ -18,6 +24,12 @@ print("CUDA Available: ", torch.cuda.is_available())
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 movers = pd.read_csv('data\\active_days.csv')
+env = Trade_Env(movers, simulation_mode=True, sim_chart_index=2300)
+
+
+BATCH_SIZE = 2000
+MIN_SAMPLES_TO_START_TRAINING = 10000
+MEMORY_SIZE = 100000
 
 GAMMA = 0.99
 MAX_EPSILON = 1.0
@@ -25,15 +37,15 @@ MIN_EPSILON = 0.1
 LAMBDA = 0.001
 TARGET_UPDATE = 10
 
-env = Trade_Env(movers, simulation_mode=True, sim_chart_index=6611)
 
 # Get number of actions from gym action space
 n_actions = env.num_actions
 
-_, h, w = env.state_shape
+_, _, h, w = env.state_shape
 print("Input Size: ", h, w)
 
 target_net = DQN(h, w, n_actions).to(device)
+target_net.load_state_dict(torch.load("checkpoints\\params_300"))
 target_net.eval()
 
 
@@ -64,24 +76,9 @@ def plot_durations():
         display.display(plt.gcf())
 
 
-train_steps = 5000
-STEP = 500
-
-num_episodes = int(train_steps / STEP)
-for i_episode in range(1, num_episodes + 1):
-
-    # if i_episode != 4:
-    #    continue
-
-    path = "checkpoints\\params_" + str(i_episode * STEP)
-    print(path)
-
-    target_net = DQN(h, w, n_actions).to(device)
-    target_net.load_state_dict(torch.load(path))
-    target_net.eval()
-
+num_episodes = 1
+for i_episode in range(num_episodes):
     # Initialize the environment and state
-    env = Trade_Env(movers, simulation_mode=True, sim_chart_index=6511)
     state = env.reset()
 
     total_profit = 0
@@ -105,7 +102,7 @@ for i_episode in range(1, num_episodes + 1):
 
         # Perform one step of the optimization (on the target network)
 
-    env.save_chart(str(i_episode * STEP))
+    env.save_chart()
     episode_profits.append(total_profit)
 
 # plot_durations()

@@ -24,7 +24,7 @@ class DQN(nn.Module):
 
         linear_input_size = convw * convh * f
         '''
-        linear_input_size = 6 * 390
+        linear_input_size = 6 * 390 + 1
         print("Dense Layer %s x %s" % (linear_input_size, outputs))
 
         self.fc1 = nn.Linear(linear_input_size, 1000)

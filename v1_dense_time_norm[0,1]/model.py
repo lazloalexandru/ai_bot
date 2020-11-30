@@ -24,12 +24,12 @@ class DQN(nn.Module):
 
         linear_input_size = convw * convh * f
         '''
-        linear_input_size = 6 * 390
+        linear_input_size = 6 * 390 + 1
         print("Dense Layer %s x %s" % (linear_input_size, outputs))
 
-        self.fc1 = nn.Linear(linear_input_size, 1000)
-        self.fc2 = nn.Linear(1000, 1000)
-        self.fc3 = nn.Linear(1000, outputs)
+        self.fc1 = nn.Linear(linear_input_size, 5000)
+        self.fc2 = nn.Linear(5000, 5000)
+        self.fc3 = nn.Linear(5000, outputs)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))

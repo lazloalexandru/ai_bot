@@ -64,6 +64,10 @@ class Trade_Env:
         self._low_n = None
         self._volume_n = None
 
+        self._open_10_20 = None
+        self._close_10_20 = None
+        self._high_10_20 = None
+        self._low_10_20 = None
         self._volume_orig = None
 
         self._open = None
@@ -111,6 +115,10 @@ class Trade_Env:
         self._low_n = l
         self._volume_n = v
 
+        self._open_10_20 = cu.shift_and_scale(o)
+        self._close_10_20 = cu.shift_and_scale(c)
+        self._high_10_20 = cu.shift_and_scale(h)
+        self._low_10_20 = cu.shift_and_scale(l)
         self._time = self.df.Time.to_list()
 
         self.idx = 0
@@ -173,7 +181,6 @@ class Trade_Env:
                 self.buy_price = None
 
                 if self.simulation_mode:
-                    print("FASZ")
                     c = "green" if reward > 0 else "red"
                     self.exits.append([self._time[self.idx], sell_price])
                     print(colored("%s  BUY: %.2f (%.2f)" % (self.symbol, buy_price, bp), color=c), end="")

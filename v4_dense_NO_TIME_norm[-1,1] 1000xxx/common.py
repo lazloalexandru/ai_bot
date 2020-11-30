@@ -74,7 +74,7 @@ def gen_add_plot_normalized(chart_data, entries, exits):
         df_markers.loc[df.loc[entries[i][0]]['Time'], 'Price'] = df.loc[entries[i][0]]['Close']
 
     if n1 > 0:
-        adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='green', secondary_y=False))
+        adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='green'))
 
     df_markers.Price = [float('nan')] * n
 
@@ -82,7 +82,7 @@ def gen_add_plot_normalized(chart_data, entries, exits):
         df_markers.loc[df.loc[exits[i][0]]['Time'], 'Price'] = df.loc[exits[i][0]]['Close']
 
     if n2 > 0:
-        adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='red', secondary_y=False))
+        adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='red'))
 
     return adp
 

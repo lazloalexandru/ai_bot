@@ -74,7 +74,7 @@ def gen_add_plot_normalized(chart_data, entries, exits):
         df_markers.loc[df.loc[entries[i][0]]['Time'], 'Price'] = df.loc[entries[i][0]]['Close']
 
     if n1 > 0:
-        adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='green', secondary_y=False))
+        adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='green'))
 
     df_markers.Price = [float('nan')] * n
 
@@ -82,7 +82,7 @@ def gen_add_plot_normalized(chart_data, entries, exits):
         df_markers.loc[df.loc[exits[i][0]]['Time'], 'Price'] = df.loc[exits[i][0]]['Close']
 
     if n2 > 0:
-        adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='red', secondary_y=False))
+        adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='red'))
 
     return adp
 
@@ -331,30 +331,17 @@ def database_info():
 
 
 def normalize(x):
-    range_ = 0
-
     if len(x) > 1:
         mn = min(x)
         mx = max(x)
         range_ = mx - mn
 
+        # print(mn, mx)
+
+        x = x - mn
         if range_ > 0:
-            x = 2 * (x - (mn + range_ / 2))
-        else:
-            range_ = abs(mx)
-
+            x = x / range_
     elif len(x) == 1:
-        range_ = abs(x[0])
-
-    if range_ > 0:
-        x = x / range_
-
-    return x
-
-
-def shift_and_scale(x, scale_factor=5, bias=15):
-    x = np.array(x)
-    x *= scale_factor
-    x = x + [bias] * len(x)
+        x = [1.0]
 
     return x

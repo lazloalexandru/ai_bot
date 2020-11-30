@@ -26,13 +26,14 @@ def build_state_vector(o, c, h, l, v, b, idx, debug=False):
     h = np.concatenate((padding, h))
     l = np.concatenate((padding, l))
     v = np.concatenate((padding, v))
+    t = [idx / DAY_IN_MINUTES]
 
     if debug:
         print('padded len(o)', len(o))
         print('padded len(v)', len(v))
         print('padded len(b)', len(b))
 
-    state = np.concatenate((o, c, h, l, v, b))
+    state = np.concatenate((o, c, h, l, v, b, t))
 
     return state
 
@@ -58,20 +59,11 @@ class Trade_Env:
 
         self.idx = 0
 
-        self._open_n = None
-        self._close_n = None
-        self._high_n = None
-        self._low_n = None
-        self._volume_n = None
-
-        self._volume_orig = None
-
         self._open = None
         self._close = None
         self._high = None
         self._low = None
         self._volume = None
-
         self._time = None   # used for debugging only
 
         self._state = None
@@ -93,8 +85,6 @@ class Trade_Env:
         l = self.df.Low.to_list()
         v = self.df.Volume.to_list()
 
-        self._volume_orig = v
-
         price = np.concatenate((o, c, h, l))
         price = cu.normalize(price)
         price = price.reshape(4, DAY_IN_MINUTES)
@@ -105,12 +95,11 @@ class Trade_Env:
         l = price[3]
         v = cu.normalize(np.array(v))
 
-        self._open_n = o
-        self._close_n = c
-        self._high_n = h
-        self._low_n = l
-        self._volume_n = v
-
+        self._open = o
+        self._close = c
+        self._high = h
+        self._low = l
+        self._volume = v
         self._time = self.df.Time.to_list()
 
         self.idx = 0
@@ -133,11 +122,11 @@ class Trade_Env:
     def _calc_state(self, debug):
         _time = self._time[:self.idx]
 
-        o = self._open_n[:self.idx + 1]
-        c = self._close_n[:self.idx + 1]
-        h = self._high_n[:self.idx + 1]
-        l = self._low_n[:self.idx + 1]
-        v = self._volume_n[:self.idx + 1]
+        o = self._open[:self.idx + 1]
+        c = self._close[:self.idx + 1]
+        h = self._high[:self.idx + 1]
+        l = self._low[:self.idx + 1]
+        v = self._volume[:self.idx + 1]
 
         if debug:
             print("calc_state len(o)", len(o), "idx:", self.idx)
@@ -156,15 +145,17 @@ class Trade_Env:
         done = False
         reward = 0
 
+        price_offset = 2
+
         if self.idx == DAY_IN_MINUTES - 1:
             if self.buy_price is not None:
                 self.num_trades += 1
 
-                buy_price = self.buy_price
-                bp = cu.shift_and_scale([buy_price])[0]
+                buy_price = self.buy_price + price_offset
+                bp = 10 * buy_price
 
-                sell_price = self._close_n[self.idx]
-                sp = cu.shift_and_scale([sell_price])[0]
+                sell_price = self._close[self.idx]
+                sp = 10*(sell_price + price_offset)
 
                 reward = sp - bp
 
@@ -173,7 +164,6 @@ class Trade_Env:
                 self.buy_price = None
 
                 if self.simulation_mode:
-                    print("FASZ")
                     c = "green" if reward > 0 else "red"
                     self.exits.append([self._time[self.idx], sell_price])
                     print(colored("%s  BUY: %.2f (%.2f)" % (self.symbol, buy_price, bp), color=c), end="")
@@ -187,7 +177,7 @@ class Trade_Env:
         elif self.idx < DAY_IN_MINUTES:
             if action == 0:  # BUY
                 if self.buy_price is None:
-                    buy_price = self._close_n[self.idx]
+                    buy_price = self._close[self.idx]
                     self.buy_price = buy_price
                     self.buy_locations_vector[self.idx] = 1
 
@@ -200,11 +190,10 @@ class Trade_Env:
                     self.num_trades += 1
 
                     buy_price = self.buy_price
-                    bp = cu.shift_and_scale([buy_price])[0]
+                    sell_price = self._close[self.idx]
 
-                    sell_price = self._close_n[self.idx]
-                    sp = cu.shift_and_scale([sell_price])[0]
-
+                    bp = 10 * (buy_price + price_offset)
+                    sp = 10 * (sell_price + price_offset)
                     reward = sp - bp
 
                     self.buy_price = None
@@ -266,14 +255,14 @@ class Trade_Env:
             s = self._state.to("cpu")
             s = s.numpy()
             s = s[0][0]
+            s = s[:-1]
             s = s.reshape(6, DAY_IN_MINUTES)
 
             o = s[0]
             c = s[1]
             h = s[2]
             l = s[3]
-            v = cu.shift_and_scale(s[4], bias=0.5, scale_factor=0.5)
-
+            v = s[4]
             t = self._time[0:self.idx+1]
 
             from_idx = -(self.idx + 1)
@@ -292,11 +281,7 @@ class Trade_Env:
                 'Low': l,
                 'Volume': v})
 
-            if filename is None:
-                filename = self.symbol
-            else:
-                filename = self.symbol + "_" + filename
-
+            filename = self.symbol + "_" + filename
             images_dir_path = "trades\\"
             cu.show_1min_chart_normalized(dx,
                                           self.idx,

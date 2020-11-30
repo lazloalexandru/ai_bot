@@ -9,13 +9,31 @@ DATA_ROWS = 7
 DAY_IN_MINUTES = 390
 
 
-def build_state_vector(o, c, h, l, v, b, idx, debug=False):
+def calc_normalized_state(o, c, h, l, v, b, idx, debug=False):
     """ idx - is the candle index in range 0 ... 390 """
+
+    price = np.concatenate((o, c, h, l))
+    price = cu.normalize(price)
+
+    n = len(o)
+    price = price.reshape(4, n)
+    o = price[0]
+    c = price[1]
+    h = price[2]
+    l = price[3]
+
+    t = []
+    for i in range(0, idx+1):
+        t.append(i / DAY_IN_MINUTES)
+
+    v = cu.normalize(np.array(v))
+
     padding_size = DAY_IN_MINUTES - (idx + 1)
     padding = [0] * padding_size
 
     if debug:
         print("calc_normalized_state")
+        print('len(t):', len(t))
         print('len(o)', len(o))
         print('len(v)', len(v))
         print('len(b)', len(b))
@@ -26,18 +44,18 @@ def build_state_vector(o, c, h, l, v, b, idx, debug=False):
     h = np.concatenate((padding, h))
     l = np.concatenate((padding, l))
     v = np.concatenate((padding, v))
+    t = np.concatenate((padding, t))
+    b = np.concatenate((padding, b))
 
     if debug:
+        print('padded len(t):', len(t))
         print('padded len(o)', len(o))
         print('padded len(v)', len(v))
         print('padded len(b)', len(b))
 
-    state = np.concatenate((o, c, h, l, v, b))
+    state = np.concatenate((o, c, h, l, v, t, b))
 
     return state
-
-
-ZERO_VEC = [0] * DAY_IN_MINUTES
 
 
 class Trade_Env:
@@ -47,10 +65,10 @@ class Trade_Env:
         self.movers = movers
         self.num_movers = len(movers)
 
-        self.buy_price = None
-        self.buy_locations_vector = ZERO_VEC
-
+        self.buy_prices = []
         self.num_trades = 0
+        self.buy_locations_vector = [0]
+        self.buy_indexes = []
 
         self.df = None
         self.symbol = None
@@ -58,21 +76,14 @@ class Trade_Env:
 
         self.idx = 0
 
-        self._open_n = None
-        self._close_n = None
-        self._high_n = None
-        self._low_n = None
-        self._volume_n = None
-
-        self._volume_orig = None
-
         self._open = None
         self._close = None
         self._high = None
         self._low = None
         self._volume = None
-
         self._time = None   # used for debugging only
+
+        self._normalized_close = []
 
         self._state = None
         self._render = False
@@ -84,43 +95,38 @@ class Trade_Env:
 
         self.reset()
 
+    def _init_normalised_clsose(self, debug):
+        o = self._open
+        c = self._close
+        h = self._high
+        l = self._low
+        v = self._volume
+        b = [0] * DAY_IN_MINUTES
+
+        s = calc_normalized_state(o, c, h, l, v, b, DAY_IN_MINUTES-1, debug)
+        s = np.reshape(s, (DATA_ROWS, DAY_IN_MINUTES))
+
+        self._normalized_close = s[1]
+
     def reset(self, debug=False):
         self._pick_chart()
-
-        o = self.df.Open.to_list()
-        c = self.df.Close.to_list()
-        h = self.df.High.to_list()
-        l = self.df.Low.to_list()
-        v = self.df.Volume.to_list()
-
-        self._volume_orig = v
-
-        price = np.concatenate((o, c, h, l))
-        price = cu.normalize(price)
-        price = price.reshape(4, DAY_IN_MINUTES)
-
-        o = price[0]
-        c = price[1]
-        h = price[2]
-        l = price[3]
-        v = cu.normalize(np.array(v))
-
-        self._open_n = o
-        self._close_n = c
-        self._high_n = h
-        self._low_n = l
-        self._volume_n = v
-
+        self._open = self.df.Open.to_list()
+        self._close = self.df.Close.to_list()
+        self._high = self.df.High.to_list()
+        self._low = self.df.Low.to_list()
+        self._volume = self.df.Volume.to_list()
         self._time = self.df.Time.to_list()
+
+        self._init_normalised_clsose(debug)
 
         self.idx = 0
 
         self.entries = []
         self.exits = []
 
-        self.buy_locations_vector = ZERO_VEC
-        self.buy_price = None
-
+        self.buy_locations_vector = [0]
+        self.buy_indexes = []
+        self.buy_prices = []
         self.num_trades = 0
 
         if debug:
@@ -133,16 +139,17 @@ class Trade_Env:
     def _calc_state(self, debug):
         _time = self._time[:self.idx]
 
-        o = self._open_n[:self.idx + 1]
-        c = self._close_n[:self.idx + 1]
-        h = self._high_n[:self.idx + 1]
-        l = self._low_n[:self.idx + 1]
-        v = self._volume_n[:self.idx + 1]
+        o = self._open[:self.idx + 1]
+        c = self._close[:self.idx + 1]
+        h = self._high[:self.idx + 1]
+        l = self._low[:self.idx + 1]
+        v = self._volume[:self.idx + 1]
 
         if debug:
             print("calc_state len(o)", len(o), "idx:", self.idx)
 
-        s = build_state_vector(o, c, h, l, v, self.buy_locations_vector, self.idx, debug)
+        s = calc_normalized_state(o, c, h, l, v, self.buy_locations_vector, self.idx, debug)
+        s = np.reshape(s, (DATA_ROWS, DAY_IN_MINUTES))
 
         self._state = torch.tensor(s, dtype=torch.float).unsqueeze(0).unsqueeze(0).to("cuda")
 
@@ -156,59 +163,63 @@ class Trade_Env:
         done = False
         reward = 0
 
+        num_positions = len(self.buy_prices)
         if self.idx == DAY_IN_MINUTES - 1:
-            if self.buy_price is not None:
-                self.num_trades += 1
+            if num_positions > 0:
+                self.num_trades += num_positions
 
-                buy_price = self.buy_price
-                bp = cu.shift_and_scale([buy_price])[0]
+                avg_price = sum(self.buy_prices) / num_positions
+                sell_price = self._normalized_close[self.idx]
 
-                sell_price = self._close_n[self.idx]
-                sp = cu.shift_and_scale([sell_price])[0]
+                self.buy_prices = self.buy_prices + [1] * len(self.buy_prices)
+                self.buy_prices *= 10
+                ap = sum(self.buy_prices) / num_positions
+                sp = 10*(sell_price + 1)
+                reward = sp - ap
 
-                reward = sp - bp
+                unit_gain = reward
+                reward = reward * num_positions
 
                 # Close all positions
-                self.buy_locations_vector = ZERO_VEC
-                self.buy_price = None
+                self.buy_locations_vector = [0] * DAY_IN_MINUTES
+                self.buy_prices = []
+                self.buy_indexes = []
 
                 if self.simulation_mode:
-                    print("FASZ")
                     c = "green" if reward > 0 else "red"
                     self.exits.append([self._time[self.idx], sell_price])
-                    print(colored("%s  BUY: %.2f (%.2f)" % (self.symbol, buy_price, bp), color=c), end="")
-                    print(colored("   SELL %.2f (%.2f)   REWARD: %.2f" % (sell_price, sp, reward), color=c))
+                    print(colored("%s  BUY: %.2f (%.2f)" % (self.symbol, avg_price, ap), color=c), end="")
+                    print(colored("   SELL %.2f (%.2f)   REWARD: %.2f x %s => %.2f" % (sell_price, sp, unit_gain, num_positions, reward), color=c))
                 else:
                     print(colored("XXX", color='red'), end="")
 
             done = True
-            print("Trades:", self.num_trades)
-
+            print("  Trades:", self.num_trades)
         elif self.idx < DAY_IN_MINUTES:
             if action == 0:  # BUY
-                if self.buy_price is None:
-                    buy_price = self._close_n[self.idx]
-                    self.buy_price = buy_price
-                    self.buy_locations_vector[self.idx] = 1
+                buy_price = self._normalized_close[self.idx]
+                self.buy_prices.append(buy_price)
+                buy_index = len(self.buy_locations_vector)-1
+                self.buy_indexes.append(buy_index)
+                self.buy_locations_vector[buy_index] = 1
 
-                    if self.simulation_mode:
-                        self.entries.append([self._time[self.idx], buy_price])
-                    else:
-                        print(".", end="")
+                if self.simulation_mode:
+                    self.entries.append([self._time[self.idx], buy_price])
+                else:
+                    print(".", end="")
             elif action == 1:  # SELL
-                if self.buy_price is not None:
+                if num_positions > 0:
                     self.num_trades += 1
 
-                    buy_price = self.buy_price
-                    bp = cu.shift_and_scale([buy_price])[0]
+                    buy_price = self.buy_prices.pop()
+                    buy_index = self.buy_indexes.pop()
+                    self.buy_locations_vector[buy_index] = 0
 
-                    sell_price = self._close_n[self.idx]
-                    sp = cu.shift_and_scale([sell_price])[0]
+                    sell_price = self._normalized_close[self.idx]
 
+                    bp = 10 * (buy_price + 1)
+                    sp = 10 * (sell_price + 1)
                     reward = sp - bp
-
-                    self.buy_price = None
-                    self.buy_locations_vector = ZERO_VEC
 
                     if self.simulation_mode:
                         self.exits.append([self._time[self.idx], sell_price])
@@ -217,16 +228,14 @@ class Trade_Env:
                         print(colored("%s  BUY: %.2f (%.2f)" % (self.symbol, buy_price, bp), color=c), end="")
                         print(colored("   SELL %.2f (%.2f)   REWARD: %.2f" % (sell_price, sp, reward), color=c))
                     else:
-                        c = "green" if reward > 0 else "red"
-                        print(colored("|", color=c), end="")
-                elif action == 2:  # Idle
-                    reward = 0
+                        print("|", end="")
+
+            elif action == 2:  # IDLE
+                reward = 0
 
         if self.idx < DAY_IN_MINUTES - 1:
+            self.buy_locations_vector.append(0)
             self.idx += 1
-
-            if not self.simulation_mode:
-                print("_", end="")
 
         self._calc_state(debug)
         return self._state, reward, done
@@ -263,17 +272,14 @@ class Trade_Env:
         if len(self.entries) > 0:
             # print("save_chart -> len(time)", len(self._time), len(self.entries))
 
-            s = self._state.to("cpu")
-            s = s.numpy()
-            s = s[0][0]
-            s = s.reshape(6, DAY_IN_MINUTES)
+            state = self._state.reshape(7, DAY_IN_MINUTES)
+            s = state.to(torch.device("cpu")).numpy()
 
             o = s[0]
             c = s[1]
             h = s[2]
             l = s[3]
-            v = cu.shift_and_scale(s[4], bias=0.5, scale_factor=0.5)
-
+            v = s[4]
             t = self._time[0:self.idx+1]
 
             from_idx = -(self.idx + 1)
@@ -282,7 +288,7 @@ class Trade_Env:
             h = h[from_idx:]
             l = l[from_idx:]
             v = v[from_idx:]
-            # print("save_chart   ->  idx:", self.idx, len(o), len(t))
+            print("save_chart   ->  idx:", self.idx, len(o), len(t))
 
             dx = pd.DataFrame({
                 'Time': t,
@@ -292,11 +298,7 @@ class Trade_Env:
                 'Low': l,
                 'Volume': v})
 
-            if filename is None:
-                filename = self.symbol
-            else:
-                filename = self.symbol + "_" + filename
-
+            filename = self.symbol
             images_dir_path = "trades\\"
             cu.show_1min_chart_normalized(dx,
                                           self.idx,
