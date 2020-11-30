@@ -5,7 +5,7 @@ import random
 import torch
 import pandas as pd
 
-DATA_ROWS = 6
+DATA_ROWS = 7
 DAY_IN_MINUTES = 390
 
 
@@ -143,7 +143,6 @@ class Trade_Env:
             print("calc_state len(o)", len(o), "idx:", self.idx)
 
         s = build_state_vector(o, c, h, l, v, self.buy_locations_vector, self.idx, debug)
-        s = np.reshape(s, (DATA_ROWS, DAY_IN_MINUTES))
 
         self._state = torch.tensor(s, dtype=torch.float).unsqueeze(0).unsqueeze(0).to("cuda")
 
@@ -267,6 +266,7 @@ class Trade_Env:
             s = self._state.to("cpu")
             s = s.numpy()
             s = s[0][0]
+            s = s.reshape(6, DAY_IN_MINUTES)
 
             o = s[0]
             c = s[1]

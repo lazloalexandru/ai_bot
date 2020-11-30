@@ -17,7 +17,7 @@ import os
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-BATCH_SIZE = 5000
+BATCH_SIZE = 10000
 MIN_SAMPLES_TO_START_TRAINING = 10000
 MEMORY_SIZE = 100000
 
@@ -73,7 +73,7 @@ class TrainerBot:
             print(colored("Checkpoint" + path + "not found!", color="yellow"))
 
     def save_model(self, path):
-        torch.save(self._target_net.state_dict(), path)
+        torch.save(self.target_net.state_dict(), path)
 
     def _select_action(self, state):
         sample = random.random()
@@ -121,12 +121,12 @@ class TrainerBot:
         return self._episode_profits
 
     def play_episode(self, env):
-        self._steps += 1
+        print("")
 
         # Initialize the environment and state
         state = env.reset()
 
-        print("\nEpisode:", self._steps, "      ", end="")
+        self._steps += 1
 
         eps_threshold = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self._steps)
 
