@@ -89,7 +89,7 @@ def test4():
     s = s.to("cpu")
     print(s.shape)
 
-    env.save_chart()
+    env.save_normalized_chart()
 
 
 def test5():
@@ -108,7 +108,7 @@ def test5():
         z = np.reshape(s, (7, 390))
         print(z)
 
-    env.save_chart()
+    env.save_normalized_chart()
 
 
 def test6():

@@ -126,7 +126,7 @@ class TradeBot:
                 rewards_i.append(float('nan'))
                 c = 'red' if tot_reward < 0 else 'green'
                 print(colored("Reward: %.2f" % tot_reward, color=c), '\n')
-                self._env.save_chart(rewards_b, rewards_i)
+                self._env.save_normalized_chart(rewards_b, rewards_i)
                 self._reward_store.append(tot_reward)
                 break
 

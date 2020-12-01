@@ -18,32 +18,67 @@ __normalized_states_root_dir = "normalized_states"
 __normalized_states_dir = __normalized_states_root_dir + "\\intraday_charts"
 
 
-def stats(gains):
+def stats(gains, show_in_rows=False, show_header=True, show_chart_=False):
     plus = sum(x > 0 for x in gains)
     splus = sum(x for x in gains if x > 0)
     minus = sum(x < 0 for x in gains)
     sminus = sum(x for x in gains if x < 0)
 
     num_trades = len(gains)
-    success_rate = None if (plus + minus) == 0 else round(100 * (plus / (plus + minus)))
+    success_rate = None if (plus + minus) == 0 else plus / (plus + minus)
     rr = None if plus == 0 or minus == 0 else -(splus / plus) / (sminus / minus)
 
     avg_win = None if plus == 0 else splus / plus
     avg_loss = None if minus == 0 else sminus / minus
 
-    if len(gains) > 0:
-        print("")
-        print("Nr Trades:", num_trades)
-        print("Success Rate:", success_rate, "%")
-        print("R/R:", "N/A" if rr is None else "%.2f" % rr)
-        print("Winners:", plus, " Avg. Win:", "N/A" if avg_win is None else "%.2f" % avg_win + "%")
-        print("Losers:", minus, " Avg. Loss:", "N/A" if avg_loss is None else "%.2f" % avg_loss + "%")
-        print("")
+    if avg_win is None:
+        win_value = 0
+    else:
+        win_value = num_trades * success_rate * avg_win
 
-    x = list(range(0, len(gains)))
-    plt.bar(x, gains)
-    plt.show()
-    plt.close("all")
+    if avg_loss is None:
+        loss_value = 0
+    else:
+        loss_value = num_trades * (1 - success_rate) * avg_loss
+
+    profit = win_value + loss_value
+
+    if len(gains) > 0:
+        if show_in_rows:
+            if show_header:
+                print("Nr.Trades    Success Rate    R/R     Winners    Avg. Win     Losers     Avg. Loss      Profit/Trade")
+
+            print("    ", end="")
+            print(num_trades, end="")
+            print("           ", end="")
+            print(round(100 * success_rate), "%", end="")
+            print("        ", end="")
+            print("N/A" if rr is None else "%.2f" % rr, end="")
+            print("        ", end="")
+            print(plus, end="")
+            print("        ", end="")
+            print("N/A" if avg_win is None else "%.2f" % avg_win + "%", end="")
+            print("        ", end="")
+            print(minus, end="")
+            print("        ", end="")
+            print("N/A" if avg_loss is None else "%.2f" % avg_loss + "%", end="")
+            print("          ", end="")
+            print("%.2f" % (profit / num_trades))
+        else:
+            print("")
+            print("Nr Trades:", num_trades)
+            print("Success Rate:", success_rate, "%")
+            print("R/R:", "N/A" if rr is None else "%.2f" % rr)
+            print("Winners:", plus, " Avg. Win:", "N/A" if avg_win is None else "%.2f" % avg_win + "%")
+            print("Losers:", minus, " Avg. Loss:", "N/A" if avg_loss is None else "%.2f" % avg_loss + "%")
+            print("Profit/Trade: %.2f" % (profit / num_trades))
+            print("")
+
+    if show_chart_:
+        x = list(range(0, len(gains)))
+        plt.bar(x, gains)
+        plt.show()
+        plt.close("all")
 
 
 def limit(x, mn, mx):

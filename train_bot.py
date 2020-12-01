@@ -138,7 +138,7 @@ class TrainerBot:
         while not done:
             # Select and perform an action
             action = self._select_action(state)
-            next_state, reward, done = env.step(action.item())
+            next_state, reward, _, done = env.step(action.item())
             total_reward += reward
             reward = torch.tensor([reward], device=device)
 

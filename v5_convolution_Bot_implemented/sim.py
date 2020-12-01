@@ -60,7 +60,7 @@ def simulate():
 
             # Perform one step of the optimization (on the target network)
 
-        env.save_chart(str(i_episode * STEP))
+        env.save_normalized_chart(str(i_episode * STEP))
         episode_profits.append(total_profit)
 
         del nn

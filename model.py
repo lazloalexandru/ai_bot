@@ -6,7 +6,7 @@ class DQN(nn.Module):
     def __init__(self, h, w, outputs):
         super(DQN, self).__init__()
         linear_input_size = h * w
-        print("Dense Layer %s x %s" % (linear_input_size, outputs))
+        # print("Dense Layer %s x %s" % (linear_input_size, outputs))
 
         self.fc1 = nn.Linear(linear_input_size, 10000)
         self.fc2 = nn.Linear(10000, 10000)
