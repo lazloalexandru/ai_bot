@@ -215,14 +215,14 @@ def get_chart_data_prepared_for_ai(symbol, date):
 
 
 def get_list_of_files(dir_path):
-    symbols = []
+    files = []
 
     if os.path.isdir(dir_path):
         for root, dirs, files in os.walk(dir_path, topdown=False):
             for name in files:
-                symbols.append(name.replace(".csv", ""))
+                files.append(name.replace(".csv", ""))
 
-    return symbols
+    return files
 
 
 def get_chart(path):

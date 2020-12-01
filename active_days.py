@@ -9,9 +9,6 @@ import multiprocessing as mp
 import numpy as np
 
 
-__active_days_file = "data\\active_days_ext.csv"
-
-
 def _get_active_days_for(symbol, params):
     df = common.get_daily_chart_for(symbol)
     df.Time = pd.to_datetime(df.Time, format="%Y-%m-%d")
@@ -39,14 +36,19 @@ def _get_active_days_for(symbol, params):
             '''
             #####################################################################
 
-            if gap > params['min_gap_up'] and df.loc[i, 'Open'] > params['day_open_above'] and (df.loc[i, 'Volume'] > params['min_gap_up_volume']):
-                t = df["Time"][df.index[i]].strftime("%Y-%m-%d")
-                print(symbol, t)
-                relevant_days_list.append([gap, t, symbol])
-            elif range_ > params['min_range'] and df.loc[i, 'High'] > params['day_high_above'] and (df.loc[i, 'Volume'] > params['min_range_volume']):
-                t = df["Time"][df.index[i]].strftime("%Y-%m-%d")
-                print(symbol, t, "     <---")
-                relevant_days_list.append([range_, t, symbol])
+            if df.loc[i, 'Volume'] * df.loc[i, 'Close'] > params['min_value_traded']:
+                if df.loc[i, 'Open'] > params['day_open_above'] and df.loc[i, 'High'] > params['day_high_above']:
+                    if params['min_gap_up'] is not None:
+                        if gap > params['min_gap_up']:
+                            t = df["Time"][df.index[i]].strftime("%Y-%m-%d")
+                            print(symbol, t, "    gap:", gap)
+                            relevant_days_list.append([gap, t, symbol])
+
+                    if params['min_range'] is not None:
+                        if range_ > params['min_range']:
+                            t = df["Time"][df.index[i]].strftime("%Y-%m-%d")
+                            print(symbol, t, "     <--- range:", range_)
+                            relevant_days_list.append([range_, t, symbol])
 
     print(symbol + " Relevant Days (Gap-Ups + Big movers): " + str(int(len(relevant_days_list))))
     return relevant_days_list
@@ -82,29 +84,65 @@ def find_active_days_mp(params, cpu_count=1):
     return results
 
 
+def find_all_days(params):
+    symbols = common.get_list_of_symbols_with_daily_chart()
+
+    results = []
+    for symbol in symbols:
+        files = common.get_intraday_chart_files_for(symbol)
+
+        for file in files:
+            date = file.replace(".csv", "")[-8:]
+
+            df = common.get_intraday_chart_for(symbol, date)
+            t_ = df.Time.to_list()
+            price = np.array(df.Close.to_list())
+            volume = np.array(df.Volume.to_list())
+
+            val = sum(price * volume)
+
+            print(file + date + "   %sM" % int(val / 10000000), end="")
+
+            if val > params['min_value_traded']:
+                results.append([date, symbol])
+                print("  <----")
+            else:
+                print("")
+
+    return results
+
+
 def get_default_params():
     params = {
-        'day_high_above': 1,
+        'min_value_traded': 10000000,
+
+        'day_high_above': 10,
         'day_open_above': 1,
-        'min_gap_up': 10,
-        'min_gap_up_volume': 1000000,
-        'min_range': 20,
-        'min_range_volume': 20000000,
+
+        'min_gap_up': 5,
+        'min_gap_up_volume': 1,
+        'min_range': None,
+        'min_range_volume': None,
+
+        'file_path': "data\\active_days_all.csv"
     }
 
     return params
 
 
 def generate_active_days_file():
-    movers = find_active_days_mp(get_default_params(), 16)
+    params = get_default_params()
+    # movers = find_active_days_mp(params, cpu_count=10)
+    movers = find_all_days(params)
 
     print(movers)
 
-    data = np.array(movers)
-    df = pd.DataFrame(data=data, columns=['gap', 'date', 'symbol'])
+    if len(movers) > 0:
+        data = np.array(movers)
+        df = pd.DataFrame(data=data, columns=['date', 'symbol'])
 
-    common.make_dir(common.__data_dir)
-    df.to_csv(__active_days_file)
+        common.make_dir(common.__data_dir)
+        df.to_csv(params['file_path'])
 
 
 def _main():

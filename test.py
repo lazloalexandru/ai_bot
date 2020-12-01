@@ -190,7 +190,15 @@ def test7():
     print(z, " ----> ", cu.shift_and_scale(z), "\n")
 
 
-test5()
+def test_dot_prod():
+    a = np.array([1, 2, 3, 4, 5, 6])
+    b = np.array([2, 0, 2, 0, 2, 0])
+
+    c = a * b
+    print(c)
+
+
+test_dot_prod()
 
 
 
