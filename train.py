@@ -34,8 +34,6 @@ def plot_durations(episode_profits):
 def do_training(num_episodes, save_step):
     plt.ion()
 
-    checkpoint_path = "checkpoints\\params_11000"
-
     movers = pd.read_csv('data\\active_days.csv')
     env = Trade_Env(movers, simulation_mode=False)
     h, w = env.state_shape

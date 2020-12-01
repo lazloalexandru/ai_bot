@@ -24,7 +24,6 @@ LAMBDA = 0.001
 GAMMA = 0.99
 
 LEARNING_RATE = 0.0001
-
 TARGET_UPDATE = 10
 
 
@@ -118,16 +117,15 @@ class TrainerBot:
     def play_episode(self, env):
         self._steps += 1
 
-        # Initialize the environment and state
         state = env.reset()
 
         print("\nEpisode:", self._steps, "      ", end="")
 
         eps_threshold = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self._steps)
-
         total_reward = 0
 
         gathering_samples_mode_active = len(self._memory) < MIN_SAMPLES_TO_START_TRAINING
+
         if gathering_samples_mode_active:
             print("Gathering samples ...", end="")
         else:
@@ -138,21 +136,17 @@ class TrainerBot:
         while not done:
             # Select and perform an action
             action = self._select_action(state)
-            next_state, reward, _, done = env.step(action.item())
+            next_state, reward, _, _, done = env.step(action.item())
             total_reward += reward
             reward = torch.tensor([reward], device=device)
 
-            # Observe new state
             if done:
                 next_state = None
 
-            # Store the transition in memory
             self._memory.push(state, action, next_state, reward)
 
-            # Move to the next state
             state = next_state
 
-            # Perform one step of the optimization (on the target network)
         self._optimize_model()
 
         if self._steps % TARGET_UPDATE == 0:

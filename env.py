@@ -5,11 +5,11 @@ import random
 import torch
 import pandas as pd
 
-DATA_ROWS = 6
+DATA_ROWS = 5
 DAY_IN_MINUTES = 390
 
 
-def build_state_vector(o, c, h, l, v, b, idx, debug=False):
+def build_state_vector(o, c, h, l, v, avg_price, idx, debug=False):
     """ idx - is the candle index in range 0 ... 390 """
     padding_size = DAY_IN_MINUTES - (idx + 1)
     padding = [0] * padding_size
@@ -18,7 +18,6 @@ def build_state_vector(o, c, h, l, v, b, idx, debug=False):
         print("calc_normalized_state")
         print('len(o)', len(o))
         print('len(v)', len(v))
-        print('len(b)', len(b))
         print('padding_size:', padding_size)
 
     o = np.concatenate((padding, o))
@@ -30,9 +29,14 @@ def build_state_vector(o, c, h, l, v, b, idx, debug=False):
     if debug:
         print('padded len(o)', len(o))
         print('padded len(v)', len(v))
-        print('padded len(b)', len(b))
 
-    state = np.concatenate((o, c, h, l, v, b))
+    if avg_price is None:
+        avg_price = 0
+        position_size = 0
+    else:
+        position_size = 1
+
+    state = np.concatenate((o, c, h, l, v, [avg_price], [position_size]))
 
     return state
 
@@ -49,7 +53,6 @@ class Trade_Env:
 
         self.buy_price = None
         self.buy_price_normalized = None
-        self.buy_locations_vector = ZERO_VEC
 
         self.num_trades = 0
 
@@ -130,14 +133,13 @@ class Trade_Env:
         self.entries = []
         self.exits = []
 
-        self.buy_locations_vector = ZERO_VEC
         self.buy_price = None
         self.buy_price_normalized = None
 
         self.num_trades = 0
 
         if debug:
-            print("RESET", self.idx, self._time[-1], self._time[self.idx], len(self.buy_locations_vector))
+            print("RESET", self.idx, self._time[-1], self._time[self.idx])
 
         self._calc_states(debug)
 
@@ -155,7 +157,7 @@ class Trade_Env:
         if debug:
             print("calc_state len(o)", len(o), "idx:", self.idx)
 
-        s = build_state_vector(o, c, h, l, v, self.buy_locations_vector, self.idx, debug)
+        s = build_state_vector(o, c, h, l, v, self.buy_price, self.idx, debug)
 
         self._state_normalized = torch.tensor(s, dtype=torch.float).unsqueeze(0).unsqueeze(0).to("cuda")
 
@@ -168,14 +170,14 @@ class Trade_Env:
         if debug:
             print("calc_state len(o)", len(o), "idx:", self.idx)
 
-        self._state = build_state_vector(o, c, h, l, v, self.buy_locations_vector, self.idx, debug)
+        self._state = build_state_vector(o, c, h, l, v, self.buy_price, self.idx, debug)
 
         # print(self.idx, self.close_idx, self._time[-1], self._time[self.idx], self.buy_locations_vector)
         # print(self.idx, self.buy_locations_vector, self.buy_indexes)
 
     def step(self, action, debug=False):
         if debug:
-            print("STEP", self.idx, self._time[-1], self._time[self.idx], len(self.buy_locations_vector))
+            print("STEP", self.idx, self._time[-1], self._time[self.idx])
 
         done = False
         reward = 0
@@ -196,7 +198,6 @@ class Trade_Env:
 
                 reward = spn - bpn
 
-                self.buy_locations_vector = ZERO_VEC
                 self.buy_price_normalized = None
 
                 if self.simulation_mode:
@@ -223,7 +224,6 @@ class Trade_Env:
                     buy_price_normalized = self._close_n[self.idx]
 
                     self.buy_price_normalized = buy_price_normalized
-                    self.buy_locations_vector[self.idx] = 1
 
                     if self.simulation_mode:
                         buy_price = self._close[self.idx]
@@ -248,7 +248,6 @@ class Trade_Env:
                     reward = spn - bpn
 
                     self.buy_price_normalized = None
-                    self.buy_locations_vector = ZERO_VEC
 
                     if self.simulation_mode:
                         buy_price = self.buy_price
@@ -312,6 +311,7 @@ class Trade_Env:
         # if True:
         if len(self.entries_normalized) > 0:
             s = self._state
+            s = s[:-2]
             s = s.reshape(DATA_ROWS, DAY_IN_MINUTES)
 
             o = s[0]
