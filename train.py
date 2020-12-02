@@ -35,7 +35,10 @@ def do_training(params):
     plt.ion()
 
     bot = TrainerBot(params)
-    bot.restore_checkpoint(params['restore_checkpoint'])
+
+    resume_after = 0
+    if bot.restore_checkpoint(params['restore_checkpoint']):
+        resume_after = params['resume_after']
 
     num_episodes = params['num_episodes']
     save_step = params['save_step']
@@ -46,7 +49,7 @@ def do_training(params):
         plot_durations(bot.episode_profits)
 
         if episode_id % save_step == 0:
-            path = "checkpoints\\params_" + str(params['resume_after'] + episode_id)
+            path = "checkpoints\\params_" + str(resume_after + episode_id)
             bot.save_model(path)
 
     print('Training Complete!')
@@ -57,24 +60,28 @@ def do_training(params):
 
 def get_params():
     params = {
-        'max_epsilon': 0.06,
-        'min_epsilon': 0.05,
-        'lambda':  0.01,
-
-        'num_episodes': 100000,
-        'save_step': 1000,
+        'max_epsilon': 1.0,
+        'min_epsilon': 0.5,
+        'lambda':  0.001,
+        'gamma': 0.99,
+        'learning_rate': 0.001,
 
         'memory_size': 100000,
         'batch_size': 10000,
         'play_batch_size': 100,
         'cpu_count': 1,
 
-        'steps_before_update': 20,
+        'steps_before_update': 100,
+
+        'sim_chart_index': 5400,
 
         'chart_list_file': 'data\\active_days.csv',
 
-        'restore_checkpoint': 'checkpoints\\params_120000',
-        'resume_after': 120000
+        'restore_checkpoint': 'checkpoints\\params_5000',
+        'resume_after': 30,
+
+        'num_episodes': 5000,
+        'save_step': 1000
     }
     return params
 

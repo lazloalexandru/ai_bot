@@ -24,8 +24,11 @@ def select_action(state, max_actions, nn, eps):
             return nn(state).max(1)[1].view(1, 1)
 
 
-def play_chart(nn, eps, movers):
-    env = Trade_Env(movers, simulation_mode=False)
+def play_chart(nn, eps, movers, sim_chart_idx):
+    env = Trade_Env(movers,
+                    simulation_mode=False,
+                    sim_chart_index=sim_chart_idx)
+
     state = env.reset()
 
     total_reward = 0

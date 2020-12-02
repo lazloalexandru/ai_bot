@@ -125,10 +125,10 @@ def sim():
 
         'gen_charts': True,
         'num_episodes': 30,
-        'sim_chart_idx': None,
+        'sim_chart_idx': 5400,
         'base_chart_index': 5400,
-        'training_steps': 120000,
-        'checkpoint_steps': 40000,
+        'training_steps': 5000,
+        'checkpoint_steps': 500,
         'sim_last_checkpoint_only': False
     }
 

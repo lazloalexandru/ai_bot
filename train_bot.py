@@ -15,15 +15,6 @@ import torch.multiprocessing as mp
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-BATCH_SIZE = 20000
-MIN_SAMPLES_TO_START_TRAINING = 20000
-MEMORY_SIZE = 100000
-
-GAMMA = 0.99
-
-LEARNING_RATE = 0.0001
-
-
 class TrainerBot:
     def __init__(self, params):
         self._movers = None
@@ -33,6 +24,9 @@ class TrainerBot:
             self._movers = pd.read_csv(path)
         else:
             print("ERROR! Could not open file: ", path)
+
+        self._batch_size = params['batch_size']
+        self._gamma = params['gamma']
 
         env = Trade_Env(self._movers, simulation_mode=False)
         self.h, self.w = env.state_shape
@@ -49,9 +43,9 @@ class TrainerBot:
 
         self._memory = ReplayMemory(params['memory_size'])
 
-        self.reset()
+        self.reset(params)
 
-    def reset(self):
+    def reset(self, params):
 
         self._policy_net = DQN(self.h, self.w, self.o).to(device)
         self._policy_net.share_memory()
@@ -62,26 +56,32 @@ class TrainerBot:
         self._episode_profits = []
         self._steps = 0
 
-        self._optimizer = optim.Adam(self._policy_net.parameters(), lr=LEARNING_RATE)
+        self._optimizer = optim.Adam(self._policy_net.parameters(), lr=params['learning_rate'])
 
     def restore_checkpoint(self, path):
+        res = False
+
         if os.path.isfile(path):
             self._policy_net.load_state_dict(torch.load(path))
             self._target_net = DQN(self.h, self.w, self.o).to(device)
             self._target_net.load_state_dict(self._policy_net.state_dict())
             self._target_net.eval()
 
+            res = True
+
             print("Loaded checkpoint:", path)
         else:
             print(colored("Checkpoint" + path + "not found!", color="yellow"))
+
+        return res
 
     def save_model(self, path):
         torch.save(self._target_net.state_dict(), path)
 
     def _optimize_model(self):
-        if len(self._memory) < MIN_SAMPLES_TO_START_TRAINING:
+        if len(self._memory) < self._batch_size:
             return
-        transitions = self._memory.sample(BATCH_SIZE)
+        transitions = self._memory.sample(self._batch_size)
         batch = Transition(*zip(*transitions))
 
         # Compute a mask of non-final states and concatenate the batch elements
@@ -94,9 +94,9 @@ class TrainerBot:
 
         state_action_values = self._policy_net(state_batch).gather(1, action_batch)
 
-        next_action_values = torch.zeros(BATCH_SIZE, device=device)
+        next_action_values = torch.zeros(self._batch_size, device=device)
         next_action_values[non_final_mask] = self._target_net(non_final_next_states).max(1)[0].detach()
-        expected_state_action_values = (next_action_values * GAMMA) + reward_batch
+        expected_state_action_values = (next_action_values * self._gamma) + reward_batch
 
         loss = F.smooth_l1_loss(state_action_values.float(), expected_state_action_values.unsqueeze(1).float())
 
@@ -130,7 +130,7 @@ class TrainerBot:
         # PLAY Section
 
         if cpu_count == 1:
-            transactions, total_reward = play_chart(self._policy_net, eps, self._movers)
+            transactions, total_reward = play_chart(self._policy_net, eps, self._movers, p['sim_chart_index'])
 
             for t in transactions:
                 self._memory.push(t)
