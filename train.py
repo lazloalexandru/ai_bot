@@ -31,23 +31,22 @@ def plot_durations(episode_profits):
         display.display(plt.gcf())
 
 
-def do_training(num_episodes, save_step):
+def do_training(params):
     plt.ion()
 
-    movers = pd.read_csv('data\\active_days.csv')
-    env = Trade_Env(movers, simulation_mode=False)
-    h, w = env.state_shape
-    print("State Shape: ", h, w)
+    bot = TrainerBot(params)
+    bot.restore_checkpoint(params['restore_checkpoint'])
 
-    bot = TrainerBot(h, w, env.num_actions)
+    num_episodes = params['num_episodes']
+    save_step = params['save_step']
 
-    for i in range(1, num_episodes+1):
-        bot.play_episode(env)
+    for episode_id in range(1, num_episodes+1):
+        bot.train_episode(params)
 
         plot_durations(bot.episode_profits)
 
-        if i % save_step == 0:
-            path = "checkpoints\\params_" + str(i)
+        if episode_id % save_step == 0:
+            path = "checkpoints\\params_" + str(params['resume_after'] + episode_id)
             bot.save_model(path)
 
     print('Training Complete!')
@@ -56,5 +55,30 @@ def do_training(num_episodes, save_step):
     plt.show()
 
 
-do_training(num_episodes=50000, save_step=1000)
+def get_params():
+    params = {
+        'max_epsilon': 0.06,
+        'min_epsilon': 0.05,
+        'lambda':  0.01,
+
+        'num_episodes': 100000,
+        'save_step': 1000,
+
+        'memory_size': 100000,
+        'batch_size': 10000,
+        'play_batch_size': 100,
+        'cpu_count': 1,
+
+        'steps_before_update': 20,
+
+        'chart_list_file': 'data\\active_days.csv',
+
+        'restore_checkpoint': 'checkpoints\\params_120000',
+        'resume_after': 120000
+    }
+    return params
+
+
+if __name__ == '__main__':
+    do_training(get_params())
 

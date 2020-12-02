@@ -3,6 +3,7 @@ import pandas as pd
 from ai_player import play_chart
 from env import Trade_Env
 import math
+import random
 from ai_memory import ReplayMemory
 from ai_memory import Transition
 import torch
@@ -10,7 +11,7 @@ from model import DQN
 import torch.optim as optim
 import torch.nn.functional as F
 import os
-import torch.multiprocessing as mp
+import multiprocessing as mp
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -145,17 +146,23 @@ class TrainerBot:
             for res in mp_results:
                 transactions, total_reward = res.get(timeout=1)
                 for t in transactions:
-                    self._memory.push(t)
+                    print(t)
+                    '''
+                    state = t[0]
+                    action = t[1]
+                    next_state = t[2]
+                    reward = t[3]
+                    reward = torch.tensor([reward], device=device)
 
+                    self._memory.push(Transition(state, action, next_state, reward))
+                    '''
                 self.episode_profits.append(total_reward)
 
         #######################################################################################
         # TRAINING Section
 
         self._optimize_model()
-
-        if self._steps % p['steps_before_update'] == 0:
-            self._target_net.load_state_dict(self._policy_net.state_dict())
+        self._target_net.load_state_dict(self._policy_net.state_dict())
 
         #######################################################################################
 

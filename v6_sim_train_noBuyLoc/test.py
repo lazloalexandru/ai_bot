@@ -197,9 +197,6 @@ def test_dot_prod():
     c = a * b
     print(c)
 
-    for i in range(12):
-        print(i)
-
 
 test_dot_prod()
 

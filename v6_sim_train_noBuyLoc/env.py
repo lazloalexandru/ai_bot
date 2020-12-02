@@ -309,8 +309,7 @@ class Trade_Env:
 
     def save_chart(self, filename=None):
         # if True:
-        print("Save Chart: ", len(self.entries))
-        if len(self.entries) > 0:
+        if len(self.entries_normalized) > 0:
             s = self._state
             s = s[:-2]
             s = s.reshape(DATA_ROWS, DAY_IN_MINUTES)
@@ -334,7 +333,7 @@ class Trade_Env:
             if filename is None:
                 filename = self.symbol
             else:
-                filename = self.symbol + "_" + self.date + "_" + filename
+                filename = self.symbol + "_" + filename
 
             images_dir_path = "trades\\"
             cu.show_1min_chart_normalized(dx,

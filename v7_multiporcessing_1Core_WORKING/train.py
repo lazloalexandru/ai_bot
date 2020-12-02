@@ -1,16 +1,9 @@
-from termcolor import colored
 from env import Trade_Env
 from train_bot import TrainerBot
-import math
-import random
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
-from ai_memory import ReplayMemory
-from ai_memory import Transition
 import torch
-import torch.nn.functional as F
-import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 is_ipython = 'inline' in matplotlib.get_backend()
@@ -38,25 +31,22 @@ def plot_durations(episode_profits):
         display.display(plt.gcf())
 
 
-def do_training(num_episodes, save_step):
+def do_training(params):
     plt.ion()
 
-    checkpoint_path = "checkpoints\\params_11000"
+    bot = TrainerBot(params)
+    bot.restore_checkpoint(params['restore_checkpoint'])
 
-    movers = pd.read_csv('data\\active_days.csv')
-    env = Trade_Env(movers, simulation_mode=False)
-    _, _, h, w = env.state_shape
-    print("State Shape: ", h, w)
+    num_episodes = params['num_episodes']
+    save_step = params['save_step']
 
-    bot = TrainerBot(h, w, env.num_actions)
-
-    for i in range(1, num_episodes+1):
-        bot.train_episode(env)
+    for episode_id in range(1, num_episodes+1):
+        bot.train_episode(params)
 
         plot_durations(bot.episode_profits)
 
-        if i % save_step == 0:
-            path = "checkpoints\\params_" + str(i)
+        if episode_id % save_step == 0:
+            path = "checkpoints\\params_" + str(episode_id)
             bot.save_model(path)
 
     print('Training Complete!')
@@ -65,5 +55,27 @@ def do_training(num_episodes, save_step):
     plt.show()
 
 
-do_training(num_episodes=5000, save_step=500)
+def get_params():
+    params = {
+        'max_epsilon': 1.0,
+        'min_epsilon': 0.05,
+        'lambda':  0.01,
+
+        'num_episodes': 5000,
+        'save_step': 100,
+
+        'memory_size': 100000,
+        'batch_size': 10000,
+        'play_batch_size': 100,
+        'cpu_count': 2,
+
+
+        'chart_list_file': 'data\\active_days.csv',
+        'restore_checkpoint': 'checkpoints\\params_98000'
+    }
+    return params
+
+
+if __name__ == '__main__':
+    do_training(get_params())
 

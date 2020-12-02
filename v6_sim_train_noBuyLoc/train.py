@@ -1,16 +1,9 @@
-from termcolor import colored
 from env import Trade_Env
 from train_bot import TrainerBot
-import math
-import random
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
-from ai_memory import ReplayMemory
-from ai_memory import Transition
 import torch
-import torch.nn.functional as F
-import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 is_ipython = 'inline' in matplotlib.get_backend()
@@ -41,14 +34,13 @@ def plot_durations(episode_profits):
 def do_training(num_episodes, save_step):
     plt.ion()
 
-    checkpoint_path = "checkpoints\\params_11000"
-
     movers = pd.read_csv('data\\active_days.csv')
     env = Trade_Env(movers, simulation_mode=False)
-    _, _, h, w = env.state_shape
+    h, w = env.state_shape
     print("State Shape: ", h, w)
 
     bot = TrainerBot(h, w, env.num_actions)
+    bot.restore_checkpoint('checkpoints\\params_98000')
 
     for i in range(1, num_episodes+1):
         bot.train_episode(env)
@@ -56,7 +48,7 @@ def do_training(num_episodes, save_step):
         plot_durations(bot.episode_profits)
 
         if i % save_step == 0:
-            path = "checkpoints\\params_" + str(i)
+            path = "checkpoints\\params_" + str(98000 + i)
             bot.save_model(path)
 
     print('Training Complete!')
@@ -65,5 +57,5 @@ def do_training(num_episodes, save_step):
     plt.show()
 
 
-do_training(num_episodes=5000, save_step=500)
+do_training(num_episodes=52000, save_step=1000)
 

@@ -124,12 +124,12 @@ def sim():
         'active_days_file': 'data\\active_days.csv',
 
         'gen_charts': True,
-        'num_episodes': 30,
-        'sim_chart_idx': None,
+        'num_episodes': 10,
+        'sim_chart_idx': 5400,
         'base_chart_index': 5400,
-        'training_steps': 120000,
-        'checkpoint_steps': 40000,
-        'sim_last_checkpoint_only': False
+        'training_steps': 50000,
+        'checkpoint_steps': 1000,
+        'sim_last_checkpoint_only': True
     }
 
     simulate_checkpoints(params)
