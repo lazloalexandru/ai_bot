@@ -68,7 +68,6 @@ def load_data(training_set=True):
 
     for i in range(start_idx, end_idx):
         state = chart_data[i][:-1]
-        state = np.reshape(state, (5, 390))
         state = torch.tensor(state, dtype=torch.float).unsqueeze(0).to("cuda")
 
         target = int(chart_data[i][-1])
