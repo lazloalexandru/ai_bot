@@ -365,7 +365,7 @@ def database_info():
     print(" - " + str(len(data)) + " stocks with Intraday chart samples")
 
 
-def normalize_middle(x):
+def normalize(x):
     range_ = 0
 
     if len(x) > 1:
@@ -382,28 +382,6 @@ def normalize_middle(x):
         range_ = abs(x[0])
 
     if range_ > 0:
-        x = x / range_
-
-    return x
-
-
-def normalize_0_1(x):
-    range_ = 0
-
-    if len(x) > 1:
-        mn = min(x)
-        mx = max(x)
-        range_ = mx - mn
-
-        if range_ > 0:
-            x = x - mn
-        else:
-            range_ = mx
-
-    elif len(x) == 1:
-        range_ = x[0]
-
-    if range_ != 0:
         x = x / range_
 
     return x

@@ -190,35 +190,6 @@ def test7():
     print(z, " ----> ", cu.shift_and_scale(z), "\n")
 
 
-def test8():
-    x = [0, 0, 0, 0, 0, 0]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = [0, 5, 12, 0, 1, -3]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = []
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = [0, 5, 5, 5, 5, 10]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = [5, 5, 5, 5, 5, 5]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = [5]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = [0]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = [-5, -5]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = [-5, -15, 0, 0, 0, -20]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-
 def test_dot_prod():
     a = np.array([1, 2, 3, 4, 5, 6])
     b = np.array([2, 0, 2, 0, 2, 0])
@@ -226,11 +197,8 @@ def test_dot_prod():
     c = a * b
     print(c)
 
-    for i in range(12):
-        print(i)
 
-
-test8()
+test_dot_prod()
 
 
 

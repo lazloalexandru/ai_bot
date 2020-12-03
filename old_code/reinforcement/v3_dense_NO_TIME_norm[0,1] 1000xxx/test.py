@@ -105,7 +105,7 @@ def test5():
         s, _, _ = env.step(0, debug=True)
         s = s.to("cpu")
         print(s.shape)
-        z = np.reshape(s, (6, 390))
+        z = np.reshape(s, (7, 390))
         print(z)
 
     env.save_normalized_chart()
@@ -113,124 +113,19 @@ def test5():
 
 def test6():
     x = [0, 5, 12, 0, 1, -3]
-    print(x, " => ", cu.normalize_middle(np.array(x)))
+    x = cu.normalize_middle(np.array(x))
+    print(x)
 
     x = []
-    print(x, " => ", cu.normalize_middle(np.array(x)))
-
-    x = [0, 5, 5, 5, 5, 10]
-    print(x, " => ", cu.normalize_middle(np.array(x)))
+    x = cu.normalize_middle(np.array(x))
+    print(x)
 
     x = [5, 5, 5, 5, 5, 5]
-    print(x, " => ", cu.normalize_middle(np.array(x)))
-
-    x = [5]
-    print(x, " => ", cu.normalize_middle(np.array(x)))
-
-    x = [0]
-    print(x, " => ", cu.normalize_middle(np.array(x)))
-
-    x = [-5, -5]
-    print(x, " => ", cu.normalize_middle(np.array(x)))
-
-    x = [-5, -15, 0, 0, 0, -20]
-    print(x, " => ", cu.normalize_middle(np.array(x)))
+    x = cu.normalize_middle(np.array(x))
+    print(x)
 
 
-def test7():
-    x = [0, 5, 12, 0, 1, -3]
-    y = cu.normalize_middle(np.array(x))
-    print(x, " => ", y)
-    print(cu.shift_and_scale(y), "\n")
-
-    x = []
-    y = cu.normalize_middle(np.array(x))
-    print(x, " => ", y)
-    print(cu.shift_and_scale(y), "\n")
-
-    x = [0, 5, 5, 5, 5, 10]
-    y = cu.normalize_middle(np.array(x))
-    print(x, " => ", y)
-    print(cu.shift_and_scale(y), "\n")
-
-    x = [5, 5, 5, 5, 5, 5]
-    y = cu.normalize_middle(np.array(x))
-    print(x, " => ", y)
-    print(cu.shift_and_scale(y), "\n")
-
-    x = [5]
-    y = cu.normalize_middle(np.array(x))
-    print(x, " => ", y)
-    print(cu.shift_and_scale(y), "\n")
-
-    x = [0]
-    y = cu.normalize_middle(np.array(x))
-    print(x, " => ", y)
-    print(cu.shift_and_scale(y), "\n")
-
-    x = [-5, -5]
-    y = cu.normalize_middle(np.array(x))
-    print(x, " => ", y)
-    print(cu.shift_and_scale(y), "\n")
-
-    x = [-5, -15, 0, 0, 0, -20]
-    y = cu.normalize_middle(np.array(x))
-    print(x, " => ", y)
-    print(cu.shift_and_scale(y), "\n")
-
-    z = -0.65
-    print(z, " ----> ", cu.shift_and_scale([z]), "\n")
-    z = [-0.65]
-    print(z, " ----> ", cu.shift_and_scale(z), "\n")
-    z = [0]
-    print(z, " ----> ", cu.shift_and_scale(z), "\n")
-    z = [1]
-    print(z, " ----> ", cu.shift_and_scale(z), "\n")
-    z = [-1]
-    print(z, " ----> ", cu.shift_and_scale(z), "\n")
-
-
-def test8():
-    x = [0, 0, 0, 0, 0, 0]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = [0, 5, 12, 0, 1, -3]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = []
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = [0, 5, 5, 5, 5, 10]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = [5, 5, 5, 5, 5, 5]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = [5]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = [0]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = [-5, -5]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-    x = [-5, -15, 0, 0, 0, -20]
-    print(x, " => ", cu.normalize_0_1(np.array(x)))
-
-
-def test_dot_prod():
-    a = np.array([1, 2, 3, 4, 5, 6])
-    b = np.array([2, 0, 2, 0, 2, 0])
-
-    c = a * b
-    print(c)
-
-    for i in range(12):
-        print(i)
-
-
-test8()
+test6()
 
 
 

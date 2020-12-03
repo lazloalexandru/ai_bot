@@ -1,91 +1,141 @@
-from env import Trade_Env
-from train_bot import TrainerBot
-import pandas as pd
-import matplotlib
-import matplotlib.pyplot as plt
+from __future__ import print_function
+import argparse
 import torch
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-is_ipython = 'inline' in matplotlib.get_backend()
-if is_ipython:
-    from IPython import display
-
-
-def plot_durations(episode_profits):
-    plt.figure(2)
-    plt.clf()
-    durations_t = torch.tensor(episode_profits, dtype=torch.float)
-    plt.title('Training...')
-    plt.xlabel('Episode')
-    plt.ylabel('Profit')
-    plt.plot(durations_t.numpy())
-    # Take 100 episode averages and plot them too
-    if len(durations_t) >= 100:
-        means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
-        means = torch.cat((torch.zeros(99), means))
-        plt.plot(means.numpy())
-
-    plt.pause(0.001)  # pause a bit so that plots are updated
-    if is_ipython:
-        display.clear_output(wait=True)
-        display.display(plt.gcf())
+import torch.nn as nn
+import torch.nn.functional as F
+import numpy as np
+import torch.optim as optim
+from torch.optim.lr_scheduler import StepLR
 
 
-def do_training(params):
-    plt.ion()
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        f = 128
+        self.conv1 = nn.Conv2d(1, f, kernel_size=(5, 3), stride=1)
+        self.bn1 = nn.BatchNorm2d(f)
+        self.conv2 = nn.Conv2d(f, f, kernel_size=(1, 3), stride=1)
+        self.bn2 = nn.BatchNorm2d(f)
+        self.conv3 = nn.Conv2d(f, f, kernel_size=(1, 3), stride=1)
+        self.bn3 = nn.BatchNorm2d(f)
 
-    bot = TrainerBot(params)
+        def conv2d_size_out(size, kernel_size=3):
+            return size - kernel_size + 1
 
-    resume_after = 0
-    if bot.restore_checkpoint(params['restore_checkpoint']):
-        resume_after = params['resume_after']
+        convw = conv2d_size_out(390)
+        convw = conv2d_size_out(convw)
+        convw = conv2d_size_out(convw)
+        convh = 1
 
-    num_episodes = params['num_episodes']
-    save_step = params['save_step']
+        linear_input_size = convw * convh * f
+        print("Dense Layer %s x %s" % (linear_input_size, 2))
 
-    for episode_id in range(1, num_episodes+1):
-        bot.train_episode(params)
+        self.fc1 = nn.Linear(linear_input_size, 2048)
+        self.fc2 = nn.Linear(2048, 2)
 
-        plot_durations(bot.episode_profits)
-
-        if episode_id % save_step == 0:
-            path = "checkpoints\\params_" + str(resume_after + episode_id)
-            bot.save_model(path)
-
-    print('Training Complete!')
-
-    plt.ioff()
-    plt.show()
+    def forward(self, x):
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.relu(self.fc1(x.view(x.size(0), -1)))
+        x = self.fc2(x)
+        output = F.log_softmax(x, dim=1)
+        return output
 
 
-def get_params():
-    params = {
-        'max_epsilon': 1.0,
-        'min_epsilon': 0.5,
-        'lambda':  0.001,
-        'gamma': 0.99,
-        'learning_rate': 0.001,
+def train(model, device, train_loader, optimizer, epoch):
+    model.train()
 
-        'memory_size': 100000,
-        'batch_size': 10000,
-        'play_batch_size': 100,
-        'cpu_count': 1,
+    log_interval = 1
 
-        'steps_before_update': 100,
+    for batch_idx, (data, target) in enumerate(train_loader):
+        data, target = data.to(device), target.to(device)
+        optimizer.zero_grad()
+        output = model(data)
 
-        'sim_chart_index': 5400,
+        loss = F.nll_loss(output.float(), target)
+        loss.backward()
+        optimizer.step()
+        if batch_idx % log_interval == 0:
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx * len(data), len(train_loader.dataset),
+                100. * batch_idx / len(train_loader), loss.item()))
 
-        'chart_list_file': 'data\\active_days.csv',
 
-        'restore_checkpoint': 'checkpoints\\params_5000',
-        'resume_after': 30,
+def test(model, device, test_loader):
+    model.eval()
+    test_loss = 0
+    correct = 0
+    with torch.no_grad():
+        for data, target in test_loader:
+            data, target = data.to(device), target.to(device)
 
-        'num_episodes': 5000,
-        'save_step': 1000
-    }
-    return params
+            output = model(data)
+
+            loss = F.nll_loss(output.float(), target)
+            test_loss += loss  # F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
+            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            correct += pred.eq(target.view_as(pred)).sum().item()
+
+    test_loss /= len(test_loader.dataset)
+
+    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+        test_loss, correct, len(test_loader.dataset),
+        100. * correct / len(test_loader.dataset)))
+
+
+def load_data(training_set=True):
+    byte_data = np.fromfile('data\\dataset.dat', dtype='float')
+
+    num_bytes = len(byte_data)
+    rows = int(num_bytes / 1951)
+
+    chart_data = byte_data.reshape(rows, 1951)
+    data = []
+
+    if training_set:
+        start_idx = 1
+        end_idx = int(rows*0.8) + 1
+    else:
+        start_idx = int(rows * 0.8) + 2
+        end_idx = rows
+
+    for i in range(start_idx, end_idx):
+        state = chart_data[i][:-1]
+        state = np.reshape(state, (5, 390))
+        state = torch.tensor(state, dtype=torch.float).unsqueeze(0).to("cuda")
+
+        target = int(chart_data[i][-1])
+
+        data.append((state, target))
+    return data
+
+
+def main():
+    # Training settings
+
+    device = torch.device("cuda")
+
+    train_kwargs = {'batch_size': 2000}
+    test_kwargs = {'batch_size': 500}
+
+    dataset1 = load_data(training_set=True)
+    dataset2 = load_data(training_set=False)
+
+    train_loader = torch.utils.data.DataLoader(dataset1, **train_kwargs)
+    test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
+
+    model = Net().to(device)
+
+    optimizer = optim.Adadelta(model.parameters(), lr=1)
+    # optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    for epoch in range(1, 10):
+        train(model, device, train_loader, optimizer, epoch)
+        test(model, device, test_loader)
+
+    torch.save(model.state_dict(), "trader.pt")
 
 
 if __name__ == '__main__':
-    do_training(get_params())
-
+    main()

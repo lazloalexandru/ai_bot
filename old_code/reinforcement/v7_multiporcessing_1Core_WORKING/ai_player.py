@@ -24,11 +24,8 @@ def select_action(state, max_actions, nn, eps):
             return nn(state).max(1)[1].view(1, 1)
 
 
-def play_chart(nn, eps, movers, sim_chart_idx):
-    env = Trade_Env(movers,
-                    simulation_mode=False,
-                    sim_chart_index=sim_chart_idx)
-
+def play_chart(nn, eps, movers):
+    env = Trade_Env(movers, simulation_mode=False)
     state = env.reset()
 
     total_reward = 0
@@ -44,12 +41,13 @@ def play_chart(nn, eps, movers, sim_chart_idx):
         if done:
             next_state = None
 
-        t_reward = torch.tensor([reward], device=device)
-        memory.append(Transition(state, action, next_state, t_reward))
+        print("STATE:", state)
+        # memory.append([state, action, next_state, reward])
+        memory.append([1])
 
         state = next_state
 
-    return memory, total_reward
+    return 1, 2
 
 
 
