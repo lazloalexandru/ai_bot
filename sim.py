@@ -1,11 +1,11 @@
-from chart import Trade_Env
+from env import Trade_Env
 import numpy as np
 import pandas as pd
 import common as cu
 import matplotlib
 import matplotlib.pyplot as plt
 import torch
-from model import DQN
+from model import Net
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -28,7 +28,7 @@ def simulate_on_nn(path, params):
     episode_rewards = []
     all_gains = []
 
-    nn = DQN(h, w, n_actions).to(device)
+    nn = Net(h, w, n_actions).to(device)
     nn.load_state_dict(torch.load(path))
     nn.eval()
 
