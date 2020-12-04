@@ -12,7 +12,7 @@ class Net(nn.Module):
         self.bn2 = nn.BatchNorm2d(f)
 
         linear_input_size = 49408
-        print("Dense Layer %s x %s" % (linear_input_size, 2))
+        print("Dense Layer %s x %s" % (linear_input_size, 7))
 
         self.fc1 = nn.Linear(linear_input_size, 2048)
         self.fc2 = nn.Linear(2048, 2)
