@@ -12,10 +12,11 @@ class Net(nn.Module):
         self.bn2 = nn.BatchNorm2d(f)
 
         linear_input_size = 49408
-        print("Dense Layer %s x %s" % (linear_input_size, 7))
+        outputs = 7
+        print("Dense Layer %s x %s" % (linear_input_size, outputs))
 
         self.fc1 = nn.Linear(linear_input_size, 2048)
-        self.fc2 = nn.Linear(2048, 2)
+        self.fc2 = nn.Linear(2048, outputs)
 
     def forward(self, x):
         x = F.relu(self.bn1(self.conv1(x)))

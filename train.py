@@ -1,15 +1,38 @@
 from __future__ import print_function
-import argparse
 import os
-
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import torch.optim as optim
 from termcolor import colored
-from torch.optim.lr_scheduler import StepLR
 from model import Net
+
+import matplotlib
+import matplotlib.pyplot as plt
+
+is_ipython = 'inline' in matplotlib.get_backend()
+if is_ipython:
+    from IPython import display
+
+
+def plot_values(values):
+    plt.figure(2)
+    plt.clf()
+    durations_t = torch.tensor(values, dtype=torch.float)
+    plt.title('Training...')
+    plt.xlabel('Episode')
+    plt.ylabel('Profit')
+    plt.plot(durations_t.numpy())
+    # Take 100 episode averages and plot them too
+    if len(durations_t) >= 100:
+        means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
+        means = torch.cat((torch.zeros(99), means))
+        plt.plot(means.numpy())
+
+    plt.pause(0.001)  # pause a bit so that plots are updated
+    if is_ipython:
+        display.clear_output(wait=True)
+        display.display(plt.gcf())
 
 
 def train(model, device, train_loader, optimizer, epoch):
@@ -47,10 +70,15 @@ def test(model, device, test_loader):
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
+    accuracy = 100. * correct / len(test_loader.dataset)
 
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(test_loader.dataset),
-        100. * correct / len(test_loader.dataset)))
+        test_loss,
+        correct,
+        len(test_loader.dataset),
+        accuracy))
+
+    return accuracy
 
 
 def load_data(dataset_path, training_set=True):
@@ -89,15 +117,31 @@ def load_data(dataset_path, training_set=True):
     return data
 
 
+def get_params():
+    params = {
+        'train_batch': 5000,
+        'test_batch': 5000,
+
+        'num_epochs': 1000,
+        'save_epoch_step': 100,
+        'resume_idx': 200,
+        'dataset_path': 'data\\winner_dataset.dat'
+    }
+
+    return params
+
+
 def main():
-    # Training settings
+    plt.ion()
+
+    p = get_params()
 
     device = torch.device("cuda")
 
-    train_kwargs = {'batch_size': 2000}
-    test_kwargs = {'batch_size': 500}
+    train_kwargs = {'batch_size': p['train_batch']}
+    test_kwargs = {'batch_size': p['test_batch']}
 
-    dataset_path = 'data\\sell_dataset.dat'
+    dataset_path = p['dataset_path']
     dataset1 = load_data(dataset_path, training_set=True)
     dataset2 = load_data(dataset_path, training_set=False)
 
@@ -105,7 +149,7 @@ def main():
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
 
     model = Net().to(device)
-    resume_idx = 200
+    resume_idx = p['resume_idx']
 
     if resume_idx is not None:
         path = "checkpoints\\checkpoint_" + str(resume_idx)
@@ -124,12 +168,22 @@ def main():
     else:
         start_idx = resume_idx
 
+    accuracy_history = []
+
     for epoch in range(start_idx + 1, start_idx + num_epochs + 1):
         train(model, device, train_loader, optimizer, epoch)
-        test(model, device, test_loader)
+        accuracy = test(model, device, test_loader)
 
+        accuracy_history.append(accuracy)
+        plot_values(accuracy_history)
+        
         if epoch % 100 == 0:
             torch.save(model.state_dict(), "checkpoints\\checkpoint_" + str(epoch))
+
+    print(colored('Training Complete!', color="green"))
+
+    plt.ioff()
+    plt.show()
 
 
 if __name__ == '__main__':

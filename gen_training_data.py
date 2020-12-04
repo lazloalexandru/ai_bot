@@ -126,7 +126,7 @@ def gen_winner_dataset_mp():
     xxx = np.array(results)
     print(xxx.shape)
 
-    xxx.tofile('data\\buy_dataset.dat')
+    xxx.tofile('data\\winner_dataset.dat')
 
 
 def _gen_tops_input(xxx, i):
