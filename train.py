@@ -1,10 +1,13 @@
 from __future__ import print_function
 import argparse
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import torch.optim as optim
+from termcolor import colored
 from torch.optim.lr_scheduler import StepLR
 from model import Net
 
@@ -50,14 +53,17 @@ def test(model, device, test_loader):
         100. * correct / len(test_loader.dataset)))
 
 
-def load_data(training_set=True):
-    byte_data = np.fromfile('data\\dataset.dat', dtype='float')
+def load_data(dataset_path, training_set=True):
+    byte_data = np.fromfile(dataset_path, dtype='float')
 
     num_bytes = len(byte_data)
     rows = int(num_bytes / 1951)
 
     chart_data = byte_data.reshape(rows, 1951)
     data = []
+
+    print(colored("Loading Data From:" + dataset_path, color="green"))
+    print("Dataset Size:", rows)
 
     if training_set:
         start_idx = 1
@@ -74,6 +80,12 @@ def load_data(training_set=True):
         target = int(chart_data[i][-1])
 
         data.append((state, target))
+
+        if i % 1000 == 0:
+            print(".", end="")
+
+    print("")
+
     return data
 
 
@@ -85,22 +97,40 @@ def main():
     train_kwargs = {'batch_size': 2000}
     test_kwargs = {'batch_size': 500}
 
-    dataset1 = load_data(training_set=True)
-    dataset2 = load_data(training_set=False)
+    dataset_path = 'data\\sell_dataset.dat'
+    dataset1 = load_data(dataset_path, training_set=True)
+    dataset2 = load_data(dataset_path, training_set=False)
 
     train_loader = torch.utils.data.DataLoader(dataset1, **train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
 
     model = Net().to(device)
+    resume_idx = 200
+
+    if resume_idx is not None:
+        path = "checkpoints\\checkpoint_" + str(resume_idx)
+        if os.path.isfile(path):
+            model.load_state_dict(torch.load(path))
+            print(colored("Loaded AI state file: " + path, color="green"))
+        else:
+            print(colored("Could not find AI state file: " + path, color="red"))
+            resume_idx = None
 
     optimizer = optim.Adadelta(model.parameters(), lr=1)
     # optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    for epoch in range(1, 2):
+    num_epochs = 1000
+    if resume_idx is None:
+        start_idx = 1
+    else:
+        start_idx = resume_idx
+
+    for epoch in range(start_idx + 1, start_idx + num_epochs + 1):
         train(model, device, train_loader, optimizer, epoch)
         test(model, device, test_loader)
 
-    torch.save(model.state_dict(), "checkpoints\\trader.pt")
+        if epoch % 100 == 0:
+            torch.save(model.state_dict(), "checkpoints\\checkpoint_" + str(epoch))
 
 
 if __name__ == '__main__':
