@@ -46,14 +46,14 @@ def create_padded_state_vector(o, c, h, l, v, idx, debug=False):
         print('idx:', idx)
 
     price = np.concatenate((o, c, h, l))
-    price = cu.normalize_0_1(price)
+    price = cu.scale_to_1(price)
     price = price.reshape(4, idx + 1)
 
     o = price[0]
     c = price[1]
     h = price[2]
     l = price[3]
-    v = cu.normalize_0_1(np.array(v))
+    v = cu.scale_to_1(np.array(v))
 
     padding_size = DAY_IN_MINUTES - (idx + 1)
     padding = [0] * padding_size

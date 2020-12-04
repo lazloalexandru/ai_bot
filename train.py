@@ -117,7 +117,6 @@ def main():
             resume_idx = None
 
     optimizer = optim.Adadelta(model.parameters(), lr=1)
-    # optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     num_epochs = 1000
     if resume_idx is None:

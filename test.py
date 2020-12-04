@@ -1,5 +1,4 @@
 import pandas as pd
-from chart import Trade_Env
 import numpy as np
 from chart import create_padded_state_vector
 from chart import DAY_IN_MINUTES
@@ -230,7 +229,36 @@ def test_dot_prod():
         print(i)
 
 
-test8()
+def test9():
+    x = [0, 5, 12, 0, 1, -3]
+    print(x, " => ", cu.scale_to_1(np.array(x)))
+
+    x = []
+    print(x, " => ", cu.scale_to_1(np.array(x)))
+
+    x = [0, 5, 5, 5, 5, 10]
+    print(x, " => ", cu.scale_to_1(np.array(x)))
+
+    x = [5, 5, 5, 5, 5, 5]
+    print(x, " => ", cu.scale_to_1(np.array(x)))
+
+    x = [5]
+    print(x, " => ", cu.scale_to_1(np.array(x)))
+
+    x = [0]
+    print(x, " => ", cu.scale_to_1(np.array(x)))
+
+    x = [-5, -5]
+    print(x, " => ", cu.scale_to_1(np.array(x)))
+
+    x = [-5, -15, 0, 0, 0, -20]
+    print(x, " => ", cu.scale_to_1(np.array(x)))
+
+    x = [15, 15, 17, 13, 14, 20]
+    print(x, " => ", cu.scale_to_1(np.array(x)))
+
+
+test9()
 
 
 

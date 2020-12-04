@@ -51,22 +51,28 @@ def _gen_winner_input(xxx, i):
 
             gain = 100 * (sell_price / buy_price - 1)
 
-            # print(symbol, df.loc[entry_idx]["Time"], " ", end="", flush=True)
             print(symbol, df.loc[entry_idx]["Time"], " ", end="", flush=True)
             # print(buy_price, sell_price, "%.2f" % gain, "%", end="")
             print("%.2f" % gain, "%   ", end="")
 
             label = 0
 
-            if exit_type == "Timeout":
-                print("BAD - Timeout", flush=True)
-            elif gain > 5 and exit_type == "SELL":
-                print("GOOD", flush=True)
+            if gain < -4:
+                label = 0
+            elif -4 <= gain < 0:
                 label = 1
-            elif gain < 0 and exit_type == "STOP":
-                print("BAD", flush=True)
-            else:
-                print(colored("ERROR XXXXXXXXXXXXXXXXXXX", color="red"), flush=True)
+            elif 0 <= gain < 2:
+                label = 2
+            elif 2 <= gain < 5:
+                label = 3
+            elif 5 <= gain < 10:
+                label = 4
+            elif 10 <= gain < 15:
+                label = 5
+            elif 15 <= gain:
+                label = 6
+
+            print("   ", label)
 
             result = np.concatenate((state, [label]))
 
@@ -263,5 +269,6 @@ def test_training_data():
 
 if __name__ == '__main__':
     # test_training_data()
-    gen_tops_dataset_mp()
+    # gen_tops_dataset_mp()
+    gen_winner_dataset_mp()
 

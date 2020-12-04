@@ -409,6 +409,16 @@ def normalize_0_1(x):
     return x
 
 
+def scale_to_1(x):
+    if len(x) > 0:
+        mx = max(x)
+
+        if mx > 0:
+            x = x / mx
+
+    return x
+
+
 def shift_and_scale(x, scale_factor=5, bias=15):
     x = np.array(x)
     x *= scale_factor
