@@ -121,14 +121,14 @@ def get_params():
         'train_batch': 5000,
         'test_batch': 5000,
 
-        'resume_epoch_idx': 200,
-        'num_epochs': 1000,
-        'checkpoint_at_epoch_step': 50,
+        'resume_epoch_idx': 1000,
+        'num_epochs': 10000,
+        'checkpoint_at_epoch_step': 100,
 
         'change_dataset_at_epoch_step': 20,
 
         'dataset_path': 'data\\winner_datasets\\winner_dataset',
-        'dataset_chunks': 56
+        'dataset_chunks': 50
 
     }
 
@@ -171,7 +171,7 @@ def main():
 
     optimizer = optim.Adadelta(model.parameters(), lr=1)
 
-    num_epochs = 1000
+    num_epochs = p['num_epochs']
     if resume_idx is None:
         start_idx = 1
     else:
@@ -180,10 +180,6 @@ def main():
     accuracy_history = []
 
     reload_data = p['change_dataset_at_epoch_step']
-
-    dataset_path = get_dataset_path(p)
-    dataset1 = load_data(dataset_path, training_set=True)
-    dataset2 = load_data(dataset_path, training_set=False)
 
     for epoch in range(start_idx, start_idx + num_epochs + 1):
         if reload_data is not None:
