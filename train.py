@@ -122,7 +122,7 @@ def get_params():
         'test_batch': 5000,
 
         'resume_epoch_idx': 1000,
-        'num_epochs': 10000,
+        'num_epochs': 50000,
         'checkpoint_at_epoch_step': 100,
 
         'change_dataset_at_epoch_step': 20,
@@ -175,11 +175,15 @@ def main():
     if resume_idx is None:
         start_idx = 1
     else:
-        start_idx = resume_idx
+        start_idx = resume_idx + 1
 
     accuracy_history = []
 
     reload_data = p['change_dataset_at_epoch_step']
+
+    dataset_path = get_dataset_path(p)
+    dataset1 = load_data(dataset_path, training_set=True)
+    dataset2 = load_data(dataset_path, training_set=False)
 
     for epoch in range(start_idx, start_idx + num_epochs + 1):
         if reload_data is not None:
