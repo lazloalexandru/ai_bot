@@ -6,7 +6,7 @@ import numpy as np
 import torch.optim as optim
 from termcolor import colored
 from model import Net
-
+import random
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -15,19 +15,17 @@ if is_ipython:
     from IPython import display
 
 
+def moving_average(x, w):
+    return np.convolve(x, np.ones(w), 'valid') / w
+
+
 def plot_values(values):
     plt.figure(2)
     plt.clf()
-    durations_t = torch.tensor(values, dtype=torch.float)
     plt.title('Training...')
     plt.xlabel('Episode')
-    plt.ylabel('Profit')
-    plt.plot(durations_t.numpy())
-    # Take 100 episode averages and plot them too
-    if len(durations_t) >= 100:
-        means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
-        means = torch.cat((torch.zeros(99), means))
-        plt.plot(means.numpy())
+    plt.ylabel('Accuracy')
+    plt.plot(values)
 
     plt.pause(0.001)  # pause a bit so that plots are updated
     if is_ipython:
@@ -82,6 +80,7 @@ def test(model, device, test_loader):
 
 
 def load_data(dataset_path, training_set=True):
+
     byte_data = np.fromfile(dataset_path, dtype='float')
 
     num_bytes = len(byte_data)
@@ -122,13 +121,28 @@ def get_params():
         'train_batch': 5000,
         'test_batch': 5000,
 
+        'resume_epoch_idx': 200,
         'num_epochs': 1000,
-        'save_epoch_step': 100,
-        'resume_idx': 200,
-        'dataset_path': 'data\\winner_dataset.dat'
+        'checkpoint_at_epoch_step': 50,
+
+        'change_dataset_at_epoch_step': 20,
+
+        'dataset_path': 'data\\winner_datasets\\winner_dataset',
+        'dataset_chunks': 56
+
     }
 
     return params
+
+
+def get_dataset_path(p):
+    if p['dataset_chunks'] > 1:
+        dataset_id = random.randint(0, p['dataset_chunks'] - 1)
+        dataset_path = p['dataset_path'] + "_" + str(dataset_id)
+    else:
+        dataset_path = p['dataset_path']
+
+    return dataset_path
 
 
 def main():
@@ -142,14 +156,9 @@ def main():
     test_kwargs = {'batch_size': p['test_batch']}
 
     dataset_path = p['dataset_path']
-    dataset1 = load_data(dataset_path, training_set=True)
-    dataset2 = load_data(dataset_path, training_set=False)
-
-    train_loader = torch.utils.data.DataLoader(dataset1, **train_kwargs)
-    test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
 
     model = Net().to(device)
-    resume_idx = p['resume_idx']
+    resume_idx = p['resume_epoch_idx']
 
     if resume_idx is not None:
         path = "checkpoints\\checkpoint_" + str(resume_idx)
@@ -170,17 +179,36 @@ def main():
 
     accuracy_history = []
 
-    for epoch in range(start_idx + 1, start_idx + num_epochs + 1):
-        train(model, device, train_loader, optimizer, epoch)
-        accuracy = test(model, device, test_loader)
+    reload_data = p['change_dataset_at_epoch_step']
 
-        accuracy_history.append(accuracy)
-        plot_values(accuracy_history)
-        
-        if epoch % 100 == 0:
-            torch.save(model.state_dict(), "checkpoints\\checkpoint_" + str(epoch))
+    dataset_path = get_dataset_path(p)
+    dataset1 = load_data(dataset_path, training_set=True)
+    dataset2 = load_data(dataset_path, training_set=False)
+
+    for epoch in range(start_idx, start_idx + num_epochs + 1):
+        if reload_data is not None:
+            if epoch % reload_data == 0:
+                dataset_path = get_dataset_path(p)
+                dataset1 = load_data(dataset_path, training_set=True)
+                dataset2 = load_data(dataset_path, training_set=False)
+
+        if len(dataset1) > 0 and len(dataset2) > 0:
+            train_loader = torch.utils.data.DataLoader(dataset1, **train_kwargs)
+            test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
+
+            train(model, device, train_loader, optimizer, epoch)
+            accuracy = test(model, device, test_loader)
+
+            accuracy_history.append(accuracy)
+            plot_values(accuracy_history)
+
+            if epoch % p['checkpoint_at_epoch_step'] == 0:
+                torch.save(model.state_dict(), "checkpoints\\checkpoint_" + str(epoch))
+        else:
+            print(colored("DataSet Too Small!!! Training Data Size: %s    Test Data Size: %s" % (len(dataset1), len(dataset2)), color='red'))
 
     print(colored('Training Complete!', color="green"))
+
 
     plt.ioff()
     plt.show()

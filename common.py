@@ -167,7 +167,9 @@ def show_1min_chart_normalized(df, idx, symbol, date, info, entries, exits, rewa
 def get_time_index(df, date, h, m, s):
     idx = None
 
-    xdate = pd.to_datetime(date, format="%Y-%m-%d")
+    date = str(date).replace("-", "")
+
+    xdate = pd.to_datetime(date, format="%Y%m%d")
 
     xtime = df.iloc[0]["Time"]
     xtime = xtime.replace(year=xdate.year, month=xdate.month, day=xdate.day, hour=h, minute=m, second=s)
