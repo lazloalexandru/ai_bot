@@ -19,13 +19,32 @@ def moving_average(x, w):
     return np.convolve(x, np.ones(w), 'valid') / w
 
 
-def plot_values(values):
-    plt.figure(2)
+def plot_values(accuracy, train_loss, test_loss):
+    fig = plt.figure(2)
     plt.clf()
     plt.title('Training...')
     plt.xlabel('Episode')
     plt.ylabel('Accuracy')
-    plt.plot(values)
+
+    ax1 = plt.gca()
+    color = 'tab:blue'
+    ax1.set_xlabel('Epoch')
+    ax1.set_ylabel('Accuracy', color=color)
+    ax1.plot(accuracy, color=color)
+    ax1.tick_params(axis='y', labelcolor=color)
+    plt.plot(accuracy)
+
+    ax2 = ax1.twinx()
+
+    color = 'tab:orange'
+    ax2.set_ylabel('loss', color=color)
+    ax2.plot(train_loss, color=color)
+    ax2.tick_params(axis='y', labelcolor=color)
+
+    color = 'tab:red'
+    ax2.set_ylabel('loss', color=color)
+    ax2.plot(test_loss, color=color)
+    ax2.tick_params(axis='y', labelcolor=color)
 
     plt.pause(0.001)  # pause a bit so that plots are updated
     if is_ipython:
@@ -36,7 +55,7 @@ def plot_values(values):
 def train(model, device, train_loader, optimizer, epoch):
     model.train()
 
-    log_interval = 1
+    log_interval = 10
 
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
@@ -51,6 +70,8 @@ def train(model, device, train_loader, optimizer, epoch):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
 
+    return loss.item()
+
 
 def test(model, device, test_loader):
     model.eval()
@@ -62,8 +83,11 @@ def test(model, device, test_loader):
 
             output = model(data)
 
+            test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
+            '''
             loss = F.nll_loss(output.float(), target)
             test_loss += loss  # F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
+            '''
             pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -76,7 +100,7 @@ def test(model, device, test_loader):
         len(test_loader.dataset),
         accuracy))
 
-    return accuracy
+    return accuracy, test_loss
 
 
 def load_data(dataset_path, training_set=True):
@@ -116,25 +140,6 @@ def load_data(dataset_path, training_set=True):
     return data
 
 
-def get_params():
-    params = {
-        'train_batch': 5000,
-        'test_batch': 5000,
-
-        'resume_epoch_idx': 1000,
-        'num_epochs': 50000,
-        'checkpoint_at_epoch_step': 100,
-
-        'change_dataset_at_epoch_step': 20,
-
-        'dataset_path': 'data\\winner_datasets\\winner_dataset',
-        'dataset_chunks': 50
-
-    }
-
-    return params
-
-
 def get_dataset_path(p):
     if p['dataset_chunks'] > 1:
         dataset_id = random.randint(0, p['dataset_chunks'] - 1)
@@ -154,8 +159,10 @@ def main():
 
     train_kwargs = {'batch_size': p['train_batch']}
     test_kwargs = {'batch_size': p['test_batch']}
+    cuda_kwargs = {'shuffle': True}
 
-    dataset_path = p['dataset_path']
+    train_kwargs.update(cuda_kwargs)
+    test_kwargs.update(cuda_kwargs)
 
     model = Net().to(device)
     resume_idx = p['resume_epoch_idx']
@@ -178,6 +185,8 @@ def main():
         start_idx = resume_idx + 1
 
     accuracy_history = []
+    train_losses = []
+    test_losses = []
 
     reload_data = p['change_dataset_at_epoch_step']
 
@@ -196,11 +205,13 @@ def main():
             train_loader = torch.utils.data.DataLoader(dataset1, **train_kwargs)
             test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
 
-            train(model, device, train_loader, optimizer, epoch)
-            accuracy = test(model, device, test_loader)
+            train_loss = train(model, device, train_loader, optimizer, epoch)
+            accuracy, test_loss = test(model, device, test_loader)
 
+            train_losses.append(train_loss)
+            test_losses.append(test_loss)
             accuracy_history.append(accuracy)
-            plot_values(accuracy_history)
+            plot_values(accuracy_history, train_losses, test_losses)
 
             if epoch % p['checkpoint_at_epoch_step'] == 0:
                 torch.save(model.state_dict(), "checkpoints\\checkpoint_" + str(epoch))
@@ -209,9 +220,26 @@ def main():
 
     print(colored('Training Complete!', color="green"))
 
-
     plt.ioff()
     plt.show()
+
+
+def get_params():
+    params = {
+        'train_batch': 1000,
+        'test_batch': 5000,
+
+        'resume_epoch_idx': 1600,
+        'num_epochs': 50000,
+        'checkpoint_at_epoch_step': 100,
+
+        'change_dataset_at_epoch_step': 20,
+
+        'dataset_path': 'data\\winner_datasets\\winner_dataset',
+        'dataset_chunks': 50
+    }
+
+    return params
 
 
 if __name__ == '__main__':
