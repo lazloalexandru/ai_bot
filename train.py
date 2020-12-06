@@ -55,7 +55,7 @@ def plot_values(accuracy, train_loss, test_loss):
 def train(model, device, train_loader, optimizer, epoch):
     model.train()
 
-    log_interval = 10
+    log_interval = 5
 
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
@@ -103,41 +103,44 @@ def test(model, device, test_loader):
     return accuracy, test_loss
 
 
-def load_data(dataset_path, training_set=True):
+def load_data(p):
+    dataset_path = get_dataset_path(p)
+
+    print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
     byte_data = np.fromfile(dataset_path, dtype='float')
 
     num_bytes = len(byte_data)
-    rows = int(num_bytes / 1951)
+    num_rows = int(num_bytes / 1951)
 
-    chart_data = byte_data.reshape(rows, 1951)
+    chart_data = byte_data.reshape(num_rows, 1951)
     data = []
 
-    print(colored("Loading Data From:" + dataset_path, color="green"))
-    print("Dataset Size:", rows)
+    print("Dataset Size:", num_rows, "   <-   Seed:", p['seed'])
 
-    if training_set:
-        start_idx = 1
-        end_idx = int(rows*0.8) + 1
-    else:
-        start_idx = int(rows * 0.8) + 2
-        end_idx = rows
+    split_coefficient = p['split_coefficient']
+    training_set_size = int(num_rows * 0.8)
+    test_set_size = num_rows - training_set_size
 
-    for i in range(start_idx, end_idx):
+    print("Training Dataset Size:", training_set_size)
+    print("Test Dataset Size:", test_set_size)
+
+    for i in range(num_rows):
         state = chart_data[i][:-1]
         state = np.reshape(state, (5, 390))
         state = torch.tensor(state, dtype=torch.float).unsqueeze(0).to("cuda")
 
         target = int(chart_data[i][-1])
+        target = torch.tensor(target).to("cuda")
 
         data.append((state, target))
 
-        if i % 1000 == 0:
+        if i % 5000 == 0:
             print(".", end="")
 
     print("")
 
-    return data
+    return data, training_set_size, test_set_size
 
 
 def get_dataset_path(p):
@@ -188,25 +191,32 @@ def main():
     train_losses = []
     test_losses = []
 
-    reload_data = p['change_dataset_at_epoch_step']
+    reload_data_steps = p['change_dataset_at_epoch_step']
 
-    dataset_path = get_dataset_path(p)
-    dataset1 = load_data(dataset_path, training_set=True)
-    dataset2 = load_data(dataset_path, training_set=False)
+    dataset, train_size, test_size = load_data(p)
+    training_data, test_data = torch.utils.data.random_split(
+        dataset, [train_size, test_size], generator=torch.Generator().manual_seed(42)
+    )
+
+    reload_needed = p['dataset_chunks'] > 1 and reload_data_steps is not None
 
     for epoch in range(start_idx, start_idx + num_epochs + 1):
-        if reload_data is not None:
-            if epoch % reload_data == 0:
-                dataset_path = get_dataset_path(p)
-                dataset1 = load_data(dataset_path, training_set=True)
-                dataset2 = load_data(dataset_path, training_set=False)
+        if reload_needed:
+            if epoch % reload_data_steps == 0:
+                dataset, train_size, test_size = load_data(p)
+                training_data, test_data = torch.utils.data.random_split(
+                    dataset, [train_size, test_size], generator=torch.Generator().manual_seed(p['seed'])
+                )
 
-        if len(dataset1) > 0 and len(dataset2) > 0:
-            train_loader = torch.utils.data.DataLoader(dataset1, **train_kwargs)
-            test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
+        if len(training_data) > 0 and len(test_data) > 0:
+            train_loader = torch.utils.data.DataLoader(training_data, **train_kwargs)
+            test_loader = torch.utils.data.DataLoader(test_data, **test_kwargs)
 
             train_loss = train(model, device, train_loader, optimizer, epoch)
             accuracy, test_loss = test(model, device, test_loader)
+
+            if test_loss > p['loss_ceiling']:
+                test_loss = p['loss_ceiling']
 
             train_losses.append(train_loss)
             test_losses.append(test_loss)
@@ -226,17 +236,20 @@ def main():
 
 def get_params():
     params = {
-        'train_batch': 1000,
+        'train_batch': 5000,
         'test_batch': 5000,
 
-        'resume_epoch_idx': 1600,
+        'loss_ceiling': 3,
+
+        'resume_epoch_idx': None,
         'num_epochs': 50000,
-        'checkpoint_at_epoch_step': 100,
+        'checkpoint_at_epoch_step': 1,
 
-        'change_dataset_at_epoch_step': 20,
-
-        'dataset_path': 'data\\winner_datasets\\winner_dataset',
-        'dataset_chunks': 50
+        'seed': 0,
+        'dataset_path': 'data\\winner_datasets_2\\winner_dataset_9_10_11',
+        'dataset_chunks': 1,
+        'split_coefficient': 0.8,
+        'change_dataset_at_epoch_step': 200
     }
 
     return params

@@ -2,7 +2,9 @@ import pandas as pd
 import numpy as np
 from chart import create_padded_state_vector
 from chart import DAY_IN_MINUTES
+import chart
 import common as cu
+import torch
 
 
 def test1():
@@ -17,7 +19,7 @@ def test1():
     vol = [2000, 4000, 6000]
 
     bl = [0] * 3
-    state = calc_normalized_state(_open, _close, _high, _low, vol, bl, 2, debug=True)
+    state = chart.calc_normalized_state(_open, _close, _high, _low, vol, bl, 2, debug=True)
     state = state.reshape(7, DAY_IN_MINUTES)
     print(state)
 
@@ -258,7 +260,26 @@ def test9():
     print(x, " => ", cu.scale_to_1(np.array(x)))
 
 
-test9()
+def merge():
+    cu.merge('data\\winner_datasets_2\\winner_dataset_',
+             'data\\winner_datasets_2\\winner_dataset_',
+             'data\\winner_datasets_2\\winner_dataset_')
+
+
+def split():
+    x, y = torch.utils.data.random_split(range(10), [3, 7], generator=torch.Generator().manual_seed(42))
+
+    for batch_idx, (data) in enumerate(x):
+        print(data, " ", end="")
+
+    print("     -> ", len(x))
+
+    for batch_idx, (data) in enumerate(y):
+        print(data, " ", end="")
+
+    print("     -> ", len(y))
+
+
 
 
 

@@ -427,3 +427,12 @@ def shift_and_scale(x, scale_factor=5, bias=15):
     x = x + [bias] * len(x)
 
     return x
+
+
+def merge(path1, path2, result_path):
+    byte_data1 = np.fromfile(path1, dtype='float')
+    byte_data2 = np.fromfile(path2, dtype='float')
+
+    byte_data = np.concatenate((byte_data1, byte_data2))
+
+    byte_data.tofile(result_path)
