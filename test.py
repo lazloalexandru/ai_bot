@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+from termcolor import colored
+import matplotlib.pyplot as plt
 from chart import create_padded_state_vector
 from chart import DAY_IN_MINUTES
 import chart
@@ -261,9 +263,9 @@ def test9():
 
 
 def merge():
-    cu.merge('data\\winner_datasets_2\\winner_dataset_',
-             'data\\winner_datasets_2\\winner_dataset_',
-             'data\\winner_datasets_2\\winner_dataset_')
+    cu.merge('data\\winner_datasets_2\\winner_dataset_16',
+             'data\\winner_datasets_2\\winner_dataset_17',
+             'data\\winner_datasets_2\\winner_dataset_16_17')
 
 
 def split():
@@ -280,6 +282,33 @@ def split():
     print("     -> ", len(y))
 
 
+def analyze_dataset_balance(dataset_path):
+    print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
+
+    float_data = np.fromfile(dataset_path, dtype='float')
+
+    chart_size = chart.DATA_ROWS * chart.DAY_IN_MINUTES
+    label_size = 1
+    data_size = chart_size + label_size
+
+    num_bytes = len(float_data)
+    num_rows = int(num_bytes / data_size)
+
+    chart_data = float_data.reshape(num_rows, data_size)
+    labels = []
+
+    print("Dataset Size:", num_rows, "      Data Size:", data_size)
+
+    for i in range(num_rows):
+        target = int(chart_data[i][-1])
+
+        labels.append(target)
+
+        if i % 5000 == 0:
+            print(".", end="")
+
+    plt.hist(labels, bins=7, alpha=0.5, align='mid', rwidth=4)
+    plt.show()
 
 
-
+analyze_dataset_balance('data\\winner_datasets_2\\winner_dataset_0')

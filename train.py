@@ -231,7 +231,7 @@ def main():
             if epoch % p['checkpoint_at_epoch_step'] == 0:
                 torch.save(model.state_dict(), "checkpoints\\checkpoint_" + str(epoch))
         else:
-            print(colored("DataSet Too Small!!! Training Data Size: %s    Test Data Size: %s" % (len(dataset1), len(dataset2)), color='red'))
+            print(colored("DataSet Too Small!!! Training Data Size: %s    Test Data Size: %s" % (len(training_data), len(test_data)), color='red'))
 
     print(colored('Training Complete!', color="green"))
 
@@ -244,15 +244,15 @@ def get_params():
         'train_batch': 5000,
         'test_batch': 5000,
 
-        'loss_ceiling': 5,
+        'loss_ceiling': 3,
 
         'resume_epoch_idx': None,
-        'num_epochs': 50000,
+        'num_epochs': 10000,
         'checkpoint_at_epoch_step': 1,
 
         'seed': 0,
-        'dataset_path': 'data\\winner_datasets_2\\winner_dataset_9_10_11',
-        'dataset_chunks': 1,
+        'dataset_path': 'data\\winner_datasets_2\\winner_dataset',
+        'dataset_chunks': 5,
         'split_coefficient': 0.8,
         'change_dataset_at_epoch_step': 200
     }
