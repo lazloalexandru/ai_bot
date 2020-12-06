@@ -9,6 +9,7 @@ from model import Net
 import random
 import matplotlib
 import matplotlib.pyplot as plt
+import chart
 
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
@@ -108,15 +109,19 @@ def load_data(p):
 
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
-    byte_data = np.fromfile(dataset_path, dtype='float')
+    float_data = np.fromfile(dataset_path, dtype='float')
 
-    num_bytes = len(byte_data)
-    num_rows = int(num_bytes / 1951)
+    chart_size = chart.DATA_ROWS * chart.DAY_IN_MINUTES
+    label_size = 1
+    data_size = chart_size + label_size
 
-    chart_data = byte_data.reshape(num_rows, 1951)
+    num_bytes = len(float_data)
+    num_rows = int(num_bytes / data_size)
+
+    chart_data = float_data.reshape(num_rows, data_size)
     data = []
 
-    print("Dataset Size:", num_rows, "   <-   Seed:", p['seed'])
+    print("Dataset Size:", num_rows, "      Data Size:", data_size,  "   <-   Seed:", p['seed'])
 
     split_coefficient = p['split_coefficient']
     training_set_size = int(num_rows * 0.8)
@@ -239,7 +244,7 @@ def get_params():
         'train_batch': 5000,
         'test_batch': 5000,
 
-        'loss_ceiling': 3,
+        'loss_ceiling': 5,
 
         'resume_epoch_idx': None,
         'num_epochs': 50000,
