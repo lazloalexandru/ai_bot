@@ -60,8 +60,7 @@ def train(model, device, train_loader, optimizer, epoch, w):
     model.train()
 
     log_interval = 5
-    train_loss = 0
-    num_batch = 0
+    losses = []
 
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
@@ -71,25 +70,26 @@ def train(model, device, train_loader, optimizer, epoch, w):
         # loss = F.nll_loss(output.float(), target, reduction='mean', weight=w)
         loss = F.nll_loss(output.float(), target)
 
-        train_loss += loss.item()
-        num_batch += 1
+        losses.append(loss.item())
 
         loss.backward()
         optimizer.step()
         if batch_idx % log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
+                100. * batch_idx / len(train_loader), sum(losses) / len(losses)))
 
-    train_loss /= num_batch
+    n = len(losses)
+    total_loss = sum(losses)
+    avg_loss = total_loss / n
+    # print("TrainLoss / NumBatch: ", total_loss, n, avg_loss)
 
-    return train_loss
+    return avg_loss
 
 
 def test(model, device, test_loader, w):
     model.eval()
-    test_loss = 0
-    num_batch = 0
+    losses = []
     correct = 0
     with torch.no_grad():
         for data, target in test_loader:
@@ -97,20 +97,23 @@ def test(model, device, test_loader, w):
 
             output = model(data)
 
-            test_loss += F.nll_loss(output, target).item()
-            num_batch += 1
+            losses.append(F.nll_loss(output, target).item())
 
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
 
+    n = len(losses)
+    total_loss = sum(losses)
+    avg_loss = total_loss / n
+    # print("TestLoss / NumBatch: ", total_loss, n, avg_loss)
     # test_loss /= len(test_loader.dataset)
-    test_loss /= num_batch
-    accuracy = 100. * correct / len(test_loader.dataset)
+
+    accuracy = 100.0 * correct / len(test_loader.dataset)
 
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(test_loader.dataset), accuracy))
+        avg_loss, correct, len(test_loader.dataset), accuracy))
 
-    return accuracy, test_loss
+    return accuracy, avg_loss
 
 
 def load_data(p):
@@ -202,7 +205,7 @@ def load_data(p):
     train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset, **test_kwargs)
     '''
-    
+
     return train_loader, test_loader, w
 
 
@@ -295,14 +298,14 @@ def get_params():
     params = {
         'num_classes': 4,
 
-        'train_batch': 5000,
-        'test_batch': 5000,
+        'train_batch': 2000,
+        'test_batch': 2000,
 
         'loss_ceiling': 3,
 
         'resume_epoch_idx': 364,
         'num_epochs': 10000,
-        'checkpoint_at_epoch_step': 1,
+        'checkpoint_at_epoch_step': 5,
 
         'seed': 0,
         'dataset_path': 'data\\winner_datasets_2\\winner_dataset_4',
