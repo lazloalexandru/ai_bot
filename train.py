@@ -105,8 +105,8 @@ def test(model, device, test_loader):
     return accuracy, test_loss
 
 
-def load_data(p):
-    dataset_path = get_dataset_path(p)
+def load_data(p, epoch):
+    dataset_path = get_dataset_path(p, epoch)
 
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
@@ -155,9 +155,9 @@ def load_data(p):
     return training_data, test_data
 
 
-def get_dataset_path(p):
+def get_dataset_path(p, epoch):
     if p['dataset_chunks'] > 1:
-        dataset_id = random.randint(0, p['dataset_chunks'] - 1)
+        dataset_id = epoch % p['dataset_chunks']
         dataset_path = p['dataset_path'] + "_" + str(dataset_id)
     else:
         dataset_path = p['dataset_path']
@@ -221,7 +221,7 @@ def main():
                 test_data = None
                 gc.collect()
 
-                training_data, test_data = load_data(p)
+                training_data, test_data = load_data(p, epoch)
 
         if len(training_data) > 0 and len(test_data) > 0:
             train_loader = torch.utils.data.DataLoader(training_data, **train_kwargs)
@@ -256,7 +256,7 @@ def get_params():
 
         'loss_ceiling': 3,
 
-        'resume_epoch_idx': 330,
+        'resume_epoch_idx': 334,
         'num_epochs': 10000,
         'checkpoint_at_epoch_step': 1,
 
