@@ -56,10 +56,10 @@ def plot_values(accuracy, train_loss, test_loss):
         display.display(plt.gcf())
 
 
-def train(model, device, train_loader, optimizer, epoch, w):
+def train(model, device, train_loader, optimizer, epoch, w, p):
     model.train()
 
-    log_interval = 5
+    log_interval = p['training_batch_log_interval']
     losses = []
 
     for batch_idx, (data, target) in enumerate(train_loader):
@@ -68,7 +68,7 @@ def train(model, device, train_loader, optimizer, epoch, w):
         output = model(data)
 
         # loss = F.nll_loss(output.float(), target, reduction='mean', weight=w)
-        loss = F.nll_loss(output.float(), target)
+        loss = F.nll_loss(output.float(), target, weight=w)
 
         losses.append(loss.item())
 
@@ -92,7 +92,7 @@ def test(model, device, test_loader, w):
 
             output = model(data)
 
-            losses.append(F.nll_loss(output, target).item())
+            losses.append(F.nll_loss(output, target, weight=w).item())
 
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
@@ -147,13 +147,14 @@ def load_data(p):
             print(".", end="")
 
     print("")
-    print("Balancing /Splitting Data / Resampling ...")
+    print("Balancing / Splitting Data / Resampling ...")
 
     #####################################################################################################
     # Calculate Re-Balancing Weights
 
-    w = cu.calc_rebalancing_weigths(labels, p['num_classes'])
-    print("Dataset Class Distributions:", w)
+    hist, w = cu.calc_rebalancing_weigths(labels, p['num_classes'])
+    print("Dataset Class Histogram:", hist)
+    print("Dataset Re-balancing Weights:", w)
     w = torch.tensor(w, dtype=torch.float).to("cuda")
 
     #####################################################################################################
@@ -261,7 +262,7 @@ def main():
                 data_load_counter += 1
 
         if train_loader is not None and test_loader is not None:
-            train_loss = train(model, device, train_loader, optimizer, epoch, w_re_balance)
+            train_loss = train(model, device, train_loader, optimizer, epoch, w_re_balance, p)
             accuracy, test_loss = test(model, device, test_loader, w_re_balance)
 
             if test_loss > p['loss_ceiling']:
@@ -288,20 +289,21 @@ def get_params():
     params = {
         'num_classes': 4,
 
-        'train_batch': 2000,
-        'test_batch': 2000,
+        'training_batch_log_interval': 50,
+        'train_batch': 512,
+        'test_batch': 512,
 
         'loss_ceiling': 3,
 
-        'resume_epoch_idx': 364,
+        'resume_epoch_idx': 999,
         'num_epochs': 10000,
-        'checkpoint_at_epoch_step': 5,
+        'checkpoint_at_epoch_step': 20,
 
-        'seed': 0,
-        'dataset_path': 'data\\winner_datasets_2\\winner_dataset_4',
+        'seed': 98,
+        'dataset_path': 'data\\winner_datasets_2\\winner_dataset_0',
         'dataset_chunks': 1,
         'split_coefficient': 0.8,
-        'change_dataset_at_epoch_step': 5
+        'change_dataset_at_epoch_step': 100
     }
 
     return params

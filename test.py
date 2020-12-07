@@ -329,7 +329,8 @@ def test_rebalance_weights(dataset_path):
             print(".", end="")
 
     print("")
-    w = cu.calc_rebalancing_weigths(labels, num_classes=4, batch_size=10)
+    w = cu.calc_rebalancing_weigths(labels, num_classes=4)
+    print(w)
     w = torch.tensor(w, dtype=torch.float)
     print(w)
 

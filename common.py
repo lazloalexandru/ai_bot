@@ -469,15 +469,13 @@ def analyze_dataset_balance(dataset_path):
 
 def calc_rebalancing_weigths(y, num_classes):
     hist, _ = np.histogram(y, bins=num_classes)
-    total_samples = sum(hist)
-    w = hist / total_samples
+    avg = sum(hist) / num_classes
 
-    return w
+    w = []
+    print("avg", avg, hist)
+    for i in range(0, num_classes):
+        w.append(avg / hist[i])
 
+    return hist, w
 
-def gen_batch_rebalancing_weigths(w, batch_size):
-    w_batch = w / batch_size
-    w_batch = np.repeat(w_batch[None], batch_size, axis=0)
-
-    return w_batch
 
