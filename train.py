@@ -144,12 +144,12 @@ def load_data(p):
             print(".", end="")
 
     print("")
+    print("Splitting Data / Resampling ...")
 
     training_data, test_data = torch.utils.data.random_split(
         dataset, [training_set_size, test_set_size], generator=torch.Generator().manual_seed(p['seed'])
     )
     del dataset
-    torch.cuda.empty_cache()
     gc.collect()
 
     return training_data, test_data
@@ -219,7 +219,6 @@ def main():
                 just_started = False
                 training_data = None
                 test_data = None
-                torch.cuda.empty_cache()
                 gc.collect()
 
                 training_data, test_data = load_data(p)
@@ -257,7 +256,7 @@ def get_params():
 
         'loss_ceiling': 3,
 
-        'resume_epoch_idx': 199,
+        'resume_epoch_idx': 330,
         'num_epochs': 10000,
         'checkpoint_at_epoch_step': 1,
 
@@ -265,7 +264,7 @@ def get_params():
         'dataset_path': 'data\\winner_datasets_2\\winner_dataset',
         'dataset_chunks': 5,
         'split_coefficient': 0.8,
-        'change_dataset_at_epoch_step': 1
+        'change_dataset_at_epoch_step': 5
     }
 
     return params
