@@ -10,6 +10,7 @@ import random
 import matplotlib
 import matplotlib.pyplot as plt
 import chart
+import gc
 
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
@@ -119,12 +120,11 @@ def load_data(p):
     num_rows = int(num_bytes / data_size)
 
     chart_data = float_data.reshape(num_rows, data_size)
-    data = []
+    dataset = []
 
     print("Dataset Size:", num_rows, "      Data Size:", data_size,  "   <-   Seed:", p['seed'])
 
-    split_coefficient = p['split_coefficient']
-    training_set_size = int(num_rows * 0.8)
+    training_set_size = int(num_rows * p['split_coefficient'])
     test_set_size = num_rows - training_set_size
 
     print("Training Dataset Size:", training_set_size)
@@ -132,20 +132,27 @@ def load_data(p):
 
     for i in range(num_rows):
         state = chart_data[i][:-1]
-        state = np.reshape(state, (5, 390))
-        state = torch.tensor(state, dtype=torch.float).unsqueeze(0).to("cuda")
+        state = np.reshape(state, (chart.DATA_ROWS, chart.DAY_IN_MINUTES))
+        state = torch.tensor(state, dtype=torch.float).unsqueeze(0)
 
         target = int(chart_data[i][-1])
-        target = torch.tensor(target).to("cuda")
+        target = torch.tensor(target)
 
-        data.append((state, target))
+        dataset.append((state, target))
 
-        if i % 5000 == 0:
+        if i % 10000 == 0:
             print(".", end="")
 
     print("")
 
-    return data, training_set_size, test_set_size
+    training_data, test_data = torch.utils.data.random_split(
+        dataset, [training_set_size, test_set_size], generator=torch.Generator().manual_seed(p['seed'])
+    )
+    del dataset
+    torch.cuda.empty_cache()
+    gc.collect()
+
+    return training_data, test_data
 
 
 def get_dataset_path(p):
@@ -167,7 +174,8 @@ def main():
 
     train_kwargs = {'batch_size': p['train_batch']}
     test_kwargs = {'batch_size': p['test_batch']}
-    cuda_kwargs = {'shuffle': True}
+    cuda_kwargs = {'pin_memory': True,
+                   'shuffle': True}
 
     train_kwargs.update(cuda_kwargs)
     test_kwargs.update(cuda_kwargs)
@@ -198,20 +206,19 @@ def main():
 
     reload_data_steps = p['change_dataset_at_epoch_step']
 
-    dataset, train_size, test_size = load_data(p)
-    training_data, test_data = torch.utils.data.random_split(
-        dataset, [train_size, test_size], generator=torch.Generator().manual_seed(42)
-    )
+    training_data, test_data = load_data(p)
 
     reload_needed = p['dataset_chunks'] > 1 and reload_data_steps is not None
 
     for epoch in range(start_idx, start_idx + num_epochs + 1):
         if reload_needed:
             if epoch % reload_data_steps == 0:
-                dataset, train_size, test_size = load_data(p)
-                training_data, test_data = torch.utils.data.random_split(
-                    dataset, [train_size, test_size], generator=torch.Generator().manual_seed(p['seed'])
-                )
+                training_data = None
+                test_data = None
+                torch.cuda.empty_cache()
+                gc.collect()
+
+                training_data, test_data = load_data(p)
 
         if len(training_data) > 0 and len(test_data) > 0:
             train_loader = torch.utils.data.DataLoader(training_data, **train_kwargs)
@@ -252,9 +259,9 @@ def get_params():
 
         'seed': 0,
         'dataset_path': 'data\\winner_datasets_2\\winner_dataset',
-        'dataset_chunks': 5,
+        'dataset_chunks': 4,
         'split_coefficient': 0.8,
-        'change_dataset_at_epoch_step': 200
+        'change_dataset_at_epoch_step': 1
     }
 
     return params

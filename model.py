@@ -15,7 +15,7 @@ class Net(nn.Module):
         self.dropout2 = nn.Dropout(0.3)
         self.dropout3 = nn.Dropout(0.3)
 
-        linear_input_size = 2*24704  # 6176  # 12352  # 24704
+        linear_input_size = 49152  # 6176  # 12352  # 24704
         outputs = 4
         print("Dense Layers %s ... %s" % (linear_input_size, outputs))
 
@@ -29,7 +29,6 @@ class Net(nn.Module):
         x = self.dropout2(x)
         x = F.relu(self.bn3(self.conv3(x)))
         x = self.dropout3(x)
-        print("XXXXXXXXXX:", x.shape)
         x = F.relu(self.fc1(x.view(x.size(0), -1)))
         output = F.log_softmax(x, dim=1)
         return output
