@@ -60,13 +60,20 @@ def train(model, device, train_loader, optimizer, epoch, w):
     model.train()
 
     log_interval = 5
+    train_loss = 0
+    num_batch = 0
 
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
 
-        loss = F.nll_loss(output.float(), target, weight=w)
+        # loss = F.nll_loss(output.float(), target, reduction='mean', weight=w)
+        loss = F.nll_loss(output.float(), target)
+
+        train_loss += loss.item()
+        num_batch += 1
+
         loss.backward()
         optimizer.step()
         if batch_idx % log_interval == 0:
@@ -74,12 +81,15 @@ def train(model, device, train_loader, optimizer, epoch, w):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
 
-    return loss.item()
+    train_loss /= num_batch
+
+    return train_loss
 
 
 def test(model, device, test_loader, w):
     model.eval()
     test_loss = 0
+    num_batch = 0
     correct = 0
     with torch.no_grad():
         for data, target in test_loader:
@@ -87,22 +97,18 @@ def test(model, device, test_loader, w):
 
             output = model(data)
 
-            test_loss += F.nll_loss(output, target, reduction='sum', weight=w).item()  # sum up batch loss
-            '''
-            loss = F.nll_loss(output.float(), target)
-            test_loss += loss  # F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
-            '''
-            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            test_loss += F.nll_loss(output, target).item()
+            num_batch += 1
+
+            pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
 
-    test_loss /= len(test_loader.dataset)
+    # test_loss /= len(test_loader.dataset)
+    test_loss /= num_batch
     accuracy = 100. * correct / len(test_loader.dataset)
 
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss,
-        correct,
-        len(test_loader.dataset),
-        accuracy))
+        test_loss, correct, len(test_loader.dataset), accuracy))
 
     return accuracy, test_loss
 
@@ -154,9 +160,7 @@ def load_data(p):
     # Calculate Re-Balancing Weights
 
     w = cu.calc_rebalancing_weigths(labels, p['num_classes'])
-
     print("Dataset Class Distributions:", w)
-
     w = torch.tensor(w, dtype=torch.float).to("cuda")
 
     #####################################################################################################
@@ -175,10 +179,10 @@ def load_data(p):
 
     train_loader = torch.utils.data.DataLoader(training_data, **train_kwargs)
     test_loader = torch.utils.data.DataLoader(test_data, **test_kwargs)
-
+    '''
     #####################################################################################################
     #  STRATIFIED SPLIT
-    '''
+
     train_idx, test_idx = train_test_split(
         np.arange(len(labels)),
         test_size=0.2,
@@ -198,7 +202,7 @@ def load_data(p):
     train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset, **test_kwargs)
     '''
-
+    
     return train_loader, test_loader, w
 
 
