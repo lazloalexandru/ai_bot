@@ -304,7 +304,37 @@ def test_stratified_sampler():
         print(data)
 
 
-test_stratified_sampler()
+def test_rebalance_weights(dataset_path):
+    print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
+    float_data = np.fromfile(dataset_path, dtype='float')
 
+    chart_size = chart.DATA_ROWS * chart.DAY_IN_MINUTES
+    label_size = 1
+    data_size = chart_size + label_size
+
+    num_bytes = len(float_data)
+    num_rows = int(num_bytes / data_size)
+
+    chart_data = float_data.reshape(num_rows, data_size)
+    labels = []
+
+    print("Dataset Size:", num_rows, "      Data Size:", data_size)
+
+    for i in range(num_rows):
+        target = int(chart_data[i][-1])
+
+        labels.append(target)
+
+        if i % 5000 == 0:
+            print(".", end="")
+
+    print("")
+    w = cu.calc_rebalancing_weigths(labels, num_classes=4, batch_size=10)
+    w = torch.tensor(w, dtype=torch.float)
+    print(w)
+
+
+# test_stratified_sampler()
 # analyze_dataset_balance('data\\winner_datasets_2\\winner_dataset_1')
 
+test_rebalance_weights('data\\winner_datasets_2\\winner_dataset_4')

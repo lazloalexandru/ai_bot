@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import chart
 import gc
 from sklearn.model_selection import train_test_split
-
+import common as cu
 
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
@@ -56,7 +56,7 @@ def plot_values(accuracy, train_loss, test_loss):
         display.display(plt.gcf())
 
 
-def train(model, device, train_loader, optimizer, epoch):
+def train(model, device, train_loader, optimizer, epoch, w):
     model.train()
 
     log_interval = 5
@@ -66,7 +66,7 @@ def train(model, device, train_loader, optimizer, epoch):
         optimizer.zero_grad()
         output = model(data)
 
-        loss = F.nll_loss(output.float(), target)
+        loss = F.nll_loss(output.float(), target, weight=w)
         loss.backward()
         optimizer.step()
         if batch_idx % log_interval == 0:
@@ -77,7 +77,7 @@ def train(model, device, train_loader, optimizer, epoch):
     return loss.item()
 
 
-def test(model, device, test_loader):
+def test(model, device, test_loader, w):
     model.eval()
     test_loss = 0
     correct = 0
@@ -87,7 +87,7 @@ def test(model, device, test_loader):
 
             output = model(data)
 
-            test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
+            test_loss += F.nll_loss(output, target, reduction='sum', weight=w).item()  # sum up batch loss
             '''
             loss = F.nll_loss(output.float(), target)
             test_loss += loss  # F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
@@ -148,16 +148,37 @@ def load_data(p):
             print(".", end="")
 
     print("")
-    print("Splitting Data / Resampling ...")
+    print("Balancing /Splitting Data / Resampling ...")
 
     #####################################################################################################
-    '''
+    # Calculate Re-Balancing Weights
+
+    w = cu.calc_rebalancing_weigths(labels, p['num_classes'])
+
+    print("Dataset Class Distributions:", w)
+
+    w = torch.tensor(w, dtype=torch.float).to("cuda")
+
+    #####################################################################################################
+    #  RANDOM SPLIT
+
     training_data, test_data = torch.utils.data.random_split(
         dataset, [training_set_size, test_set_size], generator=torch.Generator().manual_seed(p['seed'])
     )
-    '''
-    ########################################################
 
+    train_kwargs = {'batch_size': p['train_batch']}
+    test_kwargs = {'batch_size': p['test_batch']}
+    cuda_kwargs = {'pin_memory': True, 'shuffle': True}
+
+    train_kwargs.update(cuda_kwargs)
+    test_kwargs.update(cuda_kwargs)
+
+    train_loader = torch.utils.data.DataLoader(training_data, **train_kwargs)
+    test_loader = torch.utils.data.DataLoader(test_data, **test_kwargs)
+
+    #####################################################################################################
+    #  STRATIFIED SPLIT
+    '''
     train_idx, test_idx = train_test_split(
         np.arange(len(labels)),
         test_size=0.2,
@@ -167,28 +188,18 @@ def load_data(p):
     train_sampler = torch.utils.data.SubsetRandomSampler(train_idx)
     test_sampler = torch.utils.data.SubsetRandomSampler(test_idx)
 
-    train_kwargs = {
-        'batch_size': p['train_batch'],
-        'sampler': train_sampler
-    }
-
-    test_kwargs = {
-        'batch_size': p['test_batch'],
-        'sampler': test_sampler
-    }
-
-    cuda_kwargs = {
-        'pin_memory': True,
-        'shuffle': False  # This must be false ... Stratify sampler already shuffles the data
-    }
-
+    train_kwargs = {'batch_size': p['train_batch'], 'sampler': train_sampler}
+    test_kwargs = {'batch_size': p['test_batch'], 'sampler': test_sampler}
+    cuda_kwargs = {'pin_memory': True, 'shuffle': False} # Stratified sample does shuffle 
+    
     train_kwargs.update(cuda_kwargs)
     test_kwargs.update(cuda_kwargs)
-
+    
     train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset, **test_kwargs)
+    '''
 
-    return train_loader, test_loader
+    return train_loader, test_loader, w
 
 
 def get_dataset_path(p):
@@ -233,9 +244,10 @@ def main():
 
     train_loader = None
     test_loader = None
+    w_re_balance = None
 
     if p['dataset_chunks'] == 1:
-        train_loader, test_loader = load_data(p)
+        train_loader, test_loader, w_re_balance = load_data(p)
 
     data_load_counter = 0
 
@@ -248,12 +260,12 @@ def main():
                 gc.collect()
 
                 p['dataset_id'] = data_load_counter % p['dataset_chunks']
-                train_loader, test_loader = load_data(p)
+                train_loader, test_loader, w_re_balance = load_data(p)
                 data_load_counter += 1
 
         if train_loader is not None and test_loader is not None:
-            train_loss = train(model, device, train_loader, optimizer, epoch)
-            accuracy, test_loss = test(model, device, test_loader)
+            train_loss = train(model, device, train_loader, optimizer, epoch, w_re_balance)
+            accuracy, test_loss = test(model, device, test_loader, w_re_balance)
 
             if test_loss > p['loss_ceiling']:
                 test_loss = p['loss_ceiling']
@@ -277,6 +289,8 @@ def main():
 
 def get_params():
     params = {
+        'num_classes': 4,
+
         'train_batch': 5000,
         'test_batch': 5000,
 
@@ -287,7 +301,7 @@ def get_params():
         'checkpoint_at_epoch_step': 1,
 
         'seed': 0,
-        'dataset_path': 'data\\winner_datasets_2\\winner_dataset_0',
+        'dataset_path': 'data\\winner_datasets_2\\winner_dataset_4',
         'dataset_chunks': 1,
         'split_coefficient': 0.8,
         'change_dataset_at_epoch_step': 5

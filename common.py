@@ -6,7 +6,7 @@ import mplfinance as mpf
 import datetime
 import shutil
 import numpy as np
-
+import chart
 
 __data_dir = "\\data"
 __daily_charts_dir = "data\\daily_charts"
@@ -465,3 +465,19 @@ def analyze_dataset_balance(dataset_path):
 
     plt.hist(labels, bins=4, alpha=0.5, align='mid', rwidth=4)
     plt.show()
+
+
+def calc_rebalancing_weigths(y, num_classes):
+    hist, _ = np.histogram(y, bins=num_classes)
+    total_samples = sum(hist)
+    w = hist / total_samples
+
+    return w
+
+
+def gen_batch_rebalancing_weigths(w, batch_size):
+    w_batch = w / batch_size
+    w_batch = np.repeat(w_batch[None], batch_size, axis=0)
+
+    return w_batch
+
