@@ -105,8 +105,8 @@ def test(model, device, test_loader):
     return accuracy, test_loss
 
 
-def load_data(p, epoch):
-    dataset_path = get_dataset_path(p, epoch)
+def load_data(p):
+    dataset_path = get_dataset_path(p)
 
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
@@ -155,10 +155,9 @@ def load_data(p, epoch):
     return training_data, test_data
 
 
-def get_dataset_path(p, epoch):
+def get_dataset_path(p):
     if p['dataset_chunks'] > 1:
-        dataset_id = epoch % p['dataset_chunks']
-        dataset_path = p['dataset_path'] + "_" + str(dataset_id)
+        dataset_path = p['dataset_path'] + "_" + str(p['dataset_id'])
     else:
         dataset_path = p['dataset_path']
 
@@ -204,24 +203,21 @@ def main():
     train_losses = []
     test_losses = []
 
-    reload_data_steps = p['change_dataset_at_epoch_step']
-
     training_data = None
     test_data = None
 
-    reload_needed = p['dataset_chunks'] > 1 and reload_data_steps is not None
-
-    just_started = True
+    data_load_counter = 0
 
     for epoch in range(start_idx, start_idx + num_epochs + 1):
-        if reload_needed:
-            if epoch % reload_data_steps == 0 or just_started:
-                just_started = False
-                training_data = None
-                test_data = None
+        if p['dataset_chunks'] > 1 and p['change_dataset_at_epoch_step'] is not None:
+            if epoch % p['change_dataset_at_epoch_step'] == 0 or data_load_counter == 0:
+                del training_data
+                del test_data
                 gc.collect()
 
-                training_data, test_data = load_data(p, epoch)
+                p['dataset_id'] = data_load_counter % p['dataset_chunks']
+                training_data, test_data = load_data(p)
+                data_load_counter += 1
 
         if len(training_data) > 0 and len(test_data) > 0:
             train_loader = torch.utils.data.DataLoader(training_data, **train_kwargs)
@@ -256,7 +252,7 @@ def get_params():
 
         'loss_ceiling': 3,
 
-        'resume_epoch_idx': 334,
+        'resume_epoch_idx': 363,
         'num_epochs': 10000,
         'checkpoint_at_epoch_step': 1,
 
