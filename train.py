@@ -11,6 +11,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import chart
 import gc
+from sklearn.model_selection import train_test_split
+
 
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
@@ -112,15 +114,16 @@ def load_data(p):
 
     float_data = np.fromfile(dataset_path, dtype='float')
 
-    chart_size = chart.DATA_ROWS * chart.DAY_IN_MINUTES
-    label_size = 1
-    data_size = chart_size + label_size
+    chart_size_bytes = chart.DATA_ROWS * chart.DAY_IN_MINUTES
+    label_size_bytes = 1
+    data_size = chart_size_bytes + label_size_bytes
 
     num_bytes = len(float_data)
     num_rows = int(num_bytes / data_size)
 
     chart_data = float_data.reshape(num_rows, data_size)
     dataset = []
+    labels = []
 
     print("Dataset Size:", num_rows, "      Data Size:", data_size,  "   <-   Seed:", p['seed'])
 
@@ -139,6 +142,7 @@ def load_data(p):
         target = torch.tensor(target)
 
         dataset.append((state, target))
+        labels.append(target)
 
         if i % 10000 == 0:
             print(".", end="")
@@ -146,13 +150,48 @@ def load_data(p):
     print("")
     print("Splitting Data / Resampling ...")
 
+    #####################################################################################################
+    '''
     training_data, test_data = torch.utils.data.random_split(
         dataset, [training_set_size, test_set_size], generator=torch.Generator().manual_seed(p['seed'])
     )
-    del dataset
-    gc.collect()
+    '''
+    ########################################################
 
-    return training_data, test_data
+    train_idx, test_idx = train_test_split(
+        np.arange(len(labels)),
+        test_size=0.2,
+        shuffle=True,
+        stratify=labels)
+
+    train_sampler = torch.utils.data.SubsetRandomSampler(train_idx)
+    test_sampler = torch.utils.data.SubsetRandomSampler(test_idx)
+
+    train_kwargs = {
+        'batch_size': p['train_batch'],
+        'sampler': train_sampler
+    }
+
+    test_kwargs = {
+        'batch_size': p['test_batch'],
+        'sampler': test_sampler
+    }
+
+    cuda_kwargs = {
+        'pin_memory': True,
+        'shuffle': False  # This must be false ... Stratify sampler already shuffles the data
+    }
+
+    train_kwargs.update(cuda_kwargs)
+    test_kwargs.update(cuda_kwargs)
+
+    train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs)
+    test_loader = torch.utils.data.DataLoader(dataset, **test_kwargs)
+
+    # del dataset
+    # gc.collect()
+
+    return train_loader, test_loader
 
 
 def get_dataset_path(p):
@@ -170,14 +209,6 @@ def main():
     p = get_params()
 
     device = torch.device("cuda")
-
-    train_kwargs = {'batch_size': p['train_batch']}
-    test_kwargs = {'batch_size': p['test_batch']}
-    cuda_kwargs = {'pin_memory': True,
-                   'shuffle': True}
-
-    train_kwargs.update(cuda_kwargs)
-    test_kwargs.update(cuda_kwargs)
 
     model = Net().to(device)
     resume_idx = p['resume_epoch_idx']
@@ -203,26 +234,27 @@ def main():
     train_losses = []
     test_losses = []
 
-    training_data = None
-    test_data = None
+    train_loader = None
+    test_loader = None
+
+    if p['dataset_chunks'] == 1:
+        train_loader, test_loader = load_data(p)
 
     data_load_counter = 0
 
     for epoch in range(start_idx, start_idx + num_epochs + 1):
         if p['dataset_chunks'] > 1 and p['change_dataset_at_epoch_step'] is not None:
             if epoch % p['change_dataset_at_epoch_step'] == 0 or data_load_counter == 0:
-                del training_data
-                del test_data
+                del train_loader
+                del test_loader
+                torch.cuda.empty_cache()
                 gc.collect()
 
                 p['dataset_id'] = data_load_counter % p['dataset_chunks']
-                training_data, test_data = load_data(p)
+                train_loader, test_loader = load_data(p)
                 data_load_counter += 1
 
-        if len(training_data) > 0 and len(test_data) > 0:
-            train_loader = torch.utils.data.DataLoader(training_data, **train_kwargs)
-            test_loader = torch.utils.data.DataLoader(test_data, **test_kwargs)
-
+        if train_loader is not None and test_loader is not None:
             train_loss = train(model, device, train_loader, optimizer, epoch)
             accuracy, test_loss = test(model, device, test_loader)
 
@@ -237,9 +269,10 @@ def main():
             if epoch % p['checkpoint_at_epoch_step'] == 0:
                 torch.save(model.state_dict(), "checkpoints\\checkpoint_" + str(epoch))
         else:
-            print(colored("DataSet Too Small!!! Training Data Size: %s    Test Data Size: %s" % (len(training_data), len(test_data)), color='red'))
+            print(colored("Train and Test Data Loaders not Initialized!!!", color='red'))
+            break
 
-    print(colored('Training Complete!', color="green"))
+    print('Finished!')
 
     plt.ioff()
     plt.show()
@@ -252,13 +285,13 @@ def get_params():
 
         'loss_ceiling': 3,
 
-        'resume_epoch_idx': 363,
+        'resume_epoch_idx': 364,
         'num_epochs': 10000,
         'checkpoint_at_epoch_step': 1,
 
         'seed': 0,
-        'dataset_path': 'data\\winner_datasets_2\\winner_dataset',
-        'dataset_chunks': 5,
+        'dataset_path': 'data\\winner_datasets_2\\winner_dataset_0',
+        'dataset_chunks': 1,
         'split_coefficient': 0.8,
         'change_dataset_at_epoch_step': 5
     }

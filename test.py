@@ -7,6 +7,7 @@ from chart import DAY_IN_MINUTES
 import chart
 import common as cu
 import torch
+from sklearn.model_selection import train_test_split
 
 
 def test1():
@@ -268,7 +269,7 @@ def merge():
              'data\\winner_datasets_2\\winner_dataset_16_17')
 
 
-def split():
+def test_split():
     x, y = torch.utils.data.random_split(range(10), [3, 7], generator=torch.Generator().manual_seed(42))
 
     for batch_idx, (data) in enumerate(x):
@@ -282,33 +283,28 @@ def split():
     print("     -> ", len(y))
 
 
-def analyze_dataset_balance(dataset_path):
-    print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
+def test_stratified_sampler():
+    dataset = torch.from_numpy(np.array([2, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0,0,0,0, 0, 0, 0, 0, 0, 2, 1, 1, 1, 0, 2, 2, 0, 0, 2, 0, 2, 0, 1, 0, 2, 2, 0]))
+    train_idx, test_idx = train_test_split(
+        np.arange(len(dataset)),
+        test_size=0.2,
+        shuffle=True,
+        stratify=dataset)
 
-    float_data = np.fromfile(dataset_path, dtype='float')
+    print(train_idx)
+    print(test_idx)
 
-    chart_size = chart.DATA_ROWS * chart.DAY_IN_MINUTES
-    label_size = 1
-    data_size = chart_size + label_size
+    train_sampler = torch.utils.data.SubsetRandomSampler(train_idx)
+    test_sampler = torch.utils.data.SubsetRandomSampler(test_idx)
 
-    num_bytes = len(float_data)
-    num_rows = int(num_bytes / data_size)
+    train_loader = torch.utils.data.DataLoader(dataset, batch_size=3, sampler=train_sampler)
+    test_loader = torch.utils.data.DataLoader(dataset, batch_size=3, sampler=test_sampler)
 
-    chart_data = float_data.reshape(num_rows, data_size)
-    labels = []
-
-    print("Dataset Size:", num_rows, "      Data Size:", data_size)
-
-    for i in range(num_rows):
-        target = int(chart_data[i][-1])
-
-        labels.append(target)
-
-        if i % 5000 == 0:
-            print(".", end="")
-
-    plt.hist(labels, bins=7, alpha=0.5, align='mid', rwidth=4)
-    plt.show()
+    for data in train_loader:
+        print(data)
 
 
-analyze_dataset_balance('data\\winner_datasets_2\\winner_dataset_0')
+test_stratified_sampler()
+
+# analyze_dataset_balance('data\\winner_datasets_2\\winner_dataset_1')
+

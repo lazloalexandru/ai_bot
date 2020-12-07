@@ -436,3 +436,32 @@ def merge(path1, path2, result_path):
     byte_data = np.concatenate((byte_data1, byte_data2))
 
     byte_data.tofile(result_path)
+
+
+def analyze_dataset_balance(dataset_path):
+    print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
+
+    float_data = np.fromfile(dataset_path, dtype='float')
+
+    chart_size = chart.DATA_ROWS * chart.DAY_IN_MINUTES
+    label_size = 1
+    data_size = chart_size + label_size
+
+    num_bytes = len(float_data)
+    num_rows = int(num_bytes / data_size)
+
+    chart_data = float_data.reshape(num_rows, data_size)
+    labels = []
+
+    print("Dataset Size:", num_rows, "      Data Size:", data_size)
+
+    for i in range(num_rows):
+        target = int(chart_data[i][-1])
+
+        labels.append(target)
+
+        if i % 5000 == 0:
+            print(".", end="")
+
+    plt.hist(labels, bins=4, alpha=0.5, align='mid', rwidth=4)
+    plt.show()
