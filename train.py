@@ -188,9 +188,6 @@ def load_data(p):
     train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset, **test_kwargs)
 
-    # del dataset
-    # gc.collect()
-
     return train_loader, test_loader
 
 
