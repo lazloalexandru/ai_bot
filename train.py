@@ -206,13 +206,17 @@ def main():
 
     reload_data_steps = p['change_dataset_at_epoch_step']
 
-    training_data, test_data = load_data(p)
+    training_data = None
+    test_data = None
 
     reload_needed = p['dataset_chunks'] > 1 and reload_data_steps is not None
 
+    just_started = True
+
     for epoch in range(start_idx, start_idx + num_epochs + 1):
         if reload_needed:
-            if epoch % reload_data_steps == 0:
+            if epoch % reload_data_steps == 0 or just_started:
+                just_started = False
                 training_data = None
                 test_data = None
                 torch.cuda.empty_cache()
@@ -253,13 +257,13 @@ def get_params():
 
         'loss_ceiling': 3,
 
-        'resume_epoch_idx': None,
+        'resume_epoch_idx': 199,
         'num_epochs': 10000,
         'checkpoint_at_epoch_step': 1,
 
         'seed': 0,
         'dataset_path': 'data\\winner_datasets_2\\winner_dataset',
-        'dataset_chunks': 4,
+        'dataset_chunks': 5,
         'split_coefficient': 0.8,
         'change_dataset_at_epoch_step': 1
     }
