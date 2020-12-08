@@ -247,19 +247,19 @@ def main():
     if p['dataset_chunks'] == 1:
         train_loader, test_loader, w_re_balance = load_data(p)
 
-    data_load_counter = 0
+    data_reload_counter = p['data_reload_counter_start']
 
     for epoch in range(start_idx, start_idx + num_epochs + 1):
         if p['dataset_chunks'] > 1 and p['change_dataset_at_epoch_step'] is not None:
-            if epoch % p['change_dataset_at_epoch_step'] == 0 or data_load_counter == 0:
+            if epoch % p['change_dataset_at_epoch_step'] == 0 or data_reload_counter == p['data_reload_counter_start']:
                 del train_loader
                 del test_loader
                 torch.cuda.empty_cache()
                 gc.collect()
 
-                p['dataset_id'] = data_load_counter % p['dataset_chunks']
+                p['dataset_id'] = data_reload_counter % p['dataset_chunks']
                 train_loader, test_loader, w_re_balance = load_data(p)
-                data_load_counter += 1
+                data_reload_counter += 1
 
         if train_loader is not None and test_loader is not None:
             train_loss = train(model, device, train_loader, optimizer, epoch, w_re_balance, p)
@@ -295,15 +295,16 @@ def get_params():
 
         'loss_ceiling': 3,
 
-        'resume_epoch_idx': 999,
+        'resume_epoch_idx': 60,
         'num_epochs': 10000,
         'checkpoint_at_epoch_step': 20,
 
         'seed': 98,
-        'dataset_path': 'data\\winner_datasets_2\\winner_dataset_0',
-        'dataset_chunks': 1,
+        'data_reload_counter_start': 1,
+        'dataset_path': 'data\\winner_datasets_2\\winner_dataset',
+        'dataset_chunks': 4,
         'split_coefficient': 0.8,
-        'change_dataset_at_epoch_step': 100
+        'change_dataset_at_epoch_step': 50
     }
 
     return params

@@ -39,11 +39,35 @@ def save_state_chart(state, t, symbol, date, idx):
                                   filename)
 
 
-def create_padded_state_vector(o, c, h, l, v, idx, debug=False):
+def create_padded_state_vector(df, entry_idx, open_idx, debug=False):
     """ idx - is the candle index in range 0 ... 390 """
 
+    t = df.Time.to_list()
+    o = df.Open.to_list()
+    c = df.Close.to_list()
+    h = df.High.to_list()
+    l = df.Low.to_list()
+    v = df.Volume.to_list()
+
+    idx = entry_idx - open_idx
     if debug:
-        print('idx:', idx)
+        print("calc_normalized_state")
+        print('open_idx:', open_idx, 'entry_idx', entry_idx, 'idx:', idx)
+        print('full len(o)', len(o))
+        print('full len(v)', len(v))
+
+    t = t[:idx + 1]
+    o = o[:idx + 1]
+    c = c[:idx + 1]
+    h = h[:idx + 1]
+    l = l[:idx + 1]
+    v = v[:idx + 1]
+
+    if debug:
+        print('entry len(o)', len(o))
+        print('entry len(v)', len(v))
+        print('o:', len(o), " >>> ", o)
+        print('entry:', t[idx])
 
     price = np.concatenate((o, c, h, l))
     price = cu.scale_to_1(price)
@@ -59,9 +83,6 @@ def create_padded_state_vector(o, c, h, l, v, idx, debug=False):
     padding = [0] * padding_size
 
     if debug:
-        print("calc_normalized_state")
-        print('len(o)', len(o))
-        print('len(v)', len(v))
         print('padding_size:', padding_size)
 
     o = np.concatenate((padding, o))

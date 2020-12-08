@@ -3,19 +3,42 @@ from termcolor import colored
 import pandas as pd
 import matplotlib.pyplot as plt
 import mplfinance as mpf
-import datetime
 import shutil
 import numpy as np
 import chart
 
-__data_dir = "\\data"
 __daily_charts_dir = "data\\daily_charts"
 __intraday_charts_dir = "data\\intraday_charts"
+
 __fundamentals_dir = "data\\fundamentals"
+__fundamentals_file = "data\\fundamentals.csv"
+
 __active_days_file = "data\\active_days.csv"
 
-__normalized_states_root_dir = "normalized_states"
-__normalized_states_dir = __normalized_states_root_dir + "\\intraday_charts"
+__datasets_dir = "data\\datasets"
+
+
+def get_fundamentals():
+
+    res = None
+
+    if os.path.isfile(__fundamentals_file):
+        res = pd.read_csv(__fundamentals_file)
+    else:
+        print("File not found:", __fundamentals_file)
+    return res
+
+
+def get_fundamentals_for(df, symbol):
+
+    res = None
+
+    x_idx = df.index[df['sym'] == symbol].tolist()
+    if len(x_idx) > 0:
+        x_idx = x_idx[0]
+        res = df.loc[x_idx]
+
+    return res
 
 
 def stats(gains, show_in_rows=False, show_header=True, show_chart_=False):
@@ -89,81 +112,6 @@ def limit(x, mn, mx):
     return x
 
 
-def gen_add_plot_normalized(chart_data, entries, exits):
-    df = chart_data.copy()
-
-    n = len(df)
-
-    data = {'Time': df['Time'].tolist(),
-            'Price': [float('nan')] * n}
-    df_markers = pd.DataFrame(data)
-    df_markers = df_markers.set_index(pd.Index(df_markers.Time))
-    df = df.set_index(pd.Index(df.Time))
-
-    n1 = len(entries)
-    n2 = len(exits)
-
-    adp = []
-
-    for i in range(0, n1):
-        df_markers.loc[df.loc[entries[i][0]]['Time'], 'Price'] = df.loc[entries[i][0]]['Close']
-
-    if n1 > 0:
-        adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='green', secondary_y=False))
-
-    df_markers.Price = [float('nan')] * n
-
-    for i in range(0, n2):
-        df_markers.loc[df.loc[exits[i][0]]['Time'], 'Price'] = df.loc[exits[i][0]]['Close']
-
-    if n2 > 0:
-        adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='red', secondary_y=False))
-
-    return adp
-
-
-def show_1min_chart_normalized(df, idx, symbol, date, info, entries, exits, rewards_b, rewards_i, save_to_dir=None, filename=None):
-    df = df.set_index(pd.Index(df.Time))
-
-    #############################################
-    # Generate Add-Plots
-
-    mav_list = []
-    adp = gen_add_plot_normalized(df, entries, exits)
-
-    # df['rewards_b'] = rewards_b
-    # adp.append(mpf.make_addplot(df['rewards_b'], color='green'))
-
-    # df['rewards_i'] = rewards_i
-    # adp.append(mpf.make_addplot(df['rewards_i'], color='yellow'))
-
-    ##################################
-    # Plot charts
-
-    title = info + symbol + " " + date
-
-    if save_to_dir is None:  # Display chart
-        if len(adp) > 0:
-            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
-                     volume=True, figscale=1, figratio=[16, 9], addplot=adp, title=title)
-        else:
-            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
-                     volume=True, figscale=1, figratio=[16, 9], title=title)
-    else:  # Save Chart in file
-        make_dir(save_to_dir)
-        if filename is None:
-            path = save_to_dir + "\\" + symbol + '_' + date + ".png"
-        else:
-            path = save_to_dir + "\\" + filename + ".png"
-
-        if len(adp) > 0:
-            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
-                     savefig=path, volume=True, figscale=2, figratio=[16, 9], addplot=adp, title=title)
-        else:
-            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
-                     savefig=path, volume=True, figscale=2, figratio=[16, 9], title=title)
-
-
 def get_time_index(df, date, h, m, s):
     idx = None
 
@@ -186,32 +134,22 @@ def get_time_index(df, date, h, m, s):
     return idx
 
 
-def get_chart_data_prepared_for_ai(symbol, date):
+def get_chart_data_prepared_for_ai(symbol, date, p):
     date = str(date).replace("-", "")
     df = get_intraday_chart_for(symbol, date)
 
     if df is not None:
         df.Time = pd.to_datetime(df.Time, format="%Y-%m-%d  %H:%M:%S")
-        xdate = pd.to_datetime(date, format="%Y-%m-%d")
 
-        idx = get_time_index(df, date, 15, 59, 0)
-
-        if idx is not None:
-            df = df[:idx+1]
-
-        idx = get_time_index(df, date, 9, 30, 0)
+        idx = get_time_index(df, date, p['__chart_begin_hh'], p['__chart_begin_mm'], 0)
         if idx is not None:
             df = df[idx:]
+            df.reset_index(drop=True, inplace=True)
 
-        n = len(df)
-        xidx = None
-        for i in range(0, n):
-            if df.iloc[i]["Time"].date() != xdate:
-                xidx = i
-        if xidx is not None:
-            df = df[xidx+1:]
-
-        df.reset_index(drop=True, inplace=True)
+        idx = get_time_index(df, date, p['__chart_end_hh'], p['__chart_end_mm'], 0)
+        if idx is not None:
+            df = df[:idx+1]
+            df.reset_index(drop=True, inplace=True)
 
     return df
 
@@ -472,10 +410,17 @@ def calc_rebalancing_weigths(y, num_classes):
     avg = sum(hist) / num_classes
 
     w = []
-    print("avg", avg, hist)
     for i in range(0, num_classes):
         w.append(avg / hist[i])
 
     return hist, w
 
 
+def scale_to_1(x):
+    if len(x) > 0:
+        mx = max(x)
+
+        if mx > 0:
+            x = x / mx
+
+    return x

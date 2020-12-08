@@ -329,8 +329,9 @@ def test_rebalance_weights(dataset_path):
             print(".", end="")
 
     print("")
-    w = cu.calc_rebalancing_weigths(labels, num_classes=4)
-    print(w)
+    hist, w = cu.calc_rebalancing_weigths(labels, num_classes=4)
+    print("Dataset Class Histogram:", hist)
+    print("Dataset Re-balancing Weights:", w)
     w = torch.tensor(w, dtype=torch.float)
     print(w)
 
@@ -338,4 +339,4 @@ def test_rebalance_weights(dataset_path):
 # test_stratified_sampler()
 # analyze_dataset_balance('data\\winner_datasets_2\\winner_dataset_1')
 
-test_rebalance_weights('data\\winner_datasets_2\\winner_dataset_4')
+# test_rebalance_weights('data\\winner_datasets_2\\winner_dataset_4')
