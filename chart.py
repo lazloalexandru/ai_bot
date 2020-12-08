@@ -26,17 +26,7 @@ def save_state_chart(state, t, symbol, date, idx):
     filename = symbol + "_" + date + "_" + str(idx)
 
     images_dir_path = "trades\\"
-    cu.show_1min_chart_normalized(dx,
-                                  idx,
-                                  symbol,
-                                  date,
-                                  "",
-                                  [],
-                                  [],
-                                  [],
-                                  [],
-                                  images_dir_path,
-                                  filename)
+    cu.show_1min_chart_normalized(dx, idx, symbol, date, images_dir_path, filename)
 
 
 def create_padded_state_vector(df, entry_idx, open_idx, debug=False):

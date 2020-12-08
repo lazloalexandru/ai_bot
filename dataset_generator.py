@@ -12,13 +12,6 @@ import numpy as np
 ___temp_dir_name = "__temp__"
 
 
-def get_marker(n):
-
-    marker = r'$1$'
-
-    return marker
-
-
 def _gen_add_plot(chart_data, entries):
     df = chart_data.copy()
 
@@ -36,10 +29,10 @@ def _gen_add_plot(chart_data, entries):
     adp = []
 
     for i in range(0, n):
-        m = get_marker(entries[i][2])
+        m, c = get_marker(entries[i][2])
 
         df_markers.loc[df.loc[entries[i][0]]['Time'], 'Price'] = entries[i][1] + 0.05
-        adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=20, marker=m, color='black'))
+        adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=20, marker=m, color=c))
         df_markers.loc[df.loc[entries[i][0]]['Time'], 'Price'] = float('nan')
 
     return adp
@@ -53,6 +46,7 @@ def _show_chart(chart_data, symbol, date, info, entries, params, save_to_dir="")
     adp = _gen_add_plot(chart_data, entries)
 
     plt.rcParams['figure.dpi'] = 240
+    plt.rcParams['figure.figsize'] = [1.0, 1.0]
 
     title = info + symbol + " " + date
 
@@ -206,7 +200,7 @@ def generate_datasets_mp(params):
 
 
 def _gen_dataset_from_chart(c, params):
-    dataset = None
+    dataset = []
 
     filter_mode_on = 'filter_sym' in params.keys() and 'filter_date' in params.keys()
     no_charts = 'no_charts' in params.keys() and params['no_charts']
@@ -215,7 +209,7 @@ def _gen_dataset_from_chart(c, params):
 
     if not filter_mode_on:
         search_needed = True
-    elif filter_mode_on and c['symbol'] == params['filter_sym'] and c['date'] == params['filter_date']:
+    elif filter_mode_on and c['symbol'] == params['filter_sym'] and str(c['date']) == str(params['filter_date']):
         search_needed = True
 
     if search_needed:
@@ -237,8 +231,7 @@ def _gen_dataset_from_chart(c, params):
 
             if len(entries) > 0 or filter_mode_on:
                 if not no_charts:
-                    # images_dir_path = cu.__datasets_dir + "\\" + ___temp_dir_name
-                    images_dir_path = ""
+                    images_dir_path = cu.__datasets_dir + "\\" + ___temp_dir_name
                     _show_chart(chart_data=df,
                                 symbol=symbol,
                                 date=date,
@@ -250,26 +243,7 @@ def _gen_dataset_from_chart(c, params):
     return dataset
 
 
-def _gen_labeled_data(df, entry_idx, open_idx, gain):
-    state = chart.create_padded_state_vector(df, entry_idx, open_idx)
-
-    label = 0
-
-    if gain < 2:
-        label = 0
-    elif 2 <= gain < 5:
-        label = 1
-    elif 5 <= gain < 10:
-        label = 2
-    elif 10 <= gain:
-        label = 3
-
-    return state, label
-
-
 def _gen_labeled_data_from_chart(df_chart, params):
-    filter_mode_on = 'filter_sym' in params.keys() and 'filter_date' in params.keys()
-
     entries = []
     dataset = []
 
@@ -282,12 +256,11 @@ def _gen_labeled_data_from_chart(df_chart, params):
         trading_start_idx = df_chart.index[0]
 
     i = trading_start_idx
-    while i < close_index:
+    while i <= close_index:
         buy_price = df_chart['Close'][i]
 
-        stop_price = buy_price * (1 + params['stop'] / 100)
-        params['stop_price'] = stop_price
-        params['target_price'] = buy_price * (1 + params['target'] / 100)
+        params['stop_SELL_price'] = buy_price * (1 + params['stop_sell'] / 100)
+        params['stop_BUY_price'] = buy_price * (1 + params['stop_buy'] / 100)
 
         state, label = _gen_labeled_data_for_entry(df_chart, i, open_index, params)
 
@@ -295,32 +268,26 @@ def _gen_labeled_data_from_chart(df_chart, params):
         dataset.append(labeled_data)
 
         entries.append([df_chart['Time'][i], df_chart['High'][i], label])
-        print(df_chart['Time'][i], label, i, close_index)
 
         i = i + 1
 
     return entries, dataset
 
 
-def _gen_labeled_data_for_entry(df_chart, entry_index, open_index, params):
+def _max_win_for_entry(df_chart, entry_index, open_index, params):
     sold = False
     sell_price = None
-    sell_idx = None
 
     entry_price = df_chart['Close'][entry_index]
     chart_end_idx = df_chart.index[-1]
 
     max_price = -1
-    max_idx = None
-
     j = entry_index + 1
 
     while j < chart_end_idx and not sold:
-        if df_chart['Low'][j] < params['stop_price']:
+        if df_chart['Low'][j] < params['stop_SELL_price']:
             sold = True
-            sell_price = params['stop_price']
-            sell_idx = j
-
+            sell_price = params['stop_SELL_price']
         elif df_chart['High'][j] > max_price:
             max_price = df_chart['High'][j]
             max_idx = j
@@ -330,27 +297,103 @@ def _gen_labeled_data_for_entry(df_chart, entry_index, open_index, params):
     if sold:
         if max_price > 0:
             sell_price = max_price
-            sell_idx = max_idx
     else:
         if j == chart_end_idx:
             if max_price > 0:
                 sell_price = max_price
-                sell_idx = max_idx
             else:
-                sell_price = df_chart.loc[j]['Close']
-                sell_idx = j-1
-        else:
-            if params['num_cores'] == 1:
-                print("\nidx_end: ", chart_end_idx, "time:", df_chart.loc[j]["Time"], "j:", j)
-                print(colored("Algorithm ERROR!!!!", color='red'))
+                sell_price = df_chart.loc[chart_end_idx]['High']
+        elif j > chart_end_idx:
+            sell_price = df_chart.loc[chart_end_idx]['High']
 
-    gain = int(100 * (sell_price - entry_price) / entry_price)
+    return int(100 * (sell_price - entry_price) / entry_price)
 
-    sell_time = df_chart.loc[sell_idx]['Time'], gain
+
+def _max_loss_for_entry(df_chart, entry_index, open_index, params):
+    sold = False
+    sell_price = None
+
+    entry_price = df_chart['Close'][entry_index]
+    chart_end_idx = df_chart.index[-1]
+
+    min_price = entry_price
+
+    j = entry_index + 1
+
+    while j < chart_end_idx and not sold:
+        if df_chart['High'][j] > params['stop_BUY_price']:
+            sold = True
+            sell_price = params['stop_BUY_price']
+
+        elif df_chart['Low'][j] < min_price:
+            min_price = df_chart['Low'][j]
+
+        j = j + 1
+
+    if sold:
+        if min_price < entry_price:
+            sell_price = min_price
+    else:
+        if j == chart_end_idx:
+            if min_price < entry_price:
+                sell_price = min_price
+            else:
+                sell_price = df_chart.loc[chart_end_idx]['Low']
+        elif j > chart_end_idx:
+            sell_price = df_chart.loc[chart_end_idx]['Low']
+
+    return int(100 * (sell_price - entry_price) / entry_price)
+
+
+def _gen_labeled_data_for_entry(df_chart, entry_index, open_index, params):
+    gain = _max_win_for_entry(df_chart, entry_index, open_index, params)
+
+    if gain < 2:
+        gain = _max_loss_for_entry(df_chart, entry_index, open_index, params)
 
     state, label = _gen_labeled_data(df_chart, entry_index, open_index, gain)
 
     return state, label
+
+
+def _gen_labeled_data(df, entry_idx, open_idx, gain):
+    state = chart.create_padded_state_vector(df, entry_idx, open_idx)
+
+    label = 0
+
+    if gain < -10:
+        label = 0
+    elif -10 <= gain < -5:
+        label = 1
+    elif -5 <= gain < 2:
+        label = 2
+    elif 2 <= gain < 5:
+        label = 3
+    elif 5 <= gain < 10:
+        label = 4
+    elif 10 <= gain:
+        label = 5
+
+    return state, label
+
+
+def get_marker(label):
+    m = '$' + str(label) + '$'
+
+    if label == 0:
+        c = 'red'
+    elif label == 1:
+        c = 'orange'
+    elif label == 2:
+        c = 'yellow'
+    elif label == 3:
+        c = 'limegreen'
+    elif label == 4:
+        c = 'seagreen'
+    elif label == 5:
+        c = 'darkgreen'
+
+    return m, c
 
 
 def test_training_data():
@@ -367,7 +410,7 @@ def test_training_data():
     print(zzz[0], zzz[0][-1])
     print(zzz[1], zzz[1][-1])
 
-    state = zzz[750][:-1]
+    state = zzz[4100][:-1]
 
     print("state: ", state.shape)
     symbol = "AAL"
@@ -377,32 +420,11 @@ def test_training_data():
     chart.save_state_chart(state, t, "----", date, 1)
 
 
-def show_day_distribution(params):
-    params['pattern'] = 'winners'
-    params['version'] = 3
-    df = pd.read_csv(params['chart_list_file'])
-    df.date = pd.to_datetime(df.date, format="%Y-%m-%d")
-
-    df.sort_values(by='date')
-
-    n = len(df)
-    gain = []
-    for i in range(0, n):
-        gain.append(100 * (df["sell_price"][i] / df["entry_price"][i] - 1))
-
-    print(len(df))
-    # plt.hist(df['date'], bins=1000, alpha=0.5, align='mid', rwidth=4)
-    plt.scatter(x=df["date"], y=gain)
-
-    plt.grid(True, which='major')
-    plt.show()
-
-
 def main():
     params = get_default_params()
 
-    # params['filter_sym'] = 'AR'
-    # params['filter_date'] = '2019-09-13'
+    # params['filter_sym'] = 'AACG'
+    # params['filter_date'] = '20190409'
 
     generate_datasets_mp(params)
     # test_training_data()
@@ -418,18 +440,22 @@ def get_default_params():
         'trading_begin_hh': 9,
         'trading_begin_mm': 40,
 
-        'stop': -5,
-        'target': 10,
+        'stop_buy': 2,
+        'target_short': -10,
 
-        'no_charts': False,
+        'stop_sell': -5,
+        'target_long': 10,
+
+
+        'no_charts': True,
 
         'chart_list_file': "data\\active_days_all.csv",
         'split_train_test': 0.9,
         'dataset_name': "dataset",
-        'charts_per_batch': 10,
-        'num_samples_per_dataset': 5000,
+        'charts_per_batch': 1000,
+        'num_samples_per_dataset': 1000000,
 
-        'num_cores': 1
+        'num_cores': 16
     }
     return params
 

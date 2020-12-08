@@ -424,3 +424,19 @@ def scale_to_1(x):
             x = x / mx
 
     return x
+
+
+def show_1min_chart_normalized(df, symbol, date, info, save_to_dir=None, filename=None):
+    df = df.set_index(pd.Index(df.Time))
+    title = ""
+
+    if save_to_dir is None:  # Display chart
+        mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', volume=True, figscale=1, figratio=[16, 9], title=title)
+    else:  # Save Chart in file
+        make_dir(save_to_dir)
+        if filename is None:
+            path = save_to_dir + "\\" + "----" + ".png"
+        else:
+            path = save_to_dir + "\\" + filename + ".png"
+
+        mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', savefig=path, volume=True, figscale=2, figratio=[16, 9], title=title)
