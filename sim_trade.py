@@ -294,7 +294,7 @@ def _find_trades(df, params, version):
     if trading_start_idx is None:
         trading_start_idx = df.index[0]
 
-    buy_model = params['nn_model']
+    model = params['nn_model']
 
     i = trading_start_idx
     while i < close_idx:
@@ -302,11 +302,11 @@ def _find_trades(df, params, version):
         with torch.no_grad():
             data = gen_state(df, i, open_idx)
 
-            buy_output = buy_model(data)
+            buy_output = model(data)
             res = buy_output.max(1)[1].view(1, 1)
             predicted_label = res[0][0].to("cpu").numpy()
 
-            if predicted_label >= 4:
+            if predicted_label == 5:
                 buy_price = close
 
                 print(params["symbol"], "BUY", df['Time'][i], buy_price, end="")
@@ -323,7 +323,7 @@ def _find_trades(df, params, version):
                 exits.append([sell_time, sell_price, exit_type, sell_index])
                 print(">>>>", i, sell_index)
 
-                # i = sell_index
+                i = sell_index
 
         if filter_mode_on:
             print('  ', df['Time'][i].time())
@@ -342,6 +342,8 @@ def _find_exit(df, entry_index, params):
     chart_end_idx = df.index[-1]
     open_idx = params['open_idx']
 
+    model = params['nn_model']
+
     j = entry_index + 1
 
     while j < chart_end_idx and not sold:
@@ -350,12 +352,26 @@ def _find_exit(df, entry_index, params):
             sell_price = params['stop_price']
             exit_type = "STOP"
             print("  STOP", df['Time'][j], "%.2f" % sell_price, "%  stop:", str(params['stop']) + "%", end="")
-        elif df['High'][j] > params['target_price']:
+        else:
+            with torch.no_grad():
+                data = gen_state(df, j, open_idx)
+
+                buy_output = model(data)
+                res = buy_output.max(1)[1].view(1, 1)
+                predicted_label = res[0][0].to("cpu").numpy()
+
+                if predicted_label <= 2:
+                    sold = True
+                    sell_price = df.loc[j]['Close']
+                    exit_type = "SELL"
+                    print("  SELL", df['Time'][j], "%.2f" % sell_price, end="")
+        '''
+        elif df['High'][j] > params['target_price']:            
             sold = True
             sell_price = params['target_price']
             exit_type = "SELL"
             print("  SELL", df['Time'][j], "%.2f" % sell_price, end="")
-
+        '''
         j = j + 1
 
     if not sold:
