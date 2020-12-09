@@ -12,6 +12,30 @@ import numpy as np
 ___temp_dir_name = "__temp__"
 
 
+def test_training_data():
+    zzz = np.fromfile('data\\datasets\\dataset_2', dtype='float')
+
+    n = len(zzz)
+    rows = int(n / 1951)
+
+    print("Num Samples:", rows)
+
+    zzz = zzz.reshape(rows, 1951)
+
+    print(zzz.shape)
+    print(zzz[0], zzz[0][-1])
+    print(zzz[1], zzz[1][-1])
+
+    state = zzz[4100][:-1]
+
+    print("state: ", state.shape)
+    symbol = "AAL"
+    date = "2020-04-13"
+    df = cu.get_chart_data_prepared_for_ai(symbol, date, get_default_params())
+    t = df.Time.to_list()
+    chart.save_state_chart(state, t, "----", date, 1)
+
+
 def _gen_add_plot(chart_data, entries):
     df = chart_data.copy()
 
@@ -313,10 +337,10 @@ def _max_loss_for_entry(df_chart, entry_index, open_index, params):
     sold = False
     sell_price = None
 
-    entry_price = df_chart['Close'][entry_index]
     chart_end_idx = df_chart.index[-1]
 
-    min_price = entry_price
+    VERY_BIG_PRICE = 1000000
+    min_price = VERY_BIG_PRICE
 
     j = entry_index + 1
 
@@ -331,16 +355,18 @@ def _max_loss_for_entry(df_chart, entry_index, open_index, params):
         j = j + 1
 
     if sold:
-        if min_price < entry_price:
+        if min_price < VERY_BIG_PRICE:
             sell_price = min_price
     else:
         if j == chart_end_idx:
-            if min_price < entry_price:
+            if min_price < VERY_BIG_PRICE:
                 sell_price = min_price
             else:
                 sell_price = df_chart.loc[chart_end_idx]['Low']
         elif j > chart_end_idx:
             sell_price = df_chart.loc[chart_end_idx]['Low']
+
+    entry_price = df_chart['Close'][entry_index]
 
     return int(100 * (sell_price - entry_price) / entry_price)
 
@@ -365,14 +391,16 @@ def _gen_labeled_data(df, entry_idx, open_idx, gain):
         label = 0
     elif -10 <= gain < -5:
         label = 1
-    elif -5 <= gain < 2:
+    elif -5 <= gain < -2:
         label = 2
-    elif 2 <= gain < 5:
+    elif -2 <= gain < 2:
         label = 3
-    elif 5 <= gain < 10:
+    elif 2 <= gain < 5:
         label = 4
-    elif 10 <= gain:
+    elif 5 <= gain < 10:
         label = 5
+    elif 10 <= gain:
+        label = 6
 
     return state, label
 
@@ -381,50 +409,28 @@ def get_marker(label):
     m = '$' + str(label) + '$'
 
     if label == 0:
-        c = 'red'
+        c = 'darkred'
     elif label == 1:
-        c = 'orange'
+        c = 'red'
     elif label == 2:
-        c = 'yellow'
+        c = 'orange'
     elif label == 3:
-        c = 'limegreen'
+        c = 'yellow'
     elif label == 4:
-        c = 'seagreen'
+        c = 'limegreen'
     elif label == 5:
+        c = 'seagreen'
+    elif label == 6:
         c = 'darkgreen'
 
     return m, c
 
 
-def test_training_data():
-    zzz = np.fromfile('data\\datasets\\dataset_2', dtype='float')
-
-    n = len(zzz)
-    rows = int(n / 1951)
-
-    print("Num Samples:", rows)
-
-    zzz = zzz.reshape(rows, 1951)
-
-    print(zzz.shape)
-    print(zzz[0], zzz[0][-1])
-    print(zzz[1], zzz[1][-1])
-
-    state = zzz[4100][:-1]
-
-    print("state: ", state.shape)
-    symbol = "AAL"
-    date = "2020-04-13"
-    df = cu.get_chart_data_prepared_for_ai(symbol, date, get_default_params())
-    t = df.Time.to_list()
-    chart.save_state_chart(state, t, "----", date, 1)
-
-
 def main():
     params = get_default_params()
 
-    # params['filter_sym'] = 'AACG'
-    # params['filter_date'] = '20190409'
+    # params['filter_sym'] = 'ADAP'
+    # params['filter_date'] = '20200114'
 
     generate_datasets_mp(params)
     # test_training_data()
@@ -449,10 +455,10 @@ def get_default_params():
 
         'no_charts': True,
 
-        'chart_list_file': "data\\active_days_all.csv",
-        'dataset_name': "dataset",
+        'chart_list_file': "data\\test_charts.csv",
+        'dataset_name': "dataset_test",
         'charts_per_batch': 2000,
-        'num_samples_per_dataset': 1200000,
+        'num_samples_per_dataset': 3500000,
 
         'num_cores': 16
     }
