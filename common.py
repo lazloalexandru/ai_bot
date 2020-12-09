@@ -25,7 +25,7 @@ def get_fundamentals():
     if os.path.isfile(__fundamentals_file):
         res = pd.read_csv(__fundamentals_file)
     else:
-        print("File not found:", __fundamentals_file)
+        print(colored("File not found:", __fundamentals_file, color='red'))
     return res
 
 
@@ -376,7 +376,7 @@ def merge(path1, path2, result_path):
     byte_data.tofile(result_path)
 
 
-def analyze_dataset_balance(dataset_path):
+def analyze_dataset_balance(dataset_path, num_classes):
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
     float_data = np.fromfile(dataset_path, dtype='float')
@@ -391,8 +391,6 @@ def analyze_dataset_balance(dataset_path):
     chart_data = float_data.reshape(num_rows, data_size)
     labels = []
 
-    print("Dataset Size:", num_rows, "      Data Size:", data_size)
-
     for i in range(num_rows):
         target = int(chart_data[i][-1])
 
@@ -401,7 +399,12 @@ def analyze_dataset_balance(dataset_path):
         if i % 5000 == 0:
             print(".", end="")
 
-    plt.hist(labels, bins=4, alpha=0.5, align='mid', rwidth=4)
+    print("Dataset Size:", num_rows, "      Data Size:", data_size)
+    hist, w = calc_rebalancing_weigths(labels, num_classes)
+    print("Dataset Class Histogram:", hist)
+    print("Dataset Re-balancing Weights:", w)
+
+    plt.hist(labels, bins=num_classes, alpha=0.5, align='mid', rwidth=4)
     plt.show()
 
 
@@ -440,3 +443,17 @@ def show_1min_chart_normalized(df, symbol, date, info, save_to_dir=None, filenam
             path = save_to_dir + "\\" + filename + ".png"
 
         mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', savefig=path, volume=True, figscale=2, figratio=[16, 9], title=title)
+
+
+def save_simulation_report(sim_params, stats, sim_report_file_path):
+
+    try:
+        with open(sim_report_file_path, 'w') as f:
+            for key in sim_params.keys():
+                f.write("%s: %s\n" % (key, sim_params[key]))
+            f.write("-------------Simulation Stats--------------------\n")
+            for key in stats.keys():
+                f.write("%s: %s\n" % (key, stats[key]))
+
+    except OSError:
+        print(colored("Failed to create file %s" % sim_report_file_path, color="red"))

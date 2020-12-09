@@ -337,6 +337,6 @@ def test_rebalance_weights(dataset_path):
 
 
 # test_stratified_sampler()
-# analyze_dataset_balance('data\\winner_datasets_2\\winner_dataset_1')
+cu.analyze_dataset_balance('data\\datasets\\dataset_x', num_classes=6)
 
 # test_rebalance_weights('data\\winner_datasets_2\\winner_dataset_4')

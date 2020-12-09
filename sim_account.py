@@ -4,61 +4,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-'''
-__stops = [-4, -5, -6, -7, -8, -10, -12, -15, -20, -25]
-__targets = [5, 7, 8, 9, 10, 12, 13, 15, 18, 20, 25, 30, 35, 40, 45, 50, 60]
-
-import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
-
-def calc_profits_for_stop_target(ms_pattern_entries_filename, params):
-    ns = len(__stops)
-    nt = len(__targets)
-
-    df = pd.DataFrame(columns=['stop', 'target', 'profit'])
-
-    for i in range(0, ns):
-        for j in range(0, nt):
-            params['stop'] = __stops[i]
-            params['target'] = __targets[j]
-            av = _simulate_pattern_flexible(params, 2, ms_pattern_entries_filename)
-
-            data = {'stop': __stops[i],
-                    'target': __targets[j],
-                    'profit': int(av[-1]/1000)}
-            df = df.append(data, ignore_index=True)
-
-            print("\n===============")
-            print("STOP: ", __stops[i], " Target: ", __targets[j])
-
-    result_filename = ms_pattern_entries_filename + ".txt"
-    df.to_csv(result_filename)
-
-
-
-def show_sim_results_for_stop_target(stop_trarget_profit_filename):
-    xxx = np.genfromtxt(stop_trarget_profit_filename, dtype=int, delimiter=' ')
-    ns = len(__stops)
-    nt = len(__targets)
-
-    df = pd.DataFrame(columns=['stop', 'target', 'profit'])
-
-    for i in range(0, ns):
-        for j in range(0, nt):
-            data = {'stop': __stops[i],
-                    'target': __targets[j],
-                    'profit': xxx[i, j]}
-
-            df = df.append(data, ignore_index=True)
-
-    # fig = go.Figure(data=[go.Mesh3d(x=df.stop, y=df.target, z=df.profit)])
-    fig = px.scatter_3d(df, x='stop', y='target', z='profit')
-
-    fig.show()
-'''
-
-
 def simulate_pattern(sim_params, risk_percent_of_account_per_trade, trading_file_path):
     account_value = sim_params['account_value']
     account_history = []

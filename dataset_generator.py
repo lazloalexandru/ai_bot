@@ -452,8 +452,8 @@ def get_default_params():
         'chart_list_file': "data\\active_days_all.csv",
         'split_train_test': 0.9,
         'dataset_name': "dataset",
-        'charts_per_batch': 1000,
-        'num_samples_per_dataset': 1000000,
+        'charts_per_batch': 2000,
+        'num_samples_per_dataset': 1200000,
 
         'num_cores': 16
     }

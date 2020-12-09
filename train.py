@@ -6,12 +6,11 @@ import numpy as np
 import torch.optim as optim
 from termcolor import colored
 from model import Net
-import random
+from model import get_params
 import matplotlib
 import matplotlib.pyplot as plt
 import chart
 import gc
-from sklearn.model_selection import train_test_split
 import common as cu
 
 is_ipython = 'inline' in matplotlib.get_backend()
@@ -176,6 +175,8 @@ def load_data(p):
     '''
     #####################################################################################################
     #  STRATIFIED SPLIT
+    
+    from sklearn.model_selection import train_test_split
 
     train_idx, test_idx = train_test_split(
         np.arange(len(labels)),
@@ -283,31 +284,6 @@ def main():
 
     plt.ioff()
     plt.show()
-
-
-def get_params():
-    params = {
-        'num_classes': 4,
-
-        'training_batch_log_interval': 50,
-        'train_batch': 512,
-        'test_batch': 512,
-
-        'loss_ceiling': 3,
-
-        'resume_epoch_idx': 60,
-        'num_epochs': 10000,
-        'checkpoint_at_epoch_step': 20,
-
-        'seed': 98,
-        'data_reload_counter_start': 1,
-        'dataset_path': 'data\\winner_datasets_2\\winner_dataset',
-        'dataset_chunks': 4,
-        'split_coefficient': 0.8,
-        'change_dataset_at_epoch_step': 50
-    }
-
-    return params
 
 
 if __name__ == '__main__':

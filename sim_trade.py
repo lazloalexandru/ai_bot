@@ -1,27 +1,28 @@
-import multiprocessing as mp
-import study__daily_charts
 from termcolor import colored
-import common_utils as cu
-import common_algos as ca
+
+import chart
+import common as cu
 import os
 import pandas as pd
 import mplfinance as mpf
-import sim_pattern as sim
+import sim_account as sim
 import matplotlib.pyplot as plt
 from model import Net
 import numpy as np
 import torch
+
 
 ___temp_dir_name = "__temp__"
 
 
 def _gen_add_plot(chart_data, entries, exits):
     df = chart_data.copy()
-
     n = len(df)
 
-    data = {'Time': df['Time'].tolist(),
-            'Price': [float('nan')] * n}
+    data = {
+        'Time': df['Time'].tolist(),
+        'Price': [float('nan')] * n
+    }
     df_markers = pd.DataFrame(data)
     df_markers = df_markers.set_index(pd.Index(df_markers.Time))
     df = df.set_index(pd.Index(df.Time))
@@ -41,12 +42,6 @@ def _gen_add_plot(chart_data, entries, exits):
                 df_markers.loc[df.loc[pivots[j][2]]['Time'], 'Price'] = float('nan')
 
         for i in range(0, n1):
-            # gain = 100 * (exits[i][1] - entries[i][1]) / entries[i][1]
-            # color = "green" if gain > 0 else "red"
-            # sign = "+" if gain > 0 else ""
-            # print(" -> BUY " + str(entries[i][0]) + " %.2f " % entries[i][1] + " SELL " + str(exits[i][0]) + " %.2f   " % exits[i][1], end="")
-            # print(colored(sign + "%.2f" % gain + "%", color=color))
-
             # marker for buy
             df_markers.loc[df.loc[entries[i][0]]['Time'], 'Price'] = entries[i][1]
             adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='green'))
@@ -62,65 +57,14 @@ def _gen_add_plot(chart_data, entries, exits):
     return adp
 
 
-def cmav(v, period):
-    n = len(v)
-
-    if period < 0:
-        period = 0
-
-    xxx = [float('nan')] * n
-
-    for i in range(0, n):
-        xsum = 0
-
-        start_idx = i - period
-        end_idx = i + period + 1
-
-        if start_idx < 0:
-            start_idx = 0
-        if end_idx > n:
-            end_idx = n
-
-        num = 0
-        for j in range(start_idx, end_idx):
-            xsum += v[j]
-            num += 1
-
-        xxx[i] = xsum / num
-
-    return xxx
-
-
-def add_max_filter_to(df, period):
-    highs = df["High"].to_list()
-    lows = df["Low"].to_list()
-
-    df['max_filter'] = cmav(cmav(highs, 3), 3)
-    df['min_filter'] = cmav(cmav(highs, 1), 1)
-
-    # df['min_filter'] = cmav(cmav(lows, 2), 2)
-
-
 def _show_1min_chart(chart_data, symbol, date, info, entries, exits, params, save_to_dir=""):
     df = chart_data.copy()
 
     df = df.set_index(pd.Index(df.Time))
 
-    ##############################################
-    # Generate marker for pattern last entry time
-
-    idx_lim = ca.get_time_index(df, params['last_entry_hh'], params['last_entry_mm'], 0)
-    if idx_lim is None:
-        idx_lim = df.index[-1]
-
-    idx_b = ca.get_time_index(df, params['trading_begin_hh'], params['trading_begin_mm'], 0)
+    idx_b = cu.get_time_index(df, date, params['trading_begin_hh'], params['trading_begin_mm'], 0)
     if idx_b is None:
         idx_b = df.index[0]
-
-    #############################################
-    # Generate Add-Plots
-
-    mav_list = []  # (params['mavs'], params['mavm'], params['mavl'])
 
     adp = _gen_add_plot(chart_data, entries, exits)
 
@@ -128,26 +72,25 @@ def _show_1min_chart(chart_data, symbol, date, info, entries, exits, params, sav
 
     if save_to_dir == "":  # Display chart
         if len(adp) > 0:
-            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
-                     volume=True, figscale=1, figratio=[16, 9], addplot=adp, vlines=idx_lim, title=title)
+            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', volume=True,
+                     figscale=1, figratio=[16, 9], addplot=adp, vlines=[df.loc[idx_b]['Time']], title=title)
         else:
-            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
-                     volume=True, figscale=1, figratio=[16, 9], vlines=idx_lim, title=title)
+            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', volume=True,
+                     figscale=1, figratio=[16, 9], vlines=[df.loc[idx_b]['Time']], title=title)
     else:  # Save Chart in file
         cu.make_dir(save_to_dir)
         path = save_to_dir + "\\" + symbol + '_' + date + ".png"
         # path = save_to_dir + "\\" + date + '_' + symbol + ".png"
 
         if len(adp) > 0:
-            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
-                     savefig=path, volume=True, figscale=2, figratio=[16, 9], addplot=adp,
-                     vlines=[df.loc[idx_lim]['Time'], df.loc[idx_b]['Time']], title=title)
+            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', savefig=path, volume=True,
+                     figscale=2, figratio=[16, 9], addplot=adp, vlines=[df.loc[idx_b]['Time']], title=title)
         else:
-            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', mav=mav_list,
-                     savefig=path, volume=True, figscale=2, figratio=[16, 9], vlines=df.loc[idx_lim]['Time'], title=title)
+            mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', savefig=path, volume=True,
+                     figscale=2, figratio=[16, 9], vlines=[df.loc[idx_b]['Time']], title=title)
 
 
-def simulate_pattern(params, day_params):
+def simulate_pattern(params):
     sim_params = {
         'account_value': 10000,
         'size_limit': 50000,
@@ -161,10 +104,10 @@ def simulate_pattern(params, day_params):
     stats = sim.simulate_account_performance_for(sim_params, pattern_file_path)
 
     sim_report_file_path = pattern_file_path.replace(".csv", "_sim_report.txt")
-    cu.save_simulation_report(params, day_params, sim_params, stats, sim_report_file_path)
+    cu.save_simulation_report(sim_params, stats, sim_report_file_path)
 
 
-def search_patterns(params, day_params):
+def search_patterns(params):
     params['pattern'] = 'ai'
 
     filter_mode = 'filter_sym' in params.keys() and 'filter_date' in params.keys()
@@ -193,10 +136,10 @@ def search_patterns(params, day_params):
     ################################################
     # Init directory structure
 
-    pattern_dir_path = "studies\\" + params['pattern']
+    pattern_dir_path = "trades\\" + params['pattern']
     cu.make_dir(pattern_dir_path)
 
-    temp_dir_path = "studies\\" + params['pattern'] + "\\" + ___temp_dir_name
+    temp_dir_path = "trades\\" + params['pattern'] + "\\" + ___temp_dir_name
     cu.erase_dir_if_exists(temp_dir_path)
 
     if not filter_mode:
@@ -209,6 +152,9 @@ def search_patterns(params, day_params):
     results = []
 
     df_fund = cu.get_fundamentals()
+
+    if df_fund is None:
+        return
 
     print("Single CPU execution", end="")
 
@@ -270,14 +216,15 @@ def _search_patterns_in(gapper, params, df_fund):
 
     if search_needed:
         symbol = gapper['symbol']
-        date_ = str(gapper['date'])
+        date = str(gapper['date'])
 
         params['symbol'] = symbol
+        params['date'] = date
 
-        print('\n' + symbol + ' ' + date_)
+        print('\n' + symbol + ' ' + date)
 
-        df = cu.get_chart_data_prepared_for_pattern(symbol, date_, params)
-        open_index = ca.get_time_index(df, params['__chart_begin_hh'], params['__chart_begin_mm'], 0)
+        df = cu.get_chart_data_prepared_for_ai(symbol, date, params)
+        open_index = cu.get_time_index(df, date, params['__chart_begin_hh'], params['__chart_begin_mm'], 0)
 
         if df is not None and open_index is not None:
             entries, exits = _find_trades(df, params, version)
@@ -292,10 +239,10 @@ def _search_patterns_in(gapper, params, df_fund):
 
             if len(entries) > 0 or filter_mode_on:
                 if not no_charts:
-                    images_dir_path = "studies\\" + params['pattern'] + "\\" + ___temp_dir_name
+                    images_dir_path = "trades\\" + params['pattern'] + "\\" + ___temp_dir_name
                     _show_1min_chart(chart_data=df,
                                      symbol=symbol,
-                                     date=date_,
+                                     date=date,
                                      info=info_text,
                                      entries=entries,
                                      exits=exits,
@@ -305,7 +252,7 @@ def _search_patterns_in(gapper, params, df_fund):
             if n1 == n2:
                 for j in range(0, n1):
                     data = {'sym': symbol,
-                            'date': date_,
+                            'date': date,
                             'entry_time': entries[j][0],
                             'entry_price': entries[j][1],
                             'stop': entries[j][3],
@@ -320,7 +267,7 @@ def _search_patterns_in(gapper, params, df_fund):
 
 
 def gen_state(df, entry_idx, open_idx):
-    state = cu.create_padded_state_vector(df, entry_idx, open_idx)
+    state = chart.create_padded_state_vector(df, entry_idx, open_idx)
 
     state = np.reshape(state, (5, 390))
     state = torch.tensor(state, dtype=torch.float).unsqueeze(0).unsqueeze(0).to("cuda")
@@ -338,21 +285,19 @@ def _find_trades(df, params, version):
     entries = []
     exits = []
 
-    open_idx = ca.get_time_index(df, params['__chart_begin_hh'], params['__chart_begin_mm'], 0)
-    close_idx = ca.get_time_index(df, params['__chart_end_hh'], params['__chart_end_mm'], 0)
+    date = params['date']
 
-    trading_start_idx = ca.get_time_index(df, params['trading_begin_hh'], params['trading_begin_mm'], 0)
+    open_idx = cu.get_time_index(df, date, params['__chart_begin_hh'], params['__chart_begin_mm'], 0)
+    close_idx = cu.get_time_index(df, date, params['__chart_end_hh'], params['__chart_end_mm'], 0)
+
+    trading_start_idx = cu.get_time_index(df, date, params['trading_begin_hh'], params['trading_begin_mm'], 0)
     if trading_start_idx is None:
         trading_start_idx = df.index[0]
-
-    trading_end_idx = ca.get_time_index(df, params['last_entry_hh'], params['last_entry_mm'], 0)
-    if trading_end_idx is None:
-        trading_end_idx = df.index[-1]
 
     buy_model = params['nn_model']
 
     i = trading_start_idx
-    while i < trading_end_idx:
+    while i < close_idx:
         close = df['Close'][i]  # eliminating search in dataframe ... maybe increases exectution speed
         with torch.no_grad():
             data = gen_state(df, i, open_idx)
@@ -361,7 +306,7 @@ def _find_trades(df, params, version):
             res = buy_output.max(1)[1].view(1, 1)
             predicted_label = res[0][0].to("cpu").numpy()
 
-            if predicted_label == 3:
+            if predicted_label >= 4:
                 buy_price = close
 
                 print(params["symbol"], "BUY", df['Time'][i], buy_price, end="")
@@ -431,7 +376,7 @@ def _find_exit(df, entry_index, params):
 
 
 def get_pattern_file_path(params):
-    return "studies\\" + params['pattern'] + "\\" + \
+    return "trades\\" + params['pattern'] + "\\" + \
            str(params['pattern']) + "_" + \
            "V" + str(params['version']) + "_" + \
            ".csv"
@@ -459,34 +404,29 @@ def show_day_distribution(params):
 
 
 def init_ai(params):
-    buy_model = Net().to("cuda")
+    model = Net().to("cuda")
 
     path = params['model_path']
     if os.path.isfile(path):
-        buy_model.load_state_dict(torch.load(path))
+        model.load_state_dict(torch.load(path))
         print(colored("Loaded AI state file: " + path, color="green"))
     else:
         print(colored("Could not find AI state file: " + path, color="red"))
 
-    buy_model.eval()
-    params['nn_model'] = buy_model
+    model.eval()
+    params['nn_model'] = model
 
     return params
 
 
 def main():
-    range_params = study__daily_charts.get_default_params()
-    range_params['version'] = 1
-    range_params['pattern'] = 'relevant_days'
-
     params = get_default_params()
 
     # params['filter_sym'] = 'KBSF'
     # params['filter_date'] = '2017-11-09'
 
     params = init_ai(params)
-
-    search_patterns(params, range_params)
+    search_patterns(params)
 
     show_day_distribution(params)
     ####################################################
@@ -494,7 +434,7 @@ def main():
 
     filter_mode_on = 'filter_sym' in params.keys() and 'filter_date' in params.keys()
     if not filter_mode_on:
-        simulate_pattern(params, range_params)
+        simulate_pattern(params)
 
 
 def get_default_params():
@@ -516,8 +456,8 @@ def get_default_params():
 
         'chart_list_file': "data\\active_days_all.csv",
 
-        'model_path': "data\\checkpoints\\checkpoint_410",
-        'split_train_test': 0.9
+        'model_path': "checkpoints\\checkpoint_700",
+        'split_train_test': 0.91
     }
 
     return params
