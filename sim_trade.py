@@ -323,7 +323,7 @@ def _find_trades(df, params, version):
                 exits.append([sell_time, sell_price, exit_type, sell_index])
                 print(">>>>", i, sell_index)
 
-                i = sell_index
+                # i = sell_index
 
         if filter_mode_on:
             print('  ', df['Time'][i].time())
@@ -360,7 +360,7 @@ def _find_exit(df, entry_index, params):
                 res = buy_output.max(1)[1].view(1, 1)
                 predicted_label = res[0][0].to("cpu").numpy()
 
-                if predicted_label <= 2:
+                if predicted_label <= 1:
                     sold = True
                     sell_price = df.loc[j]['Close']
                     exit_type = "SELL"

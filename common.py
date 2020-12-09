@@ -7,6 +7,7 @@ import shutil
 import numpy as np
 import chart
 
+__data_dir = "data"
 __daily_charts_dir = "data\\daily_charts"
 __intraday_charts_dir = "data\\intraday_charts"
 

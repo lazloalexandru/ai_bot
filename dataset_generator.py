@@ -85,7 +85,7 @@ def generate_datasets_mp(params):
 
     print("Number of charts:", num_charts)
 
-    num_charts = int(num_charts * params['split_train_test'])
+    num_charts = int(num_charts)
 
     print("Training Set Charts:", num_charts)
 
@@ -450,7 +450,6 @@ def get_default_params():
         'no_charts': True,
 
         'chart_list_file': "data\\active_days_all.csv",
-        'split_train_test': 0.9,
         'dataset_name': "dataset",
         'charts_per_batch': 2000,
         'num_samples_per_dataset': 1200000,

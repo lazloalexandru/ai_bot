@@ -1,14 +1,10 @@
-import os
 import common
-import queue
-from termcolor import colored
-import threading
-import time
 import pandas as pd
 import multiprocessing as mp
 import numpy as np
+import torch
 
-
+'''
 def _get_active_days_for(symbol, params):
     df = common.get_daily_chart_for(symbol)
     df.Time = pd.to_datetime(df.Time, format="%Y-%m-%d")
@@ -27,13 +23,13 @@ def _get_active_days_for(symbol, params):
 
             #####################################################################
             #  DEBUG
-            '''
-            xxx = df["Time"][df.index[i]]
-            if xxx == "2019-05-01":
-                print("Gap: " + str(gap))
-                print("Range: " + str(range_))
-                print(df.loc[i, 'Volume'])
-            '''
+
+            # xxx = df["Time"][df.index[i]]
+            # if xxx == "2019-05-01":
+            #     print("Gap: " + str(gap))
+            #    print("Range: " + str(range_))
+            #    print(df.loc[i, 'Volume'])
+
             #####################################################################
 
             if df.loc[i, 'Volume'] * df.loc[i, 'Close'] > params['min_value_traded']:
@@ -82,10 +78,13 @@ def find_active_days_mp(params, cpu_count=1):
                     results.append(m)
 
     return results
+'''
 
 
 def find_all_days(params):
     symbols = common.get_list_of_symbols_with_daily_chart()
+
+    MILLION = 1000000
 
     results = []
     for symbol in symbols:
@@ -101,7 +100,7 @@ def find_all_days(params):
 
             val = sum(price * volume)
 
-            print(file + date + "   %sM" % int(val / 10000000), end="")
+            print(file + date + "   %sM" % int(val / MILLION), end="")
 
             if val > params['min_value_traded']:
                 results.append([date, symbol])
@@ -112,41 +111,81 @@ def find_all_days(params):
     return results
 
 
+def write_indexed_chart_list_to_file(chart_list, index_list, path):
+    df = pd.DataFrame(columns=['date', 'symbol'])
+
+    n = len(index_list)
+    for i in range(0, n):
+
+        data = {
+            'date': chart_list[index_list[i]][0],
+            'symbol': chart_list[index_list[i]][1]
+        }
+
+        df = df.append(data, ignore_index=True)
+
+        if i % 50 == 0 and i > 0:
+            print(".", end="")
+        if (i % 5000 == 0 and i > 0) or i == (n-1):
+            print("")
+
+    common.make_dir(common.__data_dir)
+    df.to_csv(path)
+
+    print("Saved", len(index_list), " charts at:", path)
+
+
+def generate_chart_list_files():
+    params = get_default_params()
+    chart_list = find_all_days(params)
+
+    num_charts = len(chart_list)
+
+    if num_charts > 0:
+        train_set_size = int(num_charts * params['split_train_test'])
+        test_set_size = num_charts - train_set_size
+
+        print("Number Of Charts: ", num_charts)
+        print("Training Set Size: ", train_set_size, "(%.1f" % (100*train_set_size/num_charts), "%)")
+        print("Test Set Size: ", test_set_size, "(%.1f" % (100*test_set_size/num_charts), "%)")
+
+        print("Generating Random Split")
+        train_idx, test_idx = torch.utils.data.random_split(
+            range(num_charts),
+            [train_set_size, test_set_size],
+            generator=torch.Generator().manual_seed(params['seed'])
+        )
+
+        write_indexed_chart_list_to_file(chart_list, train_idx, params['output_training_file_path'])
+        write_indexed_chart_list_to_file(chart_list, test_idx, params['output_test_file_path'])
+
+
+def _main():
+    generate_chart_list_files()
+
+
 def get_default_params():
     params = {
-        'min_value_traded': 10000000,
 
+        ###################### CHART PARAMETERS ##########################
+
+        'min_value_traded': 10000000,
         'day_high_above': 10,
         'day_open_above': 1,
-
         'min_gap_up': 5,
         'min_gap_up_volume': 1,
         'min_range': None,
         'min_range_volume': None,
 
-        'file_path': "data\\active_days_all.csv"
+        #################### OUTPUT PARAMETERS ###########################
+
+        'split_train_test': 0.9,
+        'seed': 12,  # random generator initializer
+        'output_training_file_path': "data\\training_charts.csv",
+        'output_test_file_path': "data\\test_charts.csv"
     }
 
     return params
-
-
-def generate_active_days_file():
-    params = get_default_params()
-    # movers = find_active_days_mp(params, cpu_count=10)
-    movers = find_all_days(params)
-
-    print(movers)
-
-    if len(movers) > 0:
-        data = np.array(movers)
-        df = pd.DataFrame(data=data, columns=['date', 'symbol'])
-
-        common.make_dir(common.__data_dir)
-        df.to_csv(params['file_path'])
-
-
-def _main():
-    generate_active_days_file()
 
 
 if __name__ == "__main__":
