@@ -1,12 +1,9 @@
 from __future__ import print_function
 import os
 import torch
-import torch.nn.functional as F
 import numpy as np
 from termcolor import colored
 from model import Net
-from model import get_params
-import matplotlib
 import matplotlib.pyplot as plt
 import chart
 
@@ -26,9 +23,10 @@ def test(model, device, test_loader):
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
 
-            print(".", end="")
+            if i % 100 == 0:
+                print(".", end="")
 
-            if i % 101 == 0:
+            if i % 10000 == 0 and i > 1:
                 print("")
 
     print("")
@@ -69,7 +67,7 @@ def load_data(p):
         dataset.append((state, target))
         labels.append(target)
 
-        if i % 10000 == 0:
+        if i % 10000 == 0 and i > 1:
             print(".", end="")
 
     print("")
@@ -91,7 +89,7 @@ def main():
 
     device = torch.device("cuda")
 
-    model = Net().to(device)
+    model = Net(p['num_classes']).to(device)
 
     path = p['model_params_file_path']
 
@@ -110,9 +108,9 @@ def main():
 
 def get_params():
     params = {
-        'num_classes': 6,
-        'test_batch': 512,
-        'model_params_file_path': 'checkpoints\\checkpoint_700',
+        'num_classes': 7,
+        'test_batch': 128,
+        'model_params_file_path': 'checkpoints\\checkpoint_45',
         'dataset_path': 'data\\datasets\\dataset_4'
     }
 
