@@ -7,7 +7,7 @@ import pandas as pd
 import mplfinance as mpf
 import sim_account as sim
 import matplotlib.pyplot as plt
-from model import Net
+from model_v8 import Net
 import numpy as np
 import torch
 
@@ -333,7 +333,8 @@ def _find_trades(df, params, version):
 
                 exits.append([sell_time, sell_price, exit_type, sell_index])
 
-                i = sell_index
+                if params['no_parallel_trades']:
+                    i = sell_index
 
         if filter_mode_on:
             print('  ', df['Time'][i].time())
@@ -477,8 +478,9 @@ def get_default_params():
 
         'stop': -5,
         'target': 10,
+        'no_parallel_trades': False,
 
-        'no_charts': True,
+        'no_charts': False,
 
         'chart_list_file': "data\\test_charts.csv",
 
