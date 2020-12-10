@@ -311,11 +311,11 @@ def get_params():
     params = {
         ################# Non Essential #######################
         'loss_ceiling': 3,
-        'training_batch_log_interval': 1,
+        'training_batch_log_interval': 50,
 
         ################# Learning Rate Analysis ##############
-        'log_iteration_loss': True,
-        'loss_history_files_dir': "analytics\\learning_rate\\loss_history_files",
+        'log_iteration_loss': False,
+        'loss_history_files_dir': None,
 
         ################# Model ###############################
         'num_classes': 7,
@@ -329,8 +329,8 @@ def get_params():
         'change_dataset_at_epoch_step': 200,
 
         ################ Training #############################
-        'train_batch': 256,
-        'test_batch': 256,
+        'train_batch': 128,
+        'test_batch': 128,
         'learning_rate': 0.0001,
 
         'num_epochs': 100,
