@@ -220,10 +220,10 @@ def get_dataset_path(p):
 
 
 def save_loss_history(p):
-    cu.make_dir(cu.__log_dir)
+    cu.make_dir(p['loss_history_files_dir'])
 
     xxx = np.array(__iteration_loss_history)
-    path = cu.__log_dir + "\\" + str(p['train_batch']) + "_" + str(p['learning_rate']) + ".dat"
+    path = p['loss_history_files_dir'] + "\\" + str(p['train_batch']) + "_" + str(p['learning_rate']) + ".dat"
     print("Saving Iterations:", len(__iteration_loss_history), "  ->  ", path)
     xxx.tofile(path)
 
@@ -312,7 +312,10 @@ def get_params():
         ################# Non Essential #######################
         'loss_ceiling': 3,
         'training_batch_log_interval': 1,
+
+        ################# Learning Rate Analysis ##############
         'log_iteration_loss': True,
+        'loss_history_files_dir': "analytics\\learning_rate\\loss_history_files",
 
         ################# Model ###############################
         'num_classes': 7,
@@ -320,18 +323,18 @@ def get_params():
         ################ Training - Dataset ###################
         'seed': 92,
         'data_reload_counter_start': 0,
-        'dataset_path': 'data\\datasets\\dataset_4',
+        'dataset_path': 'data\\datasets\\dataset_01',
         'dataset_chunks': 1,
         'split_coefficient': 0.8,
         'change_dataset_at_epoch_step': 200,
 
         ################ Training #############################
-        'train_batch': 128,
-        'test_batch': 128,
-        'learning_rate': 0.0008,
+        'train_batch': 256,
+        'test_batch': 256,
+        'learning_rate': 0.0001,
 
-        'num_epochs': 10,
-        'checkpoint_at_epoch_step': 10,
+        'num_epochs': 100,
+        'checkpoint_at_epoch_step': 5,
         'resume_epoch_idx': None
     }
 
