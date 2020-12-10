@@ -337,7 +337,7 @@ def merge():
 
 
 # test_stratified_sampler()
-# cu.analyze_dataset_balance('data\\datasets\\dataset_train_0', num_classes=7)
+cu.analyze_dataset_balance('data\\datasets\\dataset_0', num_classes=7)
 
 
 # test_rebalance_weights('data\\winner_datasets_2\\winner_dataset_4')

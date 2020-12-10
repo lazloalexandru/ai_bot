@@ -141,11 +141,8 @@ def search_patterns(params):
 
     print(df_charts.head())
 
-    num_test_charts = int(num_charts * (1 - params['split_train_test']))
-    first_chart_idx = int(num_charts * params['split_train_test']) + 1
+    first_chart_idx = 0
     last_chart_idx = num_charts
-
-    print("Test Set Charts:", num_test_charts, "  (%s,%s)" % (first_chart_idx, last_chart_idx))
 
     ################################################
     # Init directory structure
@@ -335,9 +332,8 @@ def _find_trades(df, params, version):
                 sell_time, sell_price, exit_type, sell_index = _find_exit(df, i, params)
 
                 exits.append([sell_time, sell_price, exit_type, sell_index])
-                print(">>>>", i, sell_index)
 
-                # i = sell_index
+                i = sell_index
 
         if filter_mode_on:
             print('  ', df['Time'][i].time())
@@ -434,7 +430,7 @@ def show_day_distribution(params):
 
 
 def init_ai(params):
-    model = Net().to("cuda")
+    model = Net(params['num_classes']).to("cuda")
 
     path = params['model_path']
     if os.path.isfile(path):
@@ -484,10 +480,10 @@ def get_default_params():
 
         'no_charts': True,
 
-        'chart_list_file': "data\\active_days_all.csv",
+        'chart_list_file': "data\\test_charts.csv",
 
-        'model_path': "checkpoints\\checkpoint_700",
-        'split_train_test': 0.91
+        'model_path': "checkpoints\\checkpoint_135",
+        'num_classes': 7
     }
 
     return params

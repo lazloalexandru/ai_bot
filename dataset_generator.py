@@ -110,10 +110,6 @@ def generate_datasets_mp(params):
 
     print("Number of charts:", num_charts)
 
-    num_charts = int(num_charts)
-
-    print("Training Set Charts:", num_charts)
-
     ################################################
     # Init directory structure
 
@@ -123,7 +119,8 @@ def generate_datasets_mp(params):
     cu.erase_dir_if_exists(temp_dir_path)
 
     if not filter_mode:
-        print("Saving charts at " + temp_dir_path)
+        if not no_charts:
+            print("Saving charts at " + temp_dir_path)
 
         #################################################
         # Processing ...
@@ -134,14 +131,15 @@ def generate_datasets_mp(params):
         dataset_id = 0
         num_samples_per_dataset = params['num_samples_per_dataset']
         dataset_path = cu.__datasets_dir + "\\" + params['dataset_name'] + "_"
-        print("\nSaving labeled trades to file (%s samples): %sxxx" % (num_samples_per_dataset, dataset_path))
+        print("Saving labeled trades to file (%s samples): %sxxx" % (num_samples_per_dataset, dataset_path))
 
         df_fund = cu.get_fundamentals()
 
         cpu_count = params['num_cores']
 
         if cpu_count > 1 and not filter_mode:
-            print("Num CPUs: ", cpu_count)
+            print("Num CPUs: %s\n" % cpu_count)
+
 
             first_chart_idx = 0
             charts_per_batch = params['charts_per_batch']
@@ -456,10 +454,10 @@ def get_default_params():
 
         'no_charts': True,
 
-        'chart_list_file': "data\\training_charts.csv",
-        'dataset_name': "dataset",
+        'chart_list_file': "data\\test_charts.csv",
+        'dataset_name': "test_dataset",
         'charts_per_batch': 500,
-        'num_samples_per_dataset': 1250000,
+        'num_samples_per_dataset': 2500000,
 
         'num_cores': 16
     }

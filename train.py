@@ -323,7 +323,7 @@ def get_params():
         ################ Training - Dataset ###################
         'seed': 92,
         'data_reload_counter_start': 0,
-        'dataset_path': 'data\\datasets\\dataset_23',
+        'dataset_path': 'data\\datasets\\dataset_4',
         'dataset_chunks': 1,
         'split_coefficient': 0.8,
         'change_dataset_at_epoch_step': 200,
@@ -333,9 +333,9 @@ def get_params():
         'test_batch': 2048,
         'learning_rate': 0.0001,
 
-        'num_epochs': 100,
+        'num_epochs': 20,
         'checkpoint_at_epoch_step': 5,
-        'resume_epoch_idx': 45
+        'resume_epoch_idx': 135
     }
 
     return params

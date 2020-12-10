@@ -384,7 +384,7 @@ def merge(path1, path2, result_path):
 def analyze_dataset_balance(dataset_path, num_classes):
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
-    float_data = read_dataset(dataset_path)
+    float_data = np.fromfile(dataset_path)
 
     chart_size = chart.DATA_ROWS * chart.DAY_IN_MINUTES
     label_size = 1
