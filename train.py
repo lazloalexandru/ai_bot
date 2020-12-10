@@ -330,7 +330,7 @@ def get_params():
 
         ################ Training #############################
         'train_batch': 128,
-        'test_batch': 128,
+        'test_batch': 2048,
         'learning_rate': 0.0001,
 
         'num_epochs': 100,

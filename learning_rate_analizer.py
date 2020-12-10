@@ -36,7 +36,7 @@ def show_learning_rate_stats(batch_size):
     plt.ylabel("Loss")
     plt.xlabel("Iterations")
     plt.legend()
-    plt.title("Learning Rate: " + str(batch_size))
+    plt.title("Batch Size: " + str(batch_size))
 
     plt.show()
 
@@ -55,7 +55,7 @@ def show_combined_stats(lr_bs_vec):
     plt.ylabel("Loss")
     plt.xlabel("Iterations")
     plt.legend()
-    plt.title("Learning Rate: " + str(batch_size))
+    plt.title("Learning Rate & Batch Size")
 
     plt.show()
 
