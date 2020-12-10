@@ -424,16 +424,6 @@ def calc_rebalancing_weigths(y, num_classes):
     return hist, w
 
 
-def scale_to_1(x):
-    if len(x) > 0:
-        mx = max(x)
-
-        if mx > 0:
-            x = x / mx
-
-    return x
-
-
 def show_1min_chart_normalized(df, symbol, date, info, save_to_dir=None, filename=None):
     df = df.set_index(pd.Index(df.Time))
     title = ""
