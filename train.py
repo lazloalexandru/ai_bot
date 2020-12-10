@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import chart
 import gc
 import common as cu
-
+import time
 
 __global_iteration_counter = 0
 __iteration_loss_history = []
@@ -62,6 +62,8 @@ def plot_values(accuracy, train_loss, test_loss):
 def train(model, device, train_loader, optimizer, epoch, w, p):
     global __global_iteration_counter
 
+    start_time = time.time()
+
     model.train()
 
     losses = []
@@ -87,10 +89,14 @@ def train(model, device, train_loader, optimizer, epoch, w, p):
                 __global_iteration_counter, epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), sum(losses) / len(losses)))
 
+    duration = time.time() - start_time
+    print('%.2f sec' % (duration))
+
     return sum(losses) / len(losses)
 
 
 def test(model, device, test_loader, w):
+    start_time = time.time()
     model.eval()
     losses = []
     correct = 0
@@ -110,6 +116,9 @@ def test(model, device, test_loader, w):
 
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         avg_loss, correct, len(test_loader.dataset), accuracy))
+
+    duration = time.time() - start_time
+    print('%.2f sec' % (duration))
 
     return accuracy, avg_loss
 
@@ -153,6 +162,8 @@ def load_data(p):
 
         if i % 10000 == 0:
             print(".", end="")
+        if i % 1000000 == 0 and i > 1:
+            print("")
 
     print("")
     print("Balancing / Splitting Data / Resampling ...")
@@ -323,7 +334,7 @@ def get_params():
         ################ Training - Dataset ###################
         'seed': 92,
         'data_reload_counter_start': 0,
-        'dataset_path': 'data\\datasets\\dataset_4',
+        'dataset_path': 'data\\datasets\\dataset_01',
         'dataset_chunks': 1,
         'split_coefficient': 0.8,
         'change_dataset_at_epoch_step': 200,
@@ -333,7 +344,7 @@ def get_params():
         'test_batch': 2048,
         'learning_rate': 0.0001,
 
-        'num_epochs': 20,
+        'num_epochs': 200,
         'checkpoint_at_epoch_step': 5,
         'resume_epoch_idx': 135
     }

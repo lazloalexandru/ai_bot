@@ -6,10 +6,13 @@ from termcolor import colored
 from model import Net
 import matplotlib.pyplot as plt
 import chart
+import time
 
 
 def test(model, device, test_loader):
     print("Testing Model ")
+
+    start_time = time.time()
 
     model.eval()
     correct = 0
@@ -29,7 +32,8 @@ def test(model, device, test_loader):
             if i % 10000 == 0 and i > 1:
                 print("")
 
-    print("")
+    duration = time.time() - start_time
+    print('\nCompleted in %.2f sec' % (duration))
 
     accuracy = 100.0 * correct / len(test_loader.dataset)
 
@@ -101,7 +105,7 @@ def main():
 
         accuracy = test(model, device, test_loader)
 
-        print("Accuracy:", accuracy)
+        print("Accuracy: %.2f%s" % (accuracy, "%"))
     else:
         print(colored("Could not find AI state file: " + path, color="red"))
 
@@ -111,7 +115,7 @@ def get_params():
         'num_classes': 7,
         'test_batch': 512,
         'model_params_file_path': 'checkpoints\\checkpoint_135',
-        'dataset_path': 'data\\datasets\\dataset_3'
+        'dataset_path': 'data\\datasets\\dataset_4'
     }
 
     return params
