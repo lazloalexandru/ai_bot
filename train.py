@@ -6,12 +6,16 @@ import numpy as np
 import torch.optim as optim
 from termcolor import colored
 from model import Net
-from model import get_params
 import matplotlib
 import matplotlib.pyplot as plt
 import chart
 import gc
 import common as cu
+
+
+__global_iteration_counter = 0
+__iteration_loss_history = []
+
 
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
@@ -56,26 +60,31 @@ def plot_values(accuracy, train_loss, test_loss):
 
 
 def train(model, device, train_loader, optimizer, epoch, w, p):
+    global __global_iteration_counter
+
     model.train()
 
-    log_interval = p['training_batch_log_interval']
     losses = []
 
     for batch_idx, (data, target) in enumerate(train_loader):
+        __global_iteration_counter += 1
+
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
 
-        # loss = F.nll_loss(output.float(), target, reduction='mean', weight=w)
         loss = F.nll_loss(output.float(), target, weight=w)
 
         losses.append(loss.item())
+        if p['log_iteration_loss']:
+            __iteration_loss_history.append(loss.item())
 
         loss.backward()
         optimizer.step()
-        if batch_idx % log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
+
+        if batch_idx % p['training_batch_log_interval'] == 0:
+            print('{}. Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                __global_iteration_counter, epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), sum(losses) / len(losses)))
 
     return sum(losses) / len(losses)
@@ -210,6 +219,15 @@ def get_dataset_path(p):
     return dataset_path
 
 
+def save_loss_history(p):
+    cu.make_dir(cu.__log_dir)
+
+    xxx = np.array(__iteration_loss_history)
+    path = cu.__log_dir + "\\" + str(p['train_batch']) + "_" + str(p['learning_rate']) + ".dat"
+    print("Saving Iterations:", len(__iteration_loss_history), "  ->  ", path)
+    xxx.tofile(path)
+
+
 def main():
     plt.ion()
 
@@ -217,7 +235,9 @@ def main():
 
     device = torch.device("cuda")
 
-    model = Net().to(device)
+    model = Net(get_params()['num_classes']).to(device)
+    optimizer = optim.Adam(model.parameters(), lr=p['learning_rate'])
+
     resume_idx = p['resume_epoch_idx']
 
     if resume_idx is not None:
@@ -228,8 +248,6 @@ def main():
         else:
             print(colored("Could not find AI state file: " + path, color="red"))
             resume_idx = None
-
-    optimizer = optim.Adadelta(model.parameters(), lr=1)
 
     num_epochs = p['num_epochs']
     if resume_idx is None:
@@ -250,7 +268,7 @@ def main():
 
     data_reload_counter = p['data_reload_counter_start']
 
-    for epoch in range(start_idx, start_idx + num_epochs + 1):
+    for epoch in range(start_idx, start_idx + num_epochs):
         if p['dataset_chunks'] > 1 and p['change_dataset_at_epoch_step'] is not None:
             if epoch % p['change_dataset_at_epoch_step'] == 0 or data_reload_counter == p['data_reload_counter_start']:
                 del train_loader
@@ -280,10 +298,44 @@ def main():
             print(colored("Train and Test Data Loaders not Initialized!!!", color='red'))
             break
 
+    if p['log_iteration_loss']:
+        save_loss_history(p)
+
     print('Finished!')
 
     plt.ioff()
     plt.show()
+
+
+def get_params():
+    params = {
+        ################# Non Essential #######################
+        'loss_ceiling': 3,
+        'training_batch_log_interval': 1,
+        'log_iteration_loss': True,
+
+        ################# Model ###############################
+        'num_classes': 7,
+
+        ################ Training - Dataset ###################
+        'seed': 92,
+        'data_reload_counter_start': 0,
+        'dataset_path': 'data\\datasets\\dataset_4',
+        'dataset_chunks': 1,
+        'split_coefficient': 0.8,
+        'change_dataset_at_epoch_step': 200,
+
+        ################ Training #############################
+        'train_batch': 128,
+        'test_batch': 128,
+        'learning_rate': 0.0008,
+
+        'num_epochs': 10,
+        'checkpoint_at_epoch_step': 10,
+        'resume_epoch_idx': None
+    }
+
+    return params
 
 
 if __name__ == '__main__':

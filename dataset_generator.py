@@ -8,6 +8,7 @@ import pandas as pd
 import mplfinance as mpf
 import matplotlib.pyplot as plt
 import numpy as np
+import gc
 
 ___temp_dir_name = "__temp__"
 
@@ -124,44 +125,71 @@ def generate_datasets_mp(params):
     if not filter_mode:
         print("Saving charts at " + temp_dir_path)
 
-    #################################################
-    # Processing ...
+        #################################################
+        # Processing ...
 
-    version = 'na'
+        version = 'na'
 
-    labeled_trades = []
-    dataset_id = 0
-    num_samples_per_dataset = params['num_samples_per_dataset']
-    dataset_path = cu.__datasets_dir + "\\" + params['dataset_name'] + "_"
-    print("\nSaving labeled trades to file (%s samples): %sxxx" % (num_samples_per_dataset, dataset_path))
+        labeled_trades = []
+        dataset_id = 0
+        num_samples_per_dataset = params['num_samples_per_dataset']
+        dataset_path = cu.__datasets_dir + "\\" + params['dataset_name'] + "_"
+        print("\nSaving labeled trades to file (%s samples): %sxxx" % (num_samples_per_dataset, dataset_path))
 
-    df_fund = cu.get_fundamentals()
+        df_fund = cu.get_fundamentals()
 
-    cpu_count = params['num_cores']
+        cpu_count = params['num_cores']
 
-    if cpu_count > 1 and not filter_mode:
-        print("Num CPUs: ", cpu_count)
+        if cpu_count > 1 and not filter_mode:
+            print("Num CPUs: ", cpu_count)
 
-        first_chart_idx = 0
-        charts_per_batch = params['charts_per_batch']
-        while first_chart_idx < num_charts:
+            first_chart_idx = 0
+            charts_per_batch = params['charts_per_batch']
+            while first_chart_idx < num_charts:
 
-            last_chart_idx = first_chart_idx + charts_per_batch
-            if last_chart_idx > num_charts:
-                last_chart_idx = num_charts
+                last_chart_idx = first_chart_idx + charts_per_batch
+                if last_chart_idx > num_charts:
+                    last_chart_idx = num_charts
 
-            pool = mp.Pool(cpu_count)
-            mp_results = [
-                pool.apply_async(_gen_dataset_from_chart,
-                                 args=(df_charts.loc[i], params)
-                                 ) for i in range(first_chart_idx, last_chart_idx)
-            ]
+                pool = mp.Pool(cpu_count)
+                mp_results = [
+                    pool.apply_async(_gen_dataset_from_chart,
+                                     args=(df_charts.loc[i], params)
+                                     ) for i in range(first_chart_idx, last_chart_idx)
+                ]
 
-            pool.close()
-            pool.join()
+                pool.close()
+                pool.join()
 
-            for res in mp_results:
-                dataset = res.get(timeout=1)
+                for res in mp_results:
+                    dataset = res.get(timeout=1)
+                    for labeled_data in dataset:
+                        labeled_trades.append(labeled_data)
+
+                        if len(labeled_trades) >= num_samples_per_dataset:
+                            xxx = np.array(labeled_trades)
+                            print("Labeled Dataset Size:", len(labeled_trades), "   ", xxx.shape)
+                            xxx.tofile(dataset_path + str(dataset_id))
+                            dataset_id += 1
+                            labeled_trades = []
+
+                first_chart_idx += charts_per_batch
+
+            if len(labeled_trades) > 0:
+                xxx = np.array(labeled_trades)
+                print("Labeled Dataset Size:", len(labeled_trades), "   ", xxx.shape)
+                xxx.tofile(dataset_path + str(dataset_id))
+                dataset_id += 1
+        else:
+            print("Single CPU execution", end="")
+
+            if filter_mode:
+                print(" [ Filter_Symbol:", params['filter_sym'], "  Filter_Date:", params['filter_date'], "]")
+            else:
+                print("")
+
+            for index, row in df_charts.iterrows():
+                dataset = _gen_dataset_from_chart(row, params)
                 for labeled_data in dataset:
                     labeled_trades.append(labeled_data)
 
@@ -172,55 +200,28 @@ def generate_datasets_mp(params):
                         dataset_id += 1
                         labeled_trades = []
 
-            first_chart_idx += charts_per_batch
+            if len(labeled_trades) > 0:
+                xxx = np.array(labeled_trades)
+                print("Labeled Dataset Size:", len(labeled_trades), "   ", xxx.shape)
+                print(xxx[0].shape)
+                print(dataset_path + str(dataset_id))
+                xxx.tofile(dataset_path + str(dataset_id))
+                dataset_id += 1
 
-        if len(labeled_trades) > 0:
-            xxx = np.array(labeled_trades)
-            print("Labeled Dataset Size:", len(labeled_trades), "   ", xxx.shape)
-            xxx.tofile(dataset_path + str(dataset_id))
-            dataset_id += 1
-    else:
-        print("Single CPU execution", end="")
+        params['version'] = version
 
-        if filter_mode:
-            print(" [ Filter_Symbol:", params['filter_sym'], "  Filter_Date:", params['filter_date'], "]")
-        else:
-            print("")
+        ###############################################################
+        # save results
 
-        for index, row in df_charts.iterrows():
-            dataset = _gen_dataset_from_chart(row, params)
-            for labeled_data in dataset:
-                labeled_trades.append(labeled_data)
+        result_images_dir_path = cu.__datasets_dir + "\\" + params['dataset_name']
 
-                if len(labeled_trades) >= num_samples_per_dataset:
-                    xxx = np.array(labeled_trades)
-                    print("Labeled Dataset Size:", len(labeled_trades), "   ", xxx.shape)
-                    xxx.tofile(dataset_path + str(dataset_id))
-                    dataset_id += 1
-                    labeled_trades = []
+        cu.erase_dir_if_exists(result_images_dir_path)
 
-        if len(labeled_trades) > 0:
-            xxx = np.array(labeled_trades)
-            print("Labeled Dataset Size:", len(labeled_trades), "   ", xxx.shape)
-            print(xxx[0].shape)
-            print(dataset_path + str(dataset_id))
-            xxx.tofile(dataset_path + str(dataset_id))
-            dataset_id += 1
-
-    params['version'] = version
-
-    ###############################################################
-    # save results
-
-    result_images_dir_path = cu.__datasets_dir + "\\" + params['dataset_name']
-
-    cu.erase_dir_if_exists(result_images_dir_path)
-
-    if not no_charts:
-        try:
-            os.rename(temp_dir_path, result_images_dir_path)
-        except OSError:
-            print("Renaming", temp_dir_path, "to", result_images_dir_path, " failed!")
+        if not no_charts:
+            try:
+                os.rename(temp_dir_path, result_images_dir_path)
+            except OSError:
+                print("Renaming", temp_dir_path, "to", result_images_dir_path, " failed!")
 
 
 def _gen_dataset_from_chart(c, params):
@@ -455,10 +456,10 @@ def get_default_params():
 
         'no_charts': True,
 
-        'chart_list_file': "data\\test_charts.csv",
-        'dataset_name': "dataset_test",
-        'charts_per_batch': 2000,
-        'num_samples_per_dataset': 3500000,
+        'chart_list_file': "data\\training_charts.csv",
+        'dataset_name': "dataset",
+        'charts_per_batch': 500,
+        'num_samples_per_dataset': 1250000,
 
         'num_cores': 16
     }

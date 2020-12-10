@@ -263,12 +263,6 @@ def test9():
     print(x, " => ", cu.scale_to_1(np.array(x)))
 
 
-def merge():
-    cu.merge('data\\winner_datasets_2\\winner_dataset_16',
-             'data\\winner_datasets_2\\winner_dataset_17',
-             'data\\winner_datasets_2\\winner_dataset_16_17')
-
-
 def test_split():
     x, y = torch.utils.data.random_split(range(10), [3, 7], generator=torch.Generator().manual_seed(42))
 
@@ -336,7 +330,15 @@ def test_rebalance_weights(dataset_path):
     print(w)
 
 
+def merge():
+    cu.merge('data\\datasets\\dataset',
+             'data\\datasets\\dataset',
+             'data\\datasets\\dataset')
+
+
 # test_stratified_sampler()
-cu.analyze_dataset_balance('data\\datasets\\dataset_x', num_classes=6)
+# cu.analyze_dataset_balance('data\\datasets\\dataset_train_0', num_classes=7)
+
 
 # test_rebalance_weights('data\\winner_datasets_2\\winner_dataset_4')
+# test_split()

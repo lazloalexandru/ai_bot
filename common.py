@@ -1,4 +1,6 @@
 import os
+import struct
+
 from termcolor import colored
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -6,6 +8,7 @@ import mplfinance as mpf
 import shutil
 import numpy as np
 import chart
+
 
 __data_dir = "data"
 __daily_charts_dir = "data\\daily_charts"
@@ -17,6 +20,7 @@ __fundamentals_file = "data\\fundamentals.csv"
 __active_days_file = "data\\active_days.csv"
 
 __datasets_dir = "data\\datasets"
+__log_dir = "log"
 
 
 def get_fundamentals():
@@ -380,7 +384,7 @@ def merge(path1, path2, result_path):
 def analyze_dataset_balance(dataset_path, num_classes):
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
-    float_data = np.fromfile(dataset_path, dtype='float')
+    float_data = read_dataset(dataset_path)
 
     chart_size = chart.DATA_ROWS * chart.DAY_IN_MINUTES
     label_size = 1
@@ -444,17 +448,3 @@ def show_1min_chart_normalized(df, symbol, date, info, save_to_dir=None, filenam
             path = save_to_dir + "\\" + filename + ".png"
 
         mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', savefig=path, volume=True, figscale=2, figratio=[16, 9], title=title)
-
-
-def save_simulation_report(sim_params, stats, sim_report_file_path):
-
-    try:
-        with open(sim_report_file_path, 'w') as f:
-            for key in sim_params.keys():
-                f.write("%s: %s\n" % (key, sim_params[key]))
-            f.write("-------------Simulation Stats--------------------\n")
-            for key in stats.keys():
-                f.write("%s: %s\n" % (key, stats[key]))
-
-    except OSError:
-        print(colored("Failed to create file %s" % sim_report_file_path, color="red"))

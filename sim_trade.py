@@ -90,6 +90,20 @@ def _show_1min_chart(chart_data, symbol, date, info, entries, exits, params, sav
                      figscale=2, figratio=[16, 9], vlines=[df.loc[idx_b]['Time']], title=title)
 
 
+def save_simulation_report(sim_params, stats, sim_report_file_path):
+
+    try:
+        with open(sim_report_file_path, 'w') as f:
+            for key in sim_params.keys():
+                f.write("%s: %s\n" % (key, sim_params[key]))
+            f.write("-------------Simulation Stats--------------------\n")
+            for key in stats.keys():
+                f.write("%s: %s\n" % (key, stats[key]))
+
+    except OSError:
+        print(colored("Failed to create file %s" % sim_report_file_path, color="red"))
+
+
 def simulate_pattern(params):
     sim_params = {
         'account_value': 10000,
@@ -104,7 +118,7 @@ def simulate_pattern(params):
     stats = sim.simulate_account_performance_for(sim_params, pattern_file_path)
 
     sim_report_file_path = pattern_file_path.replace(".csv", "_sim_report.txt")
-    cu.save_simulation_report(sim_params, stats, sim_report_file_path)
+    save_simulation_report(sim_params, stats, sim_report_file_path)
 
 
 def search_patterns(params):
