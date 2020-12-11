@@ -69,8 +69,6 @@ def train(model, device, train_loader, optimizer, epoch, w, p):
     losses = []
 
     for batch_idx, (data, target) in enumerate(train_loader):
-        __global_iteration_counter += 1
-
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
@@ -89,8 +87,10 @@ def train(model, device, train_loader, optimizer, epoch, w, p):
                 __global_iteration_counter, epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), sum(losses) / len(losses)))
 
+        __global_iteration_counter += 1
+
     duration = time.time() - start_time
-    print('%.2f sec' % (duration))
+    print('%.2f sec' % duration)
 
     return sum(losses) / len(losses)
 
