@@ -341,7 +341,7 @@ def get_params():
         'num_classes': 7,
 
         ################ Training - Dataset ###################
-        'seed': 92,
+        'seed': 9,
         'split_coefficient': 0.95,
         'dataset_path': 'data\\datasets\\dataset_234',
         'dataset_chunks': 1,
@@ -352,10 +352,10 @@ def get_params():
         'train_batch': 128,
         'test_batch': 2048,
         'learning_rate': 0.0001,
-        'weight_decay': 0.01,
+        'weight_decay': 0.02,
 
         'num_epochs': 200,
-        'checkpoint_at_epoch_step': 5,
+        'checkpoint_at_epoch_step': 1,
         'resume_epoch_idx': None
     }
 
