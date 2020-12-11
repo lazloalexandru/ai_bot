@@ -7,7 +7,7 @@ import pandas as pd
 import mplfinance as mpf
 import sim_account as sim
 import matplotlib.pyplot as plt
-from model_v8 import Net
+from model import Net
 import numpy as np
 import torch
 

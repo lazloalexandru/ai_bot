@@ -160,7 +160,7 @@ def load_data(p):
         dataset.append((state, target))
         labels.append(target)
 
-        if i % 10000 == 0:
+        if i % 10000 == 0 and i > 1:
             print(".", end="")
         if i % 1000000 == 0 and i > 1:
             print("")
@@ -247,7 +247,7 @@ def main():
     device = torch.device("cuda")
 
     model = Net(get_params()['num_classes']).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=p['learning_rate'])
+    optimizer = optim.Adam(model.parameters(), lr=p['learning_rate'], weight_decay=p['weight_decay'])
 
     resume_idx = p['resume_epoch_idx']
 
@@ -333,20 +333,21 @@ def get_params():
 
         ################ Training - Dataset ###################
         'seed': 92,
-        'data_reload_counter_start': 0,
+        'split_coefficient': 0.8,
         'dataset_path': 'data\\datasets\\dataset_01',
         'dataset_chunks': 1,
-        'split_coefficient': 0.8,
         'change_dataset_at_epoch_step': 200,
+        'data_reload_counter_start': 0,
 
         ################ Training #############################
         'train_batch': 128,
         'test_batch': 2048,
         'learning_rate': 0.0001,
+        'weight_decay': 0.01,
 
         'num_epochs': 200,
         'checkpoint_at_epoch_step': 5,
-        'resume_epoch_idx': 135
+        'resume_epoch_idx': 50
     }
 
     return params
