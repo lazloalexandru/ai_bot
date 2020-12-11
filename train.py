@@ -118,7 +118,7 @@ def test(model, device, test_loader, w):
         avg_loss, correct, len(test_loader.dataset), accuracy))
 
     duration = time.time() - start_time
-    print('%.2f sec' % (duration))
+    print('%.2f sec' % duration)
 
     return accuracy, avg_loss
 
@@ -234,7 +234,8 @@ def save_loss_history(p):
     cu.make_dir(p['loss_history_files_dir'])
 
     xxx = np.array(__iteration_loss_history)
-    path = p['loss_history_files_dir'] + "\\" + str(p['train_batch']) + "_" + str(p['learning_rate']) + ".dat"
+    path = p['loss_history_files_dir'] + "\\" + \
+        str(p['train_batch']) + "_" + str(p['learning_rate']) + "_" + str(p['weight_decay']) + ".dat"
     print("Saving Iterations:", len(__iteration_loss_history), "  ->  ", path)
     xxx.tofile(path)
 
@@ -244,10 +245,18 @@ def main():
 
     p = get_params()
 
+    if p['log_iteration_loss']:
+        if p['loss_history_files_dir'] is None:
+            print(colored("ERROR! \"log_iteration_loss\" parameter set to True, but \"loss_history_files_dir\" is set to None! Specify directory!", color='red'))
+            return
+        if not os.path.isdir(p['loss_history_files_dir']):
+            print(colored("ERROR! Cannot find directory: " + p['loss_history_files_dir'], color='red'))
+            return
+
     device = torch.device("cuda")
 
     model = Net(get_params()['num_classes']).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=p['learning_rate'], weight_decay=p['weight_decay'])
+    optimizer = optim.AdamW(model.parameters(), lr=p['learning_rate'], weight_decay=p['weight_decay'])
 
     resume_idx = p['resume_epoch_idx']
 
@@ -326,15 +335,15 @@ def get_params():
 
         ################# Learning Rate Analysis ##############
         'log_iteration_loss': False,
-        'loss_history_files_dir': None,
+        'loss_history_files_dir': "--",
 
         ################# Model ###############################
         'num_classes': 7,
 
         ################ Training - Dataset ###################
         'seed': 92,
-        'split_coefficient': 0.8,
-        'dataset_path': 'data\\datasets\\dataset_01',
+        'split_coefficient': 0.95,
+        'dataset_path': 'data\\datasets\\dataset_234',
         'dataset_chunks': 1,
         'change_dataset_at_epoch_step': 200,
         'data_reload_counter_start': 0,
@@ -347,7 +356,7 @@ def get_params():
 
         'num_epochs': 200,
         'checkpoint_at_epoch_step': 5,
-        'resume_epoch_idx': 50
+        'resume_epoch_idx': None
     }
 
     return params

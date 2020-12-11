@@ -264,21 +264,42 @@ def test9():
 
 
 def test_split():
-    x, y = torch.utils.data.random_split(range(10), [3, 7], generator=torch.Generator().manual_seed(42))
+    x, y = torch.utils.data.random_split(range(30), [20, 10], generator=torch.Generator().manual_seed(42))
 
     for batch_idx, (data) in enumerate(x):
         print(data, " ", end="")
-
-    print("     -> ", len(x))
-
+    print()
     for batch_idx, (data) in enumerate(y):
         print(data, " ", end="")
+    print()
 
+    train_kwargs = {'batch_size': 5}
+    test_kwargs = {'batch_size': 5}
+    cuda_kwargs = {'shuffle': True}
+
+    train_kwargs.update(cuda_kwargs)
+    test_kwargs.update(cuda_kwargs)
+
+    train_loader = torch.utils.data.DataLoader(x, **train_kwargs)
+    test_loader = torch.utils.data.DataLoader(y, **test_kwargs)
+
+    for batch_idx, (data) in enumerate(train_loader):
+        print(data, " ", end="")
+    print()
+    for batch_idx, (data) in enumerate(train_loader):
+        print(data, " ", end="")
+    print("     -> ", len(x))
+
+    for batch_idx, (data) in enumerate(test_loader):
+        print(data, " ", end="")
+    print()
+    for batch_idx, (data) in enumerate(test_loader):
+        print(data, " ", end="")
     print("     -> ", len(y))
 
 
 def test_stratified_sampler():
-    dataset = torch.from_numpy(np.array([2, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0,0,0,0, 0, 0, 0, 0, 0, 2, 1, 1, 1, 0, 2, 2, 0, 0, 2, 0, 2, 0, 1, 0, 2, 2, 0]))
+    dataset = torch.from_numpy(np.array([2, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 1, 1, 0, 2, 2, 0, 0, 2, 0, 2, 0, 1, 0, 2, 2, 0]))
     train_idx, test_idx = train_test_split(
         np.arange(len(dataset)),
         test_size=0.2,
@@ -331,14 +352,16 @@ def test_rebalance_weights(dataset_path):
 
 
 def merge():
-    cu.merge('data\\datasets\\dataset',
-             'data\\datasets\\dataset',
-             'data\\datasets\\dataset')
+    cu.merge('data\\datasets\\dataset_23',
+             'data\\datasets\\dataset_4',
+             'data\\datasets\\dataset_234')
 
 
 # test_stratified_sampler()
-cu.analyze_dataset_balance('data\\datasets\\dataset_0', num_classes=7)
+# cu.analyze_dataset_balance('data\\datasets\\dataset_0', num_classes=7)
 
+# test_split()
+merge()
 
 # test_rebalance_weights('data\\winner_datasets_2\\winner_dataset_4')
 # test_split()

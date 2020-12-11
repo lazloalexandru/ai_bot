@@ -94,6 +94,7 @@ def main():
     device = torch.device("cuda")
 
     model = Net(p['num_classes']).to(device)
+    print(model)
 
     path = p['model_params_file_path']
 
@@ -113,9 +114,9 @@ def main():
 def get_params():
     params = {
         'num_classes': 7,
-        'test_batch': 512,
-        'model_params_file_path': 'checkpoints\\checkpoint_135',
-        'dataset_path': 'data\\datasets\\dataset_4'
+        'test_batch': 128,
+        'model_params_file_path': 'checkpoints\\checkpoint_105',
+        'dataset_path': 'data\\datasets\\test_dataset'
     }
 
     return params
