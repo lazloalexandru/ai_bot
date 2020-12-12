@@ -41,10 +41,11 @@ class Net(nn.Module):
         linear_input_size = f * 20
         d = 2048
 
-        print("Dense Layers %s / %s / %s" % (linear_input_size, d, output_classes))
+        print("Dense Layers %s / %s / %s / %s" % (linear_input_size, d, d, output_classes))
 
         self.fc1 = nn.Linear(linear_input_size, d)
-        self.fc2 = nn.Linear(d, output_classes)
+        self.fc2 = nn.Linear(d, d)
+        self.fc3 = nn.Linear(d, output_classes)
 
     def forward(self, x):
         x = F.relu(self.bn1(self.conv1(x)))
@@ -71,5 +72,7 @@ class Net(nn.Module):
         x = F.relu(self.fc1(x.view(x.size(0), -1)))
         x = self.dropout(x)
         x = self.fc2(x)
+        x = self.dropout(x)
+        x = self.fc3(x)
 
         return F.log_softmax(x, dim=1)
