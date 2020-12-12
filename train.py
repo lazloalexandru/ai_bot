@@ -62,13 +62,15 @@ def plot_values(accuracy, train_loss, test_loss):
 def train(model, device, train_loader, optimizer, epoch, w, p):
     global __global_iteration_counter
 
-    start_time = time.time()
+    epoch_start_time = time.time()
 
     model.train()
 
     losses = []
 
     for batch_idx, (data, target) in enumerate(train_loader):
+        batch_start_time = time.time()
+
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
@@ -82,15 +84,16 @@ def train(model, device, train_loader, optimizer, epoch, w, p):
         loss.backward()
         optimizer.step()
 
+        batch_duration = (time.time() - batch_start_time) * 1000
         if batch_idx % p['training_batch_log_interval'] == 0:
-            print('{}. Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+            print('{}. Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}   {:.0f} ms'.format(
                 __global_iteration_counter, epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), sum(losses) / len(losses)))
+                100. * batch_idx / len(train_loader), sum(losses) / len(losses), batch_duration))
 
         __global_iteration_counter += 1
 
-    duration = time.time() - start_time
-    print('%.2f sec' % duration)
+    epoch_duration = time.time() - epoch_start_time
+    print('%.2f sec' % epoch_duration)
 
     return sum(losses) / len(losses)
 
@@ -114,11 +117,11 @@ def test(model, device, test_loader, w):
     avg_loss = sum(losses) / len(losses)
     accuracy = 100.0 * correct / len(test_loader.dataset)
 
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} *({:.0f}%)'.format(
         avg_loss, correct, len(test_loader.dataset), accuracy))
 
     duration = time.time() - start_time
-    print('%.2f sec' % duration)
+    print('%.2f sec\n' % duration)
 
     return accuracy, avg_loss
 
@@ -341,7 +344,7 @@ def get_params():
         'num_classes': 7,
 
         ################ Training - Dataset ###################
-        'seed': 9,
+        'seed': 19,
         'split_coefficient': 0.95,
         'dataset_path': 'data\\datasets\\dataset_234',
         'dataset_chunks': 1,
@@ -352,7 +355,7 @@ def get_params():
         'train_batch': 128,
         'test_batch': 2048,
         'learning_rate': 0.0001,
-        'weight_decay': 0.02,
+        'weight_decay': 0.01,
 
         'num_epochs': 200,
         'checkpoint_at_epoch_step': 1,

@@ -6,38 +6,45 @@ class Net(nn.Module):
     def __init__(self, output_classes):
         super(Net, self).__init__()
 
-        linear_input_size = 512 * 20
-
-        outputs = output_classes
-        print("Dense Layers %s ... %s" % (linear_input_size, outputs))
-
         self.dropout = nn.Dropout(0.3)
         self.max_pool = nn.MaxPool2d(kernel_size=(1, 2), stride=2)
 
         k = 3
 
-        self.conv1 = nn.Conv2d(1, 64, kernel_size=(5, k), stride=1)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.conv2 = nn.Conv2d(64, 64, kernel_size=(1, k), stride=1)
-        self.bn2 = nn.BatchNorm2d(64)
+        f = 128
+        self.conv1 = nn.Conv2d(1, f, kernel_size=(5, k), stride=1)
+        self.bn1 = nn.BatchNorm2d(f)
+        self.conv2 = nn.Conv2d(f, f, kernel_size=(1, k), stride=1)
+        self.bn2 = nn.BatchNorm2d(f)
 
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=(1, k), stride=1)
-        self.bn3 = nn.BatchNorm2d(128)
-        self.conv4 = nn.Conv2d(128, 128, kernel_size=(1, k), stride=1)
-        self.bn4 = nn.BatchNorm2d(128)
+        f_prev = f
+        f = f * 2
+        self.conv3 = nn.Conv2d(f_prev, f, kernel_size=(1, k), stride=1)
+        self.bn3 = nn.BatchNorm2d(f)
+        self.conv4 = nn.Conv2d(f, f, kernel_size=(1, k), stride=1)
+        self.bn4 = nn.BatchNorm2d(f)
 
-        self.conv5 = nn.Conv2d(128, 256, kernel_size=(1, k), stride=1)
-        self.bn5 = nn.BatchNorm2d(256)
-        self.conv6 = nn.Conv2d(256, 256, kernel_size=(1, k), stride=1)
-        self.bn6 = nn.BatchNorm2d(256)
+        f_prev = f
+        f = f * 2
+        self.conv5 = nn.Conv2d(f_prev, f, kernel_size=(1, k), stride=1)
+        self.bn5 = nn.BatchNorm2d(f)
+        self.conv6 = nn.Conv2d(f, f, kernel_size=(1, k), stride=1)
+        self.bn6 = nn.BatchNorm2d(f)
 
-        self.conv7 = nn.Conv2d(256, 512, kernel_size=(1, k), stride=1)
-        self.bn7 = nn.BatchNorm2d(512)
-        self.conv8 = nn.Conv2d(512, 512, kernel_size=(1, k), stride=1)
-        self.bn8 = nn.BatchNorm2d(512)
+        f_prev = f
+        f = f * 2
+        self.conv7 = nn.Conv2d(f_prev, f, kernel_size=(1, k), stride=1)
+        self.bn7 = nn.BatchNorm2d(f)
+        self.conv8 = nn.Conv2d(f, f, kernel_size=(1, k), stride=1)
+        self.bn8 = nn.BatchNorm2d(f)
 
-        self.fc1 = nn.Linear(linear_input_size, 1024)
-        self.fc2 = nn.Linear(1024, outputs)
+        linear_input_size = f * 20
+        d = 2048
+
+        print("Dense Layers %s / %s / %s" % (linear_input_size, d, output_classes))
+
+        self.fc1 = nn.Linear(linear_input_size, d)
+        self.fc2 = nn.Linear(d, output_classes)
 
     def forward(self, x):
         x = F.relu(self.bn1(self.conv1(x)))
