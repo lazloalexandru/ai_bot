@@ -343,21 +343,22 @@ def get_params():
         'dataset_path': 'data\\datasets\\dataset',
         'dataset_chunks': 9,
         're_balancing_weights': [5.3589, 2.1937, 1.3094, 0.3621, 0.6153, 1.3060, 2.2640],
+
         'split_coefficient': 0.9,
         'seed': 19,
 
-        'data_reload_counter_start': 7,
+        'data_reload_counter_start': 1,
         'change_dataset_at_epoch_step': 10,
 
         ################ Training #############################
         'train_batch': 128,
         'test_batch': 2048,
-        'learning_rate': 0.0001,
+        'learning_rate': 0.00001,
         'weight_decay': 0.01,
 
         'num_epochs': 200,
         'checkpoint_at_epoch_step': 1,
-        'resume_epoch_idx': 95
+        'resume_epoch_idx': 201
     }
 
     return params

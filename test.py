@@ -1,13 +1,12 @@
 import pandas as pd
 import numpy as np
 from termcolor import colored
-import matplotlib.pyplot as plt
-from chart import create_padded_state_vector
 from chart import DAY_IN_MINUTES
 import chart
 import common as cu
 import torch
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 
 def test1():
@@ -357,8 +356,23 @@ def merge():
              'data\\datasets\\dataset_01')
 
 
+def plot_matrix():
+    cm = [
+        [1619.,   1072.,    923.,   1049.,   3613.,   2962.,   3142.],
+        [1814.,   3048.,   4520.,   5056.,  13136.,   7594.,   3788.],
+        [702.,   2704.,   9819.,  17021.,  21300.,   6953.,   2125.],
+        [378.,   1993.,  10617., 175755.,  32971.,   4919.,   1733.],
+        [2710.,   4670.,  12388.,  38316.,  42572.,  15691.,   6954.],
+        [2416.,   3455.,   5787.,   8202.,  20929.,  13266.,   5727.],
+        [3187.,   2678.,   2222.,   3408.,   9725.,   8378.,   8153.]]
+
+    cu.plot_confusion_matrix(np.array(cm), np.array(range(7)), normalize=True)
+
+
+plot_matrix()
+
 # test_stratified_sampler()
-# cu.analyze_dataset_balance('data\\datasets\\dataset_8', num_classes=7)
+# cu.analyze_dataset_balance('data\\datasets\\test_dataset', num_classes=7)
 # cu.analyze_divided_dataset_balance('data\\datasets\\dataset', 9, num_classes=7)
 
 # test_split()

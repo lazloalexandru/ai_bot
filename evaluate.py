@@ -1,22 +1,25 @@
-from __future__ import print_function
 import os
 import torch
 import numpy as np
 from termcolor import colored
-from model import Net
 import matplotlib.pyplot as plt
 from torchsummary import summary
-import chart
 import time
+import matplotlib.pyplot as plt
+from model import Net
+import chart
+import common as cu
 
 
-def test(model, device, test_loader):
+def test(model, device, test_loader, p):
     print("Testing Model ")
 
     start_time = time.time()
 
     model.eval()
     correct = 0
+
+    confusion = np.zeros((p['num_classes'], p['num_classes']))
 
     with torch.no_grad():
         for i, (data, target) in enumerate(test_loader):
@@ -27,10 +30,16 @@ def test(model, device, test_loader):
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
 
-            if i % 100 == 0:
-                print(".", end="")
+            tgt = target.view_as(pred)
+            prd = pred
 
-            if i % 10000 == 0 and i > 1:
+            n = len(prd)
+            for k in range(n):
+                confusion[tgt[k][0]][prd[k][0]] += 1
+
+            if i % 10 == 0:
+                print(".", end="")
+            if i % 1000 == 0 and i > 1:
                 print("")
 
     duration = time.time() - start_time
@@ -38,7 +47,7 @@ def test(model, device, test_loader):
 
     accuracy = 100.0 * correct / len(test_loader.dataset)
 
-    return accuracy
+    return accuracy, confusion
 
 
 def load_data(p):
@@ -72,8 +81,10 @@ def load_data(p):
         dataset.append((state, target))
         labels.append(target)
 
-        if i % 10000 == 0 and i > 1:
+        if i % 1000 == 0 and i > 1:
             print(".", end="")
+        if i % 100000 == 0 and i > 1:
+            print("")
 
     print("")
 
@@ -104,10 +115,10 @@ def main():
         print(colored("Loaded AI state file: " + path, color="green"))
 
         test_loader, labels = load_data(p)
-
-        accuracy = test(model, device, test_loader)
+        accuracy, cm = test(model, device, test_loader, p)
 
         print("Accuracy: %.2f%s" % (accuracy, "%"))
+        print("Confusion matrix:\n", cm)
     else:
         print(colored("Could not find AI state file: " + path, color="red"))
 
@@ -115,13 +126,13 @@ def main():
 def get_params():
     params = {
         'num_classes': 7,
-        'test_batch': 128,
-        'model_params_file_path': 'checkpoints\\checkpoint_109',
-        'dataset_path': 'data\\datasets\\dataset_8'
+        'test_batch': 1024,
+        'model_params_file_path': 'checkpoints\\checkpoint_194',
+        'dataset_path': 'data\\datasets\\test_dataset'
     }
 
     return params
 
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+main()
