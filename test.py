@@ -352,16 +352,16 @@ def test_rebalance_weights(dataset_path):
 
 
 def merge():
-    cu.merge('data\\datasets\\dataset_23',
-             'data\\datasets\\dataset_4',
-             'data\\datasets\\dataset_234')
+    cu.merge('data\\datasets\\dataset_0',
+             'data\\datasets\\dataset_1',
+             'data\\datasets\\dataset_01')
 
 
 # test_stratified_sampler()
-# cu.analyze_dataset_balance('data\\datasets\\dataset_0', num_classes=7)
+cu.analyze_dataset_balance('data\\datasets\\dataset_01', num_classes=7)
 
 # test_split()
-merge()
+# merge()
 
 # test_rebalance_weights('data\\winner_datasets_2\\winner_dataset_4')
 # test_split()

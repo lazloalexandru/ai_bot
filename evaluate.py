@@ -5,6 +5,7 @@ import numpy as np
 from termcolor import colored
 from model import Net
 import matplotlib.pyplot as plt
+from torchsummary import summary
 import chart
 import time
 
@@ -94,7 +95,7 @@ def main():
     device = torch.device("cuda")
 
     model = Net(p['num_classes']).to(device)
-    print(model)
+    summary(model, input_size=(1, chart.DATA_ROWS, chart.DAY_IN_MINUTES))
 
     path = p['model_params_file_path']
 
@@ -115,7 +116,7 @@ def get_params():
     params = {
         'num_classes': 7,
         'test_batch': 128,
-        'model_params_file_path': 'checkpoints\\checkpoint_31',
+        'model_params_file_path': 'checkpoints\\checkpoint_48',
         'dataset_path': 'data\\datasets\\test_dataset'
     }
 

@@ -179,7 +179,7 @@ def get_default_params():
 
         #################### OUTPUT PARAMETERS ###########################
 
-        'split_train_test': 0.9,
+        'split_train_test': 0.95,
         'seed': 12,  # random generator initializer
         'output_training_file_path': "data\\training_charts.csv",
         'output_test_file_path': "data\\test_charts.csv"

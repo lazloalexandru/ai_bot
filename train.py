@@ -174,8 +174,11 @@ def load_data(p):
     #####################################################################################################
     # Calculate Re-Balancing Weights
 
-    hist, w = cu.calc_rebalancing_weigths(labels, p['num_classes'])
-    print("Dataset Class Histogram:", hist)
+    # weights calculated from datased_01 ... calculate broad dataset weights
+    # hist, w = cu.calc_rebalancing_weigths(labels, p['num_classes'])
+    # print("Dataset Class Histogram:", hist)
+
+    w = [5.137046116290396, 2.2315989049097853, 1.3220951718142002, 0.36487193943592844, 0.6179145285794121, 1.2626179727102802, 2.2231529822707996]
     print("Dataset Re-balancing Weights:", w)
     w = torch.tensor(w, dtype=torch.float).to("cuda")
 
@@ -345,11 +348,11 @@ def get_params():
 
         ################ Training - Dataset ###################
         'seed': 19,
-        'split_coefficient': 0.95,
-        'dataset_path': 'data\\datasets\\dataset_234',
-        'dataset_chunks': 1,
-        'change_dataset_at_epoch_step': 200,
-        'data_reload_counter_start': 0,
+        'split_coefficient': 0.9,
+        'dataset_path': 'data\\datasets\\dataset',
+        'dataset_chunks': 9,
+        'data_reload_counter_start': 4,
+        'change_dataset_at_epoch_step': 1,
 
         ################ Training #############################
         'train_batch': 128,
@@ -359,7 +362,7 @@ def get_params():
 
         'num_epochs': 200,
         'checkpoint_at_epoch_step': 1,
-        'resume_epoch_idx': None
+        'resume_epoch_idx': 72
     }
 
     return params

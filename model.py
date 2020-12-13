@@ -6,7 +6,7 @@ class Net(nn.Module):
     def __init__(self, output_classes):
         super(Net, self).__init__()
 
-        self.dropout = nn.Dropout(0.3)
+        self.dropout = nn.Dropout(0.05)
         self.max_pool = nn.MaxPool2d(kernel_size=(1, 2), stride=2)
 
         k = 3
@@ -52,16 +52,19 @@ class Net(nn.Module):
         x = F.relu(self.bn2(self.conv2(x)))
 
         x = self.max_pool(x)
+        x = self.dropout(x)
 
         x = F.relu(self.bn3(self.conv3(x)))
         x = F.relu(self.bn4(self.conv4(x)))
 
         x = self.max_pool(x)
+        x = self.dropout(x)
 
         x = F.relu(self.bn5(self.conv5(x)))
         x = F.relu(self.bn6(self.conv6(x)))
 
         x = self.max_pool(x)
+        x = self.dropout(x)
 
         x = F.relu(self.bn7(self.conv7(x)))
         x = F.relu(self.bn8(self.conv8(x)))
