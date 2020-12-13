@@ -358,7 +358,8 @@ def merge():
 
 
 # test_stratified_sampler()
-cu.analyze_dataset_balance('data\\datasets\\dataset_01', num_classes=7)
+# cu.analyze_dataset_balance('data\\datasets\\dataset_01', num_classes=7)
+cu.analyze_divided_dataset_balance('data\\datasets\\dataset', 9, num_classes=7)
 
 # test_split()
 # merge()

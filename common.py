@@ -403,6 +403,40 @@ def analyze_dataset_balance(dataset_path, num_classes):
 
         if i % 5000 == 0:
             print(".", end="")
+        if i % 500000 == 0 and i > 0:
+            print("", end="")
+
+    print("Dataset Size:", num_rows, "      Data Size:", data_size)
+    hist, w = calc_rebalancing_weigths(labels, num_classes)
+    print("Dataset Class Histogram:", hist)
+    print("Dataset Re-balancing Weights:", w)
+
+    plt.hist(labels, bins=num_classes, alpha=0.5, align='mid', rwidth=4)
+    plt.show()
+
+
+def analyze_dataset_balance(dataset_path, num_classes):
+    print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
+
+    float_data = np.fromfile(dataset_path)
+
+    chart_size = chart.DATA_ROWS * chart.DAY_IN_MINUTES
+    label_size = 1
+    data_size = chart_size + label_size
+
+    num_bytes = len(float_data)
+    num_rows = int(num_bytes / data_size)
+
+    chart_data = float_data.reshape(num_rows, data_size)
+    labels = []
+
+    for i in range(num_rows):
+        target = int(chart_data[i][-1])
+
+        labels.append(target)
+
+        if i % 5000 == 0:
+            print(".", end="")
 
     print("Dataset Size:", num_rows, "      Data Size:", data_size)
     hist, w = calc_rebalancing_weigths(labels, num_classes)
@@ -422,6 +456,42 @@ def calc_rebalancing_weigths(y, num_classes):
         w.append(avg / hist[i])
 
     return hist, w
+
+
+def analyze_divided_dataset_balance(dataset_path, num_dataset_chunks, num_classes):
+    labels = []
+    num_data = 0
+
+    for dataset_idx in range(num_dataset_chunks):
+        path = dataset_path + "_" + str(dataset_idx)
+        print(colored("Loading Data From:" + path + " ...", color="green"))
+
+        float_data = np.fromfile(path)
+
+        chart_size = chart.DATA_ROWS * chart.DAY_IN_MINUTES
+        label_size = 1
+        data_size = chart_size + label_size
+
+        num_bytes = len(float_data)
+        num_rows = int(num_bytes / data_size)
+
+        chart_data = float_data.reshape(num_rows, data_size)
+
+        for i in range(num_rows):
+            target = int(chart_data[i][-1])
+            labels.append(target)
+
+        num_data += num_rows
+        print("Dataset[%s] Size: %s     Data Size: %s" % (dataset_idx, num_rows, data_size))
+
+    print("")
+    print("Dataset Size:", num_data, "      Data Size:", data_size)
+    hist, w = calc_rebalancing_weigths(labels, num_classes)
+    print("Dataset Class Histogram:", hist)
+    print("Dataset Re-balancing Weights:", w)
+
+    plt.hist(labels, bins=num_classes, alpha=0.5, align='mid', rwidth=4)
+    plt.show()
 
 
 def show_1min_chart_normalized(df, symbol, date, info, save_to_dir=None, filename=None):

@@ -142,7 +142,6 @@ def load_data(p):
 
     chart_data = float_data.reshape(num_rows, data_size)
     dataset = []
-    labels = []
 
     print("Dataset Size:", num_rows, "      Data Size:", data_size,  "   <-   Seed:", p['seed'])
 
@@ -161,7 +160,6 @@ def load_data(p):
         target = torch.tensor(target)
 
         dataset.append((state, target))
-        labels.append(target)
 
         if i % 10000 == 0 and i > 1:
             print(".", end="")
@@ -169,18 +167,13 @@ def load_data(p):
             print("")
 
     print("")
-    print("Balancing / Splitting Data / Resampling ...")
+    print("Splitting Data / Resampling ...")
 
     #####################################################################################################
-    # Calculate Re-Balancing Weights
+    # Precalculated Re-Balancing Weights
 
-    # weights calculated from datased_01 ... calculate broad dataset weights
-    # hist, w = cu.calc_rebalancing_weigths(labels, p['num_classes'])
-    # print("Dataset Class Histogram:", hist)
-
-    w = [5.137046116290396, 2.2315989049097853, 1.3220951718142002, 0.36487193943592844, 0.6179145285794121, 1.2626179727102802, 2.2231529822707996]
-    print("Dataset Re-balancing Weights:", w)
-    w = torch.tensor(w, dtype=torch.float).to("cuda")
+    print("Dataset Re-balancing Weights:", p['re_balancing_weights'])
+    w = torch.tensor(p['re_balancing_weights'], dtype=torch.float).to("cuda")
 
     #####################################################################################################
     #  RANDOM SPLIT
@@ -347,12 +340,14 @@ def get_params():
         'num_classes': 7,
 
         ################ Training - Dataset ###################
-        'seed': 19,
-        'split_coefficient': 0.9,
         'dataset_path': 'data\\datasets\\dataset',
         'dataset_chunks': 9,
-        'data_reload_counter_start': 4,
-        'change_dataset_at_epoch_step': 1,
+        're_balancing_weights': [5.3589, 2.1937, 1.3094, 0.3621, 0.6153, 1.3060, 2.2640],
+        'split_coefficient': 0.9,
+        'seed': 19,
+
+        'data_reload_counter_start': 7,
+        'change_dataset_at_epoch_step': 10,
 
         ################ Training #############################
         'train_batch': 128,
@@ -362,7 +357,7 @@ def get_params():
 
         'num_epochs': 200,
         'checkpoint_at_epoch_step': 1,
-        'resume_epoch_idx': 72
+        'resume_epoch_idx': 95
     }
 
     return params
