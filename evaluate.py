@@ -99,8 +99,6 @@ def load_data(p):
 
 
 def main():
-    plt.ion()
-
     p = get_params()
 
     device = torch.device("cuda")
@@ -118,7 +116,9 @@ def main():
         accuracy, cm = test(model, device, test_loader, p)
 
         print("Accuracy: %.2f%s" % (accuracy, "%"))
-        print("Confusion matrix:\n", cm)
+        cu.print_confusion_matrix(cm, p['num_classes'])
+        cu.plot_confusion_matrix(np.array(cm), np.array(range(p['num_classes'])), normalize=True)
+
     else:
         print(colored("Could not find AI state file: " + path, color="red"))
 
@@ -127,12 +127,12 @@ def get_params():
     params = {
         'num_classes': 7,
         'test_batch': 1024,
-        'model_params_file_path': 'checkpoints\\checkpoint_194',
+        'model_params_file_path': 'checkpoints\\checkpoint_207',
         'dataset_path': 'data\\datasets\\test_dataset'
     }
 
     return params
 
 
-# if __name__ == '__main__':
-main()
+if __name__ == '__main__':
+    main()

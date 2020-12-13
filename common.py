@@ -472,14 +472,27 @@ def show_1min_chart_normalized(df, symbol, date, info, save_to_dir=None, filenam
         mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', savefig=path, volume=True, figscale=2, figratio=[16, 9], title=title)
 
 
+def print_confusion_matrix(confusion, num_classes):
+    print("Confusion Matrix:")
+
+    print("[", end="")
+    for i in range(num_classes):
+        print("[", end="")
+        for j in range(num_classes):
+            print("%s" % confusion[i][j], end="")
+            if j < num_classes-1:
+                print(", ", end="")
+        print("]", end="")
+        if i < num_classes - 1:
+            print(",")
+        else:
+            print("]")
+
+
 def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix', cmap=plt.cm.Blues):
     if normalize:
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-        print("Normalized confusion matrix")
-    else:
-        print('Confusion matrix, without normalization')
 
-    print(cm)
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
     plt.title(title)
     plt.colorbar()
