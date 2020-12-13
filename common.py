@@ -401,43 +401,6 @@ def analyze_dataset_balance(dataset_path, num_classes):
 
         labels.append(target)
 
-        if i % 5000 == 0:
-            print(".", end="")
-        if i % 500000 == 0 and i > 0:
-            print("", end="")
-
-    print("Dataset Size:", num_rows, "      Data Size:", data_size)
-    hist, w = calc_rebalancing_weigths(labels, num_classes)
-    print("Dataset Class Histogram:", hist)
-    print("Dataset Re-balancing Weights:", w)
-
-    plt.hist(labels, bins=num_classes, alpha=0.5, align='mid', rwidth=4)
-    plt.show()
-
-
-def analyze_dataset_balance(dataset_path, num_classes):
-    print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
-
-    float_data = np.fromfile(dataset_path)
-
-    chart_size = chart.DATA_ROWS * chart.DAY_IN_MINUTES
-    label_size = 1
-    data_size = chart_size + label_size
-
-    num_bytes = len(float_data)
-    num_rows = int(num_bytes / data_size)
-
-    chart_data = float_data.reshape(num_rows, data_size)
-    labels = []
-
-    for i in range(num_rows):
-        target = int(chart_data[i][-1])
-
-        labels.append(target)
-
-        if i % 5000 == 0:
-            print(".", end="")
-
     print("Dataset Size:", num_rows, "      Data Size:", data_size)
     hist, w = calc_rebalancing_weigths(labels, num_classes)
     print("Dataset Class Histogram:", hist)

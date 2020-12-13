@@ -34,7 +34,7 @@ def test(model, device, test_loader):
                 print("")
 
     duration = time.time() - start_time
-    print('\nCompleted in %.2f sec' % (duration))
+    print('\nCompleted in %.2f sec' % duration)
 
     accuracy = 100.0 * correct / len(test_loader.dataset)
 
@@ -116,8 +116,8 @@ def get_params():
     params = {
         'num_classes': 7,
         'test_batch': 128,
-        'model_params_file_path': 'checkpoints\\checkpoint_48',
-        'dataset_path': 'data\\datasets\\test_dataset'
+        'model_params_file_path': 'checkpoints\\checkpoint_109',
+        'dataset_path': 'data\\datasets\\dataset_8'
     }
 
     return params
