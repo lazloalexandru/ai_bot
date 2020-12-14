@@ -4,7 +4,12 @@ import pandas as pd
 
 DATA_ROWS = 5
 DAY_IN_MINUTES = 390
-HISTORY_CHART_LENGTH = 512
+DAILY_CHART_LENGTH = 122
+
+EXTENDED_CHART_LENGTH = DAILY_CHART_LENGTH + DAY_IN_MINUTES
+LABEL_SIZE = 1
+
+EXT_DATA_SIZE = EXTENDED_CHART_LENGTH * DATA_ROWS + LABEL_SIZE
 
 
 def save_state_chart(state, t, symbol, date, idx, length):
@@ -183,6 +188,25 @@ def create_state_vector(df_history, df, entry_idx, open_idx, debug=False):
     if debug:
         print('normalized len(ho)', len(ho))
         print('normalized len(hv)', len(hv))
+
+    ##################### HISTORY PADDING ##############################
+
+    padding_size = DAILY_CHART_LENGTH - len(df_history)
+    padding = [0] * padding_size
+
+    if debug:
+        print('history padding_size:', padding_size)
+
+    if padding_size > 0:
+        ho = np.concatenate((padding, ho))
+        hc = np.concatenate((padding, hc))
+        hh = np.concatenate((padding, hh))
+        hl = np.concatenate((padding, hl))
+        hv = np.concatenate((padding, hv))
+
+    if debug:
+        print('padded len(o)', len(ho))
+        print('padded len(v)', len(hv))
 
     ##################### APPEND HISTORY ###############################
 

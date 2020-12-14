@@ -14,7 +14,7 @@ ___temp_dir_name = "__temp__"
 
 
 def test_training_data():
-    zzz = np.fromfile('data\\datasets\\small_0', dtype='float')
+    zzz = np.fromfile('data\\datasets\\extended_dataset_0', dtype='float')
 
     DATA_SIZE = 2561
     n = len(zzz)
@@ -28,7 +28,7 @@ def test_training_data():
     print(zzz[0], zzz[0][-1])
     print(zzz[1], zzz[1][-1])
 
-    xidx = 379
+    xidx = 300
     state = zzz[xidx][:-1]
 
     print("state: ", state.shape)
@@ -36,7 +36,10 @@ def test_training_data():
     date = "2020-04-13"
     df = cu.get_intraday_chart_for(symbol, date)
     t = df.Time.to_list()
-    chart.save_state_chart(state, t, "AAL", date, xidx, chart.HISTORY_CHART_LENGTH)
+    chart.save_state_chart(state, t, "AAL", date, xidx, chart.EXTENDED_CHART_LENGTH)
+
+    cu.show_daily_chart('CGC')
+    cu.show_intraday_chart('CGC', '2018-08-16')
 
 
 def _gen_add_plot(chart_data, entries):
@@ -192,8 +195,7 @@ def generate_datasets_mp(params):
             for labeled_data in dataset:
                 data_size = len(labeled_data)
                 if data_size > 0:
-                    print(">>>>>>>", data_size)
-                    if data_size == chart.HISTORY_CHART_LENGTH:
+                    if data_size == chart.EXT_DATA_SIZE:
                         labeled_trades.append(labeled_data)
                     else:
                         print(colored("Algorithm ERROR!", color="red"))
@@ -275,7 +277,6 @@ def _gen_dataset_from_chart(c, params):
                                 params=params,
                                 save_to_dir="" if filter_mode_on else images_dir_path)
 
-    print("Returned:", len(dataset))
     return dataset
 
 
@@ -422,9 +423,7 @@ def _gen_labeled_data_for_entry(df_history, df_chart, entry_index, open_index, p
 
 
 def _gen_labeled_data(df_history, df, entry_idx, open_idx, gain):
-    state = chart.create_state_vector(df_history, df, entry_idx, open_idx, debug=True)
-
-    print(">>>>", state.shape)
+    state = chart.create_state_vector(df_history, df, entry_idx, open_idx)
 
     label = 0
 
@@ -470,11 +469,11 @@ def get_marker(label):
 def main():
     params = get_default_params()
 
-    params['filter_sym'] = 'CGC'
-    params['filter_date'] = '2018-08-16'
+    # params['filter_sym'] = 'CGC'
+    # params['filter_date'] = '2018-08-16'
+    # test_training_data()
 
     generate_datasets_mp(params)
-    # test_training_data()
 
 
 def get_default_params():
@@ -499,7 +498,7 @@ def get_default_params():
         'chart_list_file': "data\\training_charts.csv",
         'dataset_name': "extended_dataset",
         'charts_per_batch': 500,
-        'num_samples_per_dataset': 200,
+        'num_samples_per_dataset': 1250000,
 
         'num_cores': 1
     }

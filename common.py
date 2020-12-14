@@ -256,7 +256,12 @@ def get_index_of_day(df, date):
 
 def get_period_before(df, date, period_length):
     date_idx = get_index_of_day(df, date)
-    df_period = df[date_idx - period_length + 1:date_idx + 1].copy()
+
+    start_idx = date_idx - period_length + 1
+    if start_idx < 0:
+        start_idx = 0
+
+    df_period = df[start_idx:date_idx + 1].copy()
 
     return df_period, date_idx
 
