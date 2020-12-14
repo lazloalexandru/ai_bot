@@ -234,7 +234,7 @@ def get_daily_chart_path_for(symbol):
     return __daily_charts_dir + "\\" + symbol + ".csv"
 
 
-def get_index_of_day(df, date):
+def get_index_of_day(df, date, symbol_info=""):
     search_date = pd.to_datetime(str(date).replace("-", ""), format="%Y%m%d")
     xdate = df.iloc[0]["Time"]
     xdate = xdate.replace(year=search_date.year, month=search_date.month, day=search_date.day)
@@ -247,21 +247,27 @@ def get_index_of_day(df, date):
     if n == 1:
         idx = x_idx[0]
     elif n > 1:
-        print(colored("ERROR ... Intraday chart contains more than one bars with same time stamp!!!", color='red'))
+        print(colored(symbol_info + "  >>  ERROR ... Daily chart contains more than one bars with same time stamp!!!", color='red'))
     else:
-        print(colored("Warning!!! ... Intraday chart contains no timestamp: " + str(xdate) + "   n: " + str(n), color='yellow'))
+        print(colored(symbol_info + "  >> ERROR!!! ... Daily chart contains no timestamp: " + str(xdate) + "   n: " + str(n), color='red'))
 
     return idx
 
 
-def get_period_before(df, date, period_length):
-    date_idx = get_index_of_day(df, date)
+def get_period_before(df, date, period_length, symbol_info=""):
+    date_idx = get_index_of_day(df, date, symbol_info)
 
-    start_idx = date_idx - period_length + 1
-    if start_idx < 0:
-        start_idx = 0
+    df_period = None
 
-    df_period = df[start_idx:date_idx + 1].copy()
+    if date_idx is not None:
+        start_idx = date_idx - period_length + 1
+        if start_idx < 0:
+            start_idx = 0
+
+        df_period = df[start_idx:date_idx + 1].copy()
+        if len(df_period) == 0:
+            df_period = None
+            print(colored(symbol_info + " >> Warning! History length is zero for date: " + str(date), color="yellow"))
 
     return df_period, date_idx
 

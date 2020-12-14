@@ -166,14 +166,22 @@ def generate_datasets_mp(params):
             for res in mp_results:
                 dataset = res.get(timeout=1)
                 for labeled_data in dataset:
-                    labeled_trades.append(labeled_data)
+                    data_size = len(labeled_data)
+                    if data_size > 0:
+                        if data_size == chart.EXT_DATA_SIZE:
+                            labeled_trades.append(labeled_data)
+                        else:
+                            print(colored("Algorithm ERROR!", color="red"))
+                            return
 
                     if len(labeled_trades) >= num_samples_per_dataset:
+                        print("")
                         xxx = np.array(labeled_trades)
                         print("Labeled Dataset Size1:", len(labeled_trades), "   ", xxx.shape)
                         xxx.tofile(dataset_path + str(dataset_id))
                         dataset_id += 1
                         labeled_trades = []
+                        print("Labeled Dataset Size11:", len(labeled_trades))
 
             first_chart_idx += charts_per_batch
 
@@ -255,14 +263,17 @@ def _gen_dataset_from_chart(c, params):
     if search_needed:
         print(symbol + ' ' + date)
 
+        df_daily = cu.get_daily_chart_for(symbol)
+        df_history, date_index = cu.get_period_before(df_daily, date, chart.DAILY_CHART_LENGTH, symbol + "_" + str(date))
         df = cu.get_chart_data_prepared_for_ai(symbol, date, params)
 
         open_index = cu.get_time_index(df, date, params['__chart_begin_hh'], params['__chart_begin_mm'], 0)
 
-        if df is not None and open_index is not None:
+        if df is not None and open_index is not None and df_history is not None and date_index is not None:
             params['symbol'] = symbol
             params['date'] = date
-            entries, dataset = _gen_labeled_data_from_chart(df, params)
+            params['date_index'] = date_index
+            entries, dataset = _gen_labeled_data_from_chart(df_history, df, params)
 
             info_text = ""
 
@@ -280,7 +291,7 @@ def _gen_dataset_from_chart(c, params):
     return dataset
 
 
-def _gen_labeled_data_from_chart(df_chart, params):
+def _gen_labeled_data_from_chart(df_history, df_chart, params):
     entries = []
     dataset = []
 
@@ -295,9 +306,6 @@ def _gen_labeled_data_from_chart(df_chart, params):
     min_price = df_chart['Low'][open_index]
     max_price = df_chart['High'][open_index]
     vol = cu.get_premarket_volume_for(params)
-
-    df_daily = cu.get_daily_chart_for(params['symbol'])
-    df_history, date_index = cu.get_period_before(df_daily, date, 122)
 
     params['Open'] = df_chart['Open'][open_index]
 
@@ -316,7 +324,7 @@ def _gen_labeled_data_from_chart(df_chart, params):
             params['High'] = max_price
             params['Low'] = min_price
             params['Volume'] = vol
-            chart.update_candle(df_history, date_index, params)
+            chart.update_candle(df_history, params)
             ###################################################################################
 
             buy_price = df_chart['Close'][i]
@@ -469,8 +477,8 @@ def get_marker(label):
 def main():
     params = get_default_params()
 
-    # params['filter_sym'] = 'CGC'
-    # params['filter_date'] = '2018-08-16'
+    # params['filter_sym'] = 'DENN'
+    # params['filter_date'] = '2020-03-23'
     # test_training_data()
 
     generate_datasets_mp(params)
@@ -493,14 +501,14 @@ def get_default_params():
         'target_long': 10,
 
 
-        'no_charts': False,
+        'no_charts': True,
 
         'chart_list_file': "data\\training_charts.csv",
         'dataset_name': "extended_dataset",
-        'charts_per_batch': 500,
+        'charts_per_batch': 200,
         'num_samples_per_dataset': 1250000,
 
-        'num_cores': 1
+        'num_cores': 16
     }
     return params
 

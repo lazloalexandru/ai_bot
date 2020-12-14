@@ -233,7 +233,9 @@ def pad_state_to_512(state):
     return np.concatenate((padding, state), axis=1)
 
 
-def update_candle(df, idx, params):
+def update_candle(df, params):
+    idx = params['date_index']
+
     df.at[idx, 'Open'] = params['Open']
     df.at[idx, 'Close'] = params['Close']
     df.at[idx, 'Low'] = params['Low']

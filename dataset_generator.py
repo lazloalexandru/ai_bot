@@ -427,8 +427,8 @@ def get_marker(label):
 def main():
     params = get_default_params()
 
-    params['filter_sym'] = 'ADAP'
-    params['filter_date'] = '20200114'
+    # params['filter_sym'] = 'ADAP'
+    # params['filter_date'] = '20200114'
 
     generate_datasets_mp(params)
     # test_training_data()
@@ -451,7 +451,7 @@ def get_default_params():
         'target_long': 10,
 
 
-        'no_charts': False,
+        'no_charts': True,
 
         'chart_list_file': "data\\training_charts.csv",
         'dataset_name': "small",
