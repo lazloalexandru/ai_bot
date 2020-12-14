@@ -4,6 +4,7 @@ venv/
 data/
 checkpoints/
 backup/
+models/
 trades/
 analytics/
 ___samples___/
