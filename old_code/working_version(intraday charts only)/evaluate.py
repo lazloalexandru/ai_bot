@@ -2,8 +2,10 @@ import os
 import torch
 import numpy as np
 from termcolor import colored
+import matplotlib.pyplot as plt
 from torchsummary import summary
 import time
+import matplotlib.pyplot as plt
 from model import Net
 import chart
 import common as cu
@@ -55,7 +57,9 @@ def load_data(p):
 
     float_data = np.fromfile(dataset_path, dtype='float')
 
-    data_size = chart.EXT_DATA_SIZE
+    chart_size_bytes = chart.DATA_ROWS * chart.DAY_IN_MINUTES
+    label_size_bytes = 1
+    data_size = chart_size_bytes + label_size_bytes
 
     num_bytes = len(float_data)
     num_rows = int(num_bytes / data_size)
@@ -68,7 +72,7 @@ def load_data(p):
 
     for i in range(num_rows):
         state = chart_data[i][:-1]
-        state = np.reshape(state, (chart.DATA_ROWS, chart.EXTENDED_CHART_LENGTH))
+        state = np.reshape(state, (chart.DATA_ROWS, chart.DAY_IN_MINUTES))
         state = torch.tensor(state, dtype=torch.float).unsqueeze(0)
 
         target = int(chart_data[i][-1])

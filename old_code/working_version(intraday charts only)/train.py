@@ -22,6 +22,10 @@ if is_ipython:
     from IPython import display
 
 
+def moving_average(x, w):
+    return np.convolve(x, np.ones(w), 'valid') / w
+
+
 def plot_values(accuracy, train_loss, test_loss):
     fig = plt.figure(2)
     plt.clf()
@@ -129,7 +133,9 @@ def load_data(p):
 
     float_data = np.fromfile(dataset_path, dtype='float')
 
-    data_size = chart.EXT_DATA_SIZE
+    chart_size_bytes = chart.DATA_ROWS * chart.DAY_IN_MINUTES
+    label_size_bytes = 1
+    data_size = chart_size_bytes + label_size_bytes
 
     num_bytes = len(float_data)
     num_rows = int(num_bytes / data_size)
@@ -148,7 +154,7 @@ def load_data(p):
 
     for i in range(num_rows):
         state = chart_data[i][:-1]
-        state = np.reshape(state, (chart.DATA_ROWS, chart.EXTENDED_CHART_LENGTH))
+        state = np.reshape(state, (chart.DATA_ROWS, chart.DAY_IN_MINUTES))
         state = torch.tensor(state, dtype=torch.float).unsqueeze(0)
 
         target = int(chart_data[i][-1])
