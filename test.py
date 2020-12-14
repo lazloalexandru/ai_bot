@@ -7,111 +7,7 @@ import common as cu
 import torch
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
-
-
-def test1():
-    _open = [3, 3, 3]
-    _close = [4, 4, 4]
-    _high = [6, 6, 6]
-    _low = [2, 2, 2]
-    t1 = pd.to_datetime("2020-11-20 9:30:00", format="%Y-%m-%d  %H:%M:%S")
-    t2 = pd.to_datetime("2020-11-20 10:00:00", format="%Y-%m-%d  %H:%M:%S")
-    t3 = pd.to_datetime("2020-11-20 16:00:00", format="%Y-%m-%d  %H:%M:%S")
-    _time = [t1, t2, t3]
-    vol = [2000, 4000, 6000]
-
-    bl = [0] * 3
-    state = chart.calc_normalized_state(_open, _close, _high, _low, vol, bl, 2, debug=True)
-    state = state.reshape(7, DAY_IN_MINUTES)
-    print(state)
-
-
-def test2():
-    symbol = "AAL"
-    date = "2020-02-26"
-    df = cu.get_chart_data_prepared_for_ai(symbol, date)
-
-    idx = 0
-
-    o = df.Open.to_list()[:idx + 1]
-    c = df.Close.to_list()[:idx + 1]
-    h = df.High.to_list()[:idx + 1]
-    l = df.Low.to_list()[:idx + 1]
-    v = df.Volume.to_list()[:idx + 1]
-    t = df.Time.to_list()
-
-    print('Volume:', v)
-
-    bl = [0] * (idx + 1)
-
-    state = calc_normalized_state(o, c, h, l, v, bl, idx, debug=True)
-    print("len(state): ", len(state))
-    print(state[0:5])
-
-    cu.show_1min_chart(df, symbol, date, "", [], [], [], [], None)
-
-    state = state.reshape(7, DAY_IN_MINUTES)
-    o = state[0]
-    c = state[1]
-    h = state[2]
-    l = state[3]
-    v = state[4]
-
-    print(v)
-
-    dx = pd.DataFrame({
-        'Time': t,
-        'Open': o,
-        'Close': c,
-        'High': h,
-        'Low': l,
-        'Volume': v})
-
-    cu.show_1min_chart(dx, idx, symbol, date, "", [], [], [], [], None)
-
-
-def test4():
-    movers = pd.read_csv('data\\active_days.csv')
-    env = Trade_Env(movers, simulation_mode=True, sim_chart_index=2300)
-
-    env.reset(debug=True)
-    s, _, _ = env.step(2, debug=True)
-    s, _, _ = env.step(0, debug=True)
-    s, _, _ = env.step(0, debug=True)
-    s, _, _ = env.step(0, debug=True)
-    s, _, _ = env.step(2, debug=True)
-    s, _, _ = env.step(1, debug=True)
-    s, _, _ = env.step(1, debug=True)
-    s, _, _ = env.step(1, debug=True)
-    s, _, _ = env.step(1, debug=True)
-    s, _, _ = env.step(0, debug=True)
-
-    for i in range(390):
-        s, _, _ = env.step(0, debug=False)
-
-    s = s.to("cpu")
-    print(s.shape)
-
-    env.save_normalized_chart()
-
-
-def test5():
-    movers = pd.read_csv('data\\active_days.csv')
-    env = Trade_Env(movers, simulation_mode=True)
-
-    s, _, _ = env.step(0, debug=True)
-
-    z = env.reset(debug=True)
-    print(z)
-    for i in range(0, 395):
-        print("-------------", i)
-        s, _, _ = env.step(0, debug=True)
-        s = s.to("cpu")
-        print(s.shape)
-        z = np.reshape(s, (6, 390))
-        print(z)
-
-    env.save_normalized_chart()
+import mplfinance as mpf
 
 
 def test6():
@@ -371,7 +267,114 @@ def plot_matrix():
     cu.print_confusion_matrix(cm, 7)
 
 
-plot_matrix()
+def test_dataset():
+    dataset_path = 'data\\datasets\\test_dataset'
+
+    print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
+
+    float_data = np.fromfile(dataset_path, dtype='float')
+
+    chart_size_bytes = chart.DATA_ROWS * chart.DAY_IN_MINUTES
+    label_size_bytes = 1
+    data_size = chart_size_bytes + label_size_bytes
+
+    num_bytes = len(float_data)
+    num_rows = int(num_bytes / data_size)
+
+    chart_data = float_data.reshape(num_rows, data_size)
+
+    print("Dataset Size:", num_rows, "      Data Size:", data_size)
+
+    p = {
+        '__chart_begin_hh': 9,
+        '__chart_begin_mm': 30,
+        '__chart_end_hh': 15,
+        '__chart_end_mm': 59,
+    }
+    symbol = "AAL"
+    date = "2020-02-26"
+    df = cu.get_chart_data_prepared_for_ai(symbol, date, p)
+    t = df.Time.to_list()
+
+    chart.save_state_chart(chart_data[100][:-1], t, "---", "", 0)
+
+
+def pad_to512():
+    dataset_path = 'data\\datasets\\dataset_x'
+
+    print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
+
+    float_data = np.fromfile(dataset_path, dtype='float')
+
+    chart_size_bytes = chart.DATA_ROWS * chart.DAY_IN_MINUTES
+    label_size_bytes = 1
+    data_size = chart_size_bytes + label_size_bytes
+
+    num_bytes = len(float_data)
+    num_rows = int(num_bytes / data_size)
+
+    chart_data = float_data.reshape(num_rows, data_size)
+    print("Dataset Size:", num_rows, "      Data Size:", data_size)
+
+    s = chart_data[0][:-1]
+    x = chart.pad_state_to_512(s)
+    print(x.shape)
+    print(x)
+
+
+def test_dynamic_candle():
+    symbol = "CGC"
+    date = "2018-08-16"
+
+    params = {
+        '__chart_begin_hh': 9,
+        '__chart_begin_mm': 30,
+        '__chart_end_hh': 15,
+        '__chart_end_mm': 59,
+
+        'trading_begin_hh': 9,
+        'trading_begin_mm': 40,
+        'symbol': symbol,
+        'date': date
+    }
+
+    print(cu.get_premarket_volume_for(params))
+
+    cu.show_daily_chart(symbol)
+
+    period_length = 7
+    df = cu.get_daily_chart_for(params['symbol'])
+    xxx, idx = cu.get_period_before(df, params['date'], period_length)
+    print(df["Time"][idx])
+    print(df["Time"][idx - period_length + 1:idx + 1])
+
+    ####################################################################
+    params['Open'] = df['Close'][idx]
+    params['Close'] = df['Close'][idx]
+    params['High'] = df['High'][idx]
+    params['Low'] = df['Low'][idx]
+    params['Volume'] = float(df['Volume'][idx])*0.01
+
+    ####################################################################
+
+    xxx = chart.update_candle(xxx, idx, params)
+    xxx = xxx.set_index(pd.Index(xxx.Time))
+    mpf.plot(xxx, type='candle', style="charles", volume=True)
+
+    ################ TEST IF ORIGINAL DF WAS MODIFIED ##################
+    idx += 1
+    xxx = df[idx - period_length + 1:idx + 1].copy()
+    # xxx = chart.update_candle(xxx, idx, params)
+    xxx = xxx.set_index(pd.Index(xxx.Time))
+    mpf.plot(xxx, type='candle', style="charles", volume=True)
+    ###################################################################
+
+    cu.show_intraday_chart(symbol, date)
+
+
+test_dynamic_candle()
+
+# test_dataset()
 
 # test_stratified_sampler()
 # cu.analyze_dataset_balance('data\\datasets\\test_dataset', num_classes=7)

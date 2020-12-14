@@ -14,27 +14,29 @@ ___temp_dir_name = "__temp__"
 
 
 def test_training_data():
-    zzz = np.fromfile('data\\datasets\\dataset_2', dtype='float')
+    zzz = np.fromfile('data\\datasets\\small_0', dtype='float')
 
+    DATA_SIZE = 2561
     n = len(zzz)
-    rows = int(n / 1951)
+    rows = int(n / DATA_SIZE)
 
     print("Num Samples:", rows)
 
-    zzz = zzz.reshape(rows, 1951)
+    zzz = zzz.reshape(rows, DATA_SIZE)
 
     print(zzz.shape)
     print(zzz[0], zzz[0][-1])
     print(zzz[1], zzz[1][-1])
 
-    state = zzz[4100][:-1]
+    xidx = 379
+    state = zzz[xidx][:-1]
 
     print("state: ", state.shape)
     symbol = "AAL"
     date = "2020-04-13"
-    df = cu.get_chart_data_prepared_for_ai(symbol, date, get_default_params())
+    df = cu.get_intraday_chart_for(symbol, date)
     t = df.Time.to_list()
-    chart.save_state_chart(state, t, "----", date, 1)
+    chart.save_state_chart(state, t, "AAL", date, xidx, chart.HISTORY_CHART_LENGTH)
 
 
 def _gen_add_plot(chart_data, entries):
@@ -139,6 +141,7 @@ def generate_datasets_mp(params):
 
     if cpu_count > 1 and not filter_mode:
         print("Num CPUs: %s\n" % cpu_count)
+
         first_chart_idx = 0
         charts_per_batch = params['charts_per_batch']
         while first_chart_idx < num_charts:
@@ -164,7 +167,7 @@ def generate_datasets_mp(params):
 
                     if len(labeled_trades) >= num_samples_per_dataset:
                         xxx = np.array(labeled_trades)
-                        print("Labeled Dataset Size:", len(labeled_trades), "   ", xxx.shape)
+                        print("Labeled Dataset Size1:", len(labeled_trades), "   ", xxx.shape)
                         xxx.tofile(dataset_path + str(dataset_id))
                         dataset_id += 1
                         labeled_trades = []
@@ -173,7 +176,7 @@ def generate_datasets_mp(params):
 
         if len(labeled_trades) > 0:
             xxx = np.array(labeled_trades)
-            print("Labeled Dataset Size:", len(labeled_trades), "   ", xxx.shape)
+            print("Labeled Dataset Size2:", len(labeled_trades), "   ", xxx.shape)
             xxx.tofile(dataset_path + str(dataset_id))
             dataset_id += 1
     else:
@@ -187,18 +190,27 @@ def generate_datasets_mp(params):
         for index, row in df_charts.iterrows():
             dataset = _gen_dataset_from_chart(row, params)
             for labeled_data in dataset:
-                labeled_trades.append(labeled_data)
+                data_size = len(labeled_data)
+                if data_size > 0:
+                    print(">>>>>>>", data_size)
+                    if data_size == chart.HISTORY_CHART_LENGTH:
+                        labeled_trades.append(labeled_data)
+                    else:
+                        print(colored("Algorithm ERROR!", color="red"))
+                        return
 
                 if len(labeled_trades) >= num_samples_per_dataset:
+                    print("")
                     xxx = np.array(labeled_trades)
-                    print("Labeled Dataset Size:", len(labeled_trades), "   ", xxx.shape)
+                    print("Labeled Dataset Size1:", len(labeled_trades), "   ", xxx.shape)
                     xxx.tofile(dataset_path + str(dataset_id))
                     dataset_id += 1
                     labeled_trades = []
+                    print("Labeled Dataset Size11:", len(labeled_trades))
 
         if len(labeled_trades) > 0:
             xxx = np.array(labeled_trades)
-            print("Labeled Dataset Size:", len(labeled_trades), "   ", xxx.shape)
+            print("Labeled Dataset Size2:", len(labeled_trades), "   ", xxx.shape)
             print(xxx[0].shape)
             print(dataset_path + str(dataset_id))
             xxx.tofile(dataset_path + str(dataset_id))
@@ -222,6 +234,9 @@ def generate_datasets_mp(params):
 
 
 def _gen_dataset_from_chart(c, params):
+    symbol = c['symbol']
+    date = str(c['date']).replace("-", "")
+
     dataset = []
 
     filter_mode_on = 'filter_sym' in params.keys() and 'filter_date' in params.keys()
@@ -231,13 +246,11 @@ def _gen_dataset_from_chart(c, params):
 
     if not filter_mode_on:
         search_needed = True
-    elif filter_mode_on and c['symbol'] == params['filter_sym'] and str(c['date']) == str(params['filter_date']):
-        search_needed = True
+    elif filter_mode_on and symbol == params['filter_sym']:
+        if date == str(params['filter_date']).replace("-", ""):
+            search_needed = True
 
     if search_needed:
-        symbol = c['symbol']
-        date = str(c['date'])
-
         print(symbol + ' ' + date)
 
         df = cu.get_chart_data_prepared_for_ai(symbol, date, params)
@@ -262,6 +275,7 @@ def _gen_dataset_from_chart(c, params):
                                 params=params,
                                 save_to_dir="" if filter_mode_on else images_dir_path)
 
+    print("Returned:", len(dataset))
     return dataset
 
 
@@ -277,19 +291,44 @@ def _gen_labeled_data_from_chart(df_chart, params):
     if trading_start_idx is None:
         trading_start_idx = df_chart.index[0]
 
-    i = trading_start_idx
+    min_price = df_chart['Low'][open_index]
+    max_price = df_chart['High'][open_index]
+    vol = cu.get_premarket_volume_for(params)
+
+    df_daily = cu.get_daily_chart_for(params['symbol'])
+    df_history, date_index = cu.get_period_before(df_daily, date, 122)
+
+    params['Open'] = df_chart['Open'][open_index]
+
+    i = open_index
     while i <= close_index:
-        buy_price = df_chart['Close'][i]
+        if df_chart['Low'][i] < min_price:
+            min_price = df_chart['Low'][i]
+        if df_chart['High'][i] > max_price:
+            max_price = df_chart['High'][i]
 
-        params['stop_SELL_price'] = buy_price * (1 + params['stop_sell'] / 100)
-        params['stop_BUY_price'] = buy_price * (1 + params['stop_buy'] / 100)
+        vol += df_chart['Volume'][i]
 
-        state, label = _gen_labeled_data_for_entry(df_chart, i, open_index, params)
+        if i >= trading_start_idx:
+            ####################### Set Up Values For Dynamic Daily Candle #####################
+            params['Close'] = df_chart['Close'][i]
+            params['High'] = max_price
+            params['Low'] = min_price
+            params['Volume'] = vol
+            chart.update_candle(df_history, date_index, params)
+            ###################################################################################
 
-        labeled_data = np.concatenate((state, [label]))
-        dataset.append(labeled_data)
+            buy_price = df_chart['Close'][i]
 
-        entries.append([df_chart['Time'][i], df_chart['High'][i], label])
+            params['stop_SELL_price'] = buy_price * (1 + params['stop_sell'] / 100)
+            params['stop_BUY_price'] = buy_price * (1 + params['stop_buy'] / 100)
+
+            state, label = _gen_labeled_data_for_entry(df_history, df_chart, i, open_index, params)
+
+            labeled_data = np.concatenate((state, [label]))
+            dataset.append(labeled_data)
+
+            entries.append([df_chart['Time'][i], df_chart['High'][i], label])
 
         i = i + 1
 
@@ -369,19 +408,23 @@ def _max_loss_for_entry(df_chart, entry_index, open_index, params):
     return int(100 * (sell_price - entry_price) / entry_price)
 
 
-def _gen_labeled_data_for_entry(df_chart, entry_index, open_index, params):
+def _gen_labeled_data_for_entry(df_history, df_chart, entry_index, open_index, params):
     gain = _max_win_for_entry(df_chart, entry_index, open_index, params)
 
     if gain < 2:
         gain = _max_loss_for_entry(df_chart, entry_index, open_index, params)
 
-    state, label = _gen_labeled_data(df_chart, entry_index, open_index, gain)
+    intra_day_state, label = _gen_labeled_data(df_history, df_chart, entry_index, open_index, gain)
+
+    state = intra_day_state  # + daily state
 
     return state, label
 
 
-def _gen_labeled_data(df, entry_idx, open_idx, gain):
-    state = chart.create_padded_state_vector(df, entry_idx, open_idx)
+def _gen_labeled_data(df_history, df, entry_idx, open_idx, gain):
+    state = chart.create_state_vector(df_history, df, entry_idx, open_idx, debug=True)
+
+    print(">>>>", state.shape)
 
     label = 0
 
@@ -427,8 +470,8 @@ def get_marker(label):
 def main():
     params = get_default_params()
 
-    params['filter_sym'] = 'ADAP'
-    params['filter_date'] = '20200114'
+    params['filter_sym'] = 'CGC'
+    params['filter_date'] = '2018-08-16'
 
     generate_datasets_mp(params)
     # test_training_data()
@@ -454,11 +497,11 @@ def get_default_params():
         'no_charts': False,
 
         'chart_list_file': "data\\training_charts.csv",
-        'dataset_name': "small",
+        'dataset_name': "extended_dataset",
         'charts_per_batch': 500,
-        'num_samples_per_dataset': 500000,
+        'num_samples_per_dataset': 200,
 
-        'num_cores': 16
+        'num_cores': 1
     }
     return params
 

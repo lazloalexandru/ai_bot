@@ -143,8 +143,6 @@ def get_chart_data_prepared_for_ai(symbol, date, p):
     df = get_intraday_chart_for(symbol, date)
 
     if df is not None:
-        df.Time = pd.to_datetime(df.Time, format="%Y-%m-%d  %H:%M:%S")
-
         idx = get_time_index(df, date, p['__chart_begin_hh'], p['__chart_begin_mm'], 0)
         if idx is not None:
             df = df[idx:]
@@ -236,6 +234,33 @@ def get_daily_chart_path_for(symbol):
     return __daily_charts_dir + "\\" + symbol + ".csv"
 
 
+def get_index_of_day(df, date):
+    search_date = pd.to_datetime(str(date).replace("-", ""), format="%Y%m%d")
+    xdate = df.iloc[0]["Time"]
+    xdate = xdate.replace(year=search_date.year, month=search_date.month, day=search_date.day)
+
+    x_idx = df.index[df['Time'] == xdate].tolist()
+    n = len(x_idx)
+
+    idx = None
+
+    if n == 1:
+        idx = x_idx[0]
+    elif n > 1:
+        print(colored("ERROR ... Intraday chart contains more than one bars with same time stamp!!!", color='red'))
+    else:
+        print(colored("Warning!!! ... Intraday chart contains no timestamp: " + str(xdate) + "   n: " + str(n), color='yellow'))
+
+    return idx
+
+
+def get_period_before(df, date, period_length):
+    date_idx = get_index_of_day(df, date)
+    df_period = df[date_idx - period_length + 1:date_idx + 1].copy()
+
+    return df_period, date_idx
+
+
 def get_daily_chart_for(symbol):
     path = __daily_charts_dir + "\\" + symbol + ".csv"
 
@@ -243,6 +268,7 @@ def get_daily_chart_for(symbol):
 
     if os.path.isfile(path):
         df = pd.read_csv(path)
+        df["Time"] = pd.to_datetime(df["Time"], format="%Y-%m-%d %H:%M:%S")
     else:
         print(colored('Warning! Daily chart for ' + symbol + ' not available', color='yellow'))
 
@@ -266,6 +292,20 @@ def get_volume_for(symbol, date):
     return volume
 
 
+def get_premarket_volume_for(params):
+    df = get_intraday_chart_for(params['symbol'], params['date'])
+
+    vol = None
+
+    if df is not None:
+        open_index = get_time_index(df, params['date'], params['__chart_begin_hh'], params['__chart_begin_mm'], 0)
+
+        if open_index is not None:
+            vol = sum(df['Volume'][:open_index].tolist())
+
+    return vol
+
+
 def get_intraday_chart_for(symbol, date):
     date = date.replace("-", "")
 
@@ -274,19 +314,27 @@ def get_intraday_chart_for(symbol, date):
     df = None
     if os.path.isfile(path):
         df = pd.read_csv(path)
+        df.Time = pd.to_datetime(df.Time, format="%Y-%m-%d  %H:%M:%S")
     else:
         print(colored('Warning! Intraday chart for ' + symbol + ' not available', color='yellow'))
 
     return df
 
 
-def show_chart(symbol):
+def show_daily_chart(symbol):
     df = get_daily_chart_for(symbol)
-
-    df["Time"] = pd.to_datetime(df["Time"], format="%Y-%m-%d %H:%M:%S")
     df = df.set_index(pd.Index(df.Time))
 
     mpf.plot(df, type='candle', style="charles", volume=True)
+    plt.show()
+
+
+def show_intraday_chart(symbol, date):
+    df = get_intraday_chart_for(symbol, date)
+    df = df.set_index(pd.Index(df.Time))
+
+    mpf.plot(df, type='candle', volume=True, title=symbol + " " + date)
+
     plt.show()
 
 

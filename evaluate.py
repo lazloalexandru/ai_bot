@@ -117,7 +117,7 @@ def main():
 
         print("Accuracy: %.2f%s" % (accuracy, "%"))
         cu.print_confusion_matrix(cm, p['num_classes'])
-        cu.plot_confusion_matrix(np.array(cm), np.array(range(p['num_classes'])), normalize=True)
+        cu.plot_confusion_matrix(np.array(cm), np.array(range(p['num_classes'])), normalize=p['normalized_confusion'])
 
     else:
         print(colored("Could not find AI state file: " + path, color="red"))
@@ -127,8 +127,9 @@ def get_params():
     params = {
         'num_classes': 7,
         'test_batch': 1024,
-        'model_params_file_path': 'checkpoints\\checkpoint_207',
-        'dataset_path': 'data\\datasets\\test_dataset'
+        'model_params_file_path': 'checkpoints\\checkpoint_339',
+        'dataset_path': 'data\\datasets\\test_dataset',
+        'normalized_confusion': False
     }
 
     return params

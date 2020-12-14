@@ -142,6 +142,7 @@ def load_data(p):
 
     chart_data = float_data.reshape(num_rows, data_size)
     dataset = []
+    labels = []
 
     print("Dataset Size:", num_rows, "      Data Size:", data_size,  "   <-   Seed:", p['seed'])
 
@@ -160,6 +161,7 @@ def load_data(p):
         target = torch.tensor(target)
 
         dataset.append((state, target))
+        labels.append(target)
 
         if i % 10000 == 0 and i > 1:
             print(".", end="")
@@ -199,7 +201,7 @@ def load_data(p):
 
     train_idx, test_idx = train_test_split(
         np.arange(len(labels)),
-        test_size=0.2,
+        test_size=0.1,
         shuffle=True,
         stratify=labels)
 
@@ -341,14 +343,14 @@ def get_params():
 
         ################ Training - Dataset ###################
         'dataset_path': 'data\\datasets\\dataset',
-        'dataset_chunks': 9,
+        'dataset_chunks': 8,
         're_balancing_weights': [5.3589, 2.1937, 1.3094, 0.3621, 0.6153, 1.3060, 2.2640],
 
         'split_coefficient': 0.9,
         'seed': 19,
 
-        'data_reload_counter_start': 1,
-        'change_dataset_at_epoch_step': 10,
+        'data_reload_counter_start': 4,
+        'change_dataset_at_epoch_step': 5,
 
         ################ Training #############################
         'train_batch': 128,
@@ -356,9 +358,9 @@ def get_params():
         'learning_rate': 0.00001,
         'weight_decay': 0.01,
 
-        'num_epochs': 200,
+        'num_epochs': 500,
         'checkpoint_at_epoch_step': 1,
-        'resume_epoch_idx': 201
+        'resume_epoch_idx': 339
     }
 
     return params

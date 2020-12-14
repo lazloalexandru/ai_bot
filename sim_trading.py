@@ -136,13 +136,11 @@ def search_patterns(params):
 
     df_charts = pd.read_csv(chart_list_file_path)
     num_charts = len(df_charts)
+    num_tests = int(num_charts * params['test_size_coef'])
 
-    print("Number of charts:", num_charts)
+    print("Number of charts:", num_charts, "testing:", num_tests)
 
     print(df_charts.head())
-
-    first_chart_idx = 0
-    last_chart_idx = num_charts
 
     ################################################
     # Init directory structure
@@ -174,7 +172,7 @@ def search_patterns(params):
     else:
         print("")
 
-    for i in range(first_chart_idx, last_chart_idx):
+    for i in range(0, num_tests):
         df, ver = _search_patterns_in(df_charts.loc[i], params, df_fund)
         if len(df) > 0:
             results.append(df)
@@ -480,11 +478,12 @@ def get_default_params():
         'target': 10,
         'no_parallel_trades': False,
 
-        'no_charts': False,
+        'no_charts': True,
 
         'chart_list_file': "data\\test_charts.csv",
+        'test_size_coef': 0.1,
 
-        'model_path': "checkpoints\\checkpoint_135",
+        'model_path': "checkpoints\\checkpoint_339",
         'num_classes': 7
     }
 
