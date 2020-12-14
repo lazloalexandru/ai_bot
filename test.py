@@ -355,9 +355,10 @@ def test_dynamic_candle():
     params['Low'] = df['Low'][idx]
     params['Volume'] = float(df['Volume'][idx])*0.01
 
+    params['date_index'] = idx
     ####################################################################
 
-    xxx = chart.update_candle(xxx, idx, params)
+    xxx = chart.update_candle(xxx, params)
     xxx = xxx.set_index(pd.Index(xxx.Time))
     mpf.plot(xxx, type='candle', style="charles", volume=True)
 
@@ -372,12 +373,12 @@ def test_dynamic_candle():
     cu.show_intraday_chart(symbol, date)
 
 
-test_dynamic_candle()
+# test_dynamic_candle()
 
 # test_dataset()
 
 # test_stratified_sampler()
-# cu.analyze_dataset_balance('data\\datasets\\test_dataset', num_classes=7)
+# cu.analyze_ext_dataset_balance('data\\datasets\\test_dataset_ext', num_classes=7)
 # cu.analyze_divided_dataset_balance('data\\datasets\\dataset', 9, num_classes=7)
 
 # test_split()

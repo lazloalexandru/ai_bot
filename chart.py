@@ -223,7 +223,6 @@ def create_state_vector(df_history, df, entry_idx, open_idx, debug=False):
         print('total len(v)', len(v))
         print('len(state)', len(state))
 
-
     return state
 
 

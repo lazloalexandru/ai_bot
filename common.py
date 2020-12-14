@@ -468,6 +468,33 @@ def analyze_dataset_balance(dataset_path, num_classes):
     plt.show()
 
 
+def analyze_ext_dataset_balance(dataset_path, num_classes):
+    print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
+
+    float_data = np.fromfile(dataset_path)
+
+    data_size = chart.EXT_DATA_SIZE
+
+    num_bytes = len(float_data)
+    num_rows = int(num_bytes / data_size)
+
+    chart_data = float_data.reshape(num_rows, data_size)
+    labels = []
+
+    for i in range(num_rows):
+        target = int(chart_data[i][-1])
+
+        labels.append(target)
+
+    print("Dataset Size:", num_rows, "      Data Size:", data_size)
+    hist, w = calc_rebalancing_weigths(labels, num_classes)
+    print("Dataset Class Histogram:", hist)
+    print("Dataset Re-balancing Weights:", w)
+
+    plt.hist(labels, bins=num_classes, alpha=0.5, align='mid', rwidth=4)
+    plt.show()
+
+
 def calc_rebalancing_weigths(y, num_classes):
     hist, _ = np.histogram(y, bins=num_classes)
     avg = sum(hist) / num_classes
