@@ -100,7 +100,7 @@ def main():
     device = torch.device("cuda")
 
     model = Net(p['num_classes']).to(device)
-    summary(model, input_size=(1, chart.DATA_ROWS, chart.DAY_IN_MINUTES))
+    summary(model, input_size=(1, chart.DATA_ROWS, chart.EXTENDED_CHART_LENGTH))
 
     path = p['model_params_file_path']
 
@@ -123,8 +123,8 @@ def get_params():
     params = {
         'num_classes': 7,
         'test_batch': 1024,
-        'model_params_file_path': 'checkpoints\\checkpoint_339',
-        'dataset_path': 'data\\datasets\\test_dataset',
+        'model_params_file_path': 'checkpoints\\checkpoint_202',
+        'dataset_path': 'data\\datasets\\test_dataset_ext',
         'normalized_confusion': False
     }
 

@@ -343,18 +343,18 @@ def get_params():
         'split_coefficient': 0.9,
         'seed': 19,
 
-        'data_reload_counter_start': 0,
-        'change_dataset_at_epoch_step': 10,
+        'data_reload_counter_start': 7,
+        'change_dataset_at_epoch_step': 3,
 
         ################ Training #############################
         'train_batch': 128,
         'test_batch': 1024,
-        'learning_rate': 0.0001,
+        'learning_rate': 0.00001,
         'weight_decay': 0.01,
 
         'num_epochs': 500,
         'checkpoint_at_epoch_step': 1,
-        'resume_epoch_idx': None
+        'resume_epoch_idx': 36
     }
 
     return params
