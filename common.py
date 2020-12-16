@@ -604,6 +604,6 @@ def calc_accuracy_from_confusion_matrix(cm, num_classes):
         for k in range(num_classes):
             s += cm[k][i]
         if s > 0:
-            accuracy[i] = cm[i][i] / s
+            accuracy[i] = 100 * cm[i][i] / s
 
     return accuracy

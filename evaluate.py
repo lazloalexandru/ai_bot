@@ -113,7 +113,7 @@ def main():
 
         print("Accuracy: ", end="")
         for i in range(7):
-            print("%.1f" % (100 * accuracy[i]) + str("%"), " ", end="")
+            print("%.1f" % accuracy[i] + str("%"), " ", end="")
         print("")
 
         cu.print_confusion_matrix(cm, p['num_classes'])
@@ -128,7 +128,7 @@ def get_params():
     params = {
         'num_classes': 7,
         'test_batch': 1024,
-        'model_params_file_path': 'checkpoints\\checkpoint_126',
+        'model_params_file_path': 'checkpoints\\checkpoint_4',
         'dataset_path': 'data\\datasets\\extended_dataset_x',
     }
 
