@@ -105,6 +105,9 @@ def save_simulation_report(sim_params, stats, sim_report_file_path):
 
 
 def simulate_pattern(params):
+    if 'filter_sym' in params.keys() and 'filter_date' in params.keys():
+        return
+
     sim_params = {
         'account_value': 10000,
         'size_limit': 50000,
@@ -433,19 +436,22 @@ def show_day_distribution(params):
 
 
 def init_ai(params):
+    success = False
     model = Net(params['num_classes']).to("cuda")
 
     path = params['model_path']
     if os.path.isfile(path):
         model.load_state_dict(torch.load(path))
+        model.eval()
+        params['nn_model'] = model
+
+        success = True
+
         print(colored("Loaded AI state file: " + path, color="green"))
     else:
         print(colored("Could not find AI state file: " + path, color="red"))
 
-    model.eval()
-    params['nn_model'] = model
-
-    return params
+    return params, success
 
 
 def main():
@@ -454,15 +460,14 @@ def main():
     # params['filter_sym'] = 'KBSF'
     # params['filter_date'] = '2017-11-09'
 
-    params = init_ai(params)
-    search_patterns(params)
+    params, success = init_ai(params)
 
-    show_day_distribution(params)
-    ####################################################
-    # Simulation
+    if success:
+        search_patterns(params)
 
-    filter_mode_on = 'filter_sym' in params.keys() and 'filter_date' in params.keys()
-    if not filter_mode_on:
+        show_day_distribution(params)
+        ####################################################
+        # Simulation
         simulate_pattern(params)
 
 
@@ -488,7 +493,7 @@ def get_default_params():
         'chart_list_file': "data\\test_charts.csv",
         'test_size_coef': 0.1,
 
-        'model_path': "checkpoints\\checkpoint_202",
+        'model_path': "checkpoints\\checkpoint_126",
         'num_classes': 7
     }
 
