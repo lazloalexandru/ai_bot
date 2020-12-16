@@ -35,9 +35,11 @@ def plot_values(accuracy, train_loss, test_loss, p):
 
     accuracy = np.array(accuracy).T
 
+    ax2.plot(accuracy[7], color="white", label="all")
     for i in range(p['num_classes']):
         _, c = get_marker(i)
         ax2.plot(accuracy[i], color=c, label=str(i))
+
     ax2.legend(loc="upper left")
     ax2.set_facecolor('silver')
 
@@ -92,7 +94,8 @@ def test(model, device, test_loader, w, p):
     model.eval()
 
     losses = []
-    correct = 0
+    num_hits = 0
+    counter = 0
 
     confusion = np.zeros((p['num_classes'], p['num_classes']))
 
@@ -106,20 +109,30 @@ def test(model, device, test_loader, w, p):
 
             prediction = output.argmax(dim=1, keepdim=True)
 
-            ################ CONFUSION MATRIX ###############################
             tgt = target.view_as(prediction)
             prd = prediction
 
+            #################################################################
+            num_hits += prediction.eq(tgt).sum().item()
+
+            ################ CONFUSION MATRIX ###############################
             n = len(prd)
             for k in range(n):
                 confusion[tgt[k][0]][prd[k][0]] += 1
+
             #################################################################
+
+            cu.progress_points(counter, 10000)
+            counter += 1
 
     avg_loss = sum(losses) / len(losses)
     accuracy = cu.calc_accuracy_from_confusion_matrix(confusion, p['num_classes'])
+    overall_accuracy = 100.0 * num_hits / len(test_loader.dataset)
+
+    accuracy = np.concatenate((accuracy, [overall_accuracy]))
 
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{}'.format(
-        avg_loss, correct, len(test_loader.dataset)), " Classes: ", end="")
+        avg_loss, num_hits, len(test_loader.dataset)), " Classes: ", end="")
 
     for i in range(7):
         print("%.1f" % accuracy[i] + str("%"), " ", end="")
@@ -131,7 +144,7 @@ def test(model, device, test_loader, w, p):
     return accuracy, avg_loss
 
 
-def load_data(dataset_path, batch_size):
+def load_data(dataset_path, batch_size, re_balancing_weights):
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
     float_data = np.fromfile(dataset_path, dtype='float')
 
@@ -142,6 +155,7 @@ def load_data(dataset_path, batch_size):
     dataset = []
     labels = []
 
+    print("Dataset Re-balancing Weights:", re_balancing_weights)
     print("Dataset Size:", num_rows, "      Data Size:", data_size)
     print("Creating Tensors")
 
@@ -156,10 +170,8 @@ def load_data(dataset_path, batch_size):
         dataset.append((state, label))
         labels.append(label)
 
-        if i % 10000 == 0 and i > 1:
-            print(".", end="")
-        if i % 1000000 == 0 and i > 1:
-            print("")
+        cu.progress_points(i, 10000)
+
     print("")
 
     kwargs = {'batch_size': batch_size}
@@ -203,14 +215,7 @@ def init_iteration_logger(p):
     return success
 
 
-def main():
-    plt.ion()
-
-    p = get_params()
-
-    if not init_iteration_logger(p):
-        return
-
+def init_ai(p):
     device = torch.device("cuda")
 
     model = Net(get_params()['num_classes']).to(device)
@@ -228,24 +233,34 @@ def main():
             print(colored("Could not find AI state file: " + path, color="red"))
             resume_idx = None
 
-    num_epochs = p['num_epochs']
     if resume_idx is None:
         start_idx = 1
     else:
         start_idx = resume_idx + 1
+
+    return device, model, optimizer, w_re_balance, start_idx
+
+
+def main():
+    plt.ion()
+
+    p = get_params()
+
+    if not init_iteration_logger(p):
+        return
+
+    num_epochs = p['num_epochs']
+    device, model, optimizer, w_re_balance, start_idx = init_ai(p)
 
     accuracy_history = []
     train_losses = []
     test_losses = []
 
     train_loader = None
-
-    test_loader = load_data(p['dev_test_data_path'], p['train_batch'])
+    test_loader = load_data(p['dev_test_data_path'], p['test_batch'], p['re_balancing_weights'])
 
     if p['dataset_chunks'] == 1:
-        train_loader = load_data(get_training_dataset_path(p), p['train_batch'])
-
-    print("Dataset Re-balancing Weights:", p['re_balancing_weights'])
+        train_loader = load_data(get_training_dataset_path(p), p['train_batch'], p['re_balancing_weights'])
 
     data_reload_counter = p['data_reload_counter_start']
 
@@ -253,12 +268,11 @@ def main():
         if p['dataset_chunks'] > 1 and p['change_dataset_at_epoch_step'] is not None:
             if epoch % p['change_dataset_at_epoch_step'] == 0 or data_reload_counter == p['data_reload_counter_start']:
                 del train_loader
-                del test_loader
                 torch.cuda.empty_cache()
                 gc.collect()
 
                 p['dataset_id'] = data_reload_counter % p['dataset_chunks']
-                train_loader, test_loader = load_data(p)
+                train_loader = load_data(get_training_dataset_path(p), p['train_batch'], p['re_balancing_weights'])
                 data_reload_counter += 1
 
         if train_loader is not None and test_loader is not None:
@@ -305,11 +319,9 @@ def get_params():
         'dev_test_data_path': 'data\\datasets\\dev_test_data',
 
         ################ Training - Data ######################
-        'training_data_path': 'data\\datasets\\training_data_x',
-        'dataset_chunks': 1,
+        'training_data_path': 'data\\datasets\\training_data',
+        'dataset_chunks': 11,
         're_balancing_weights': [5.3589, 2.1937, 1.3094, 0.3621, 0.6153, 1.3060, 2.2640],
-
-        'split_coefficient': 0.9,
 
         'data_reload_counter_start': 0,
         'change_dataset_at_epoch_step': 5,

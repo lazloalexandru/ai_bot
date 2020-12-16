@@ -129,7 +129,7 @@ def get_params():
         'num_classes': 7,
         'test_batch': 1024,
         'model_params_file_path': 'checkpoints\\checkpoint_4',
-        'dataset_path': 'data\\datasets\\extended_dataset_x',
+        'dataset_path': 'data\\datasets\\test_data',
     }
 
     return params

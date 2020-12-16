@@ -607,3 +607,10 @@ def calc_accuracy_from_confusion_matrix(cm, num_classes):
             accuracy[i] = 100 * cm[i][i] / s
 
     return accuracy
+
+
+def progress_points(i, at_step, max_line_length=100):
+    if i % at_step == 0 and i > 1:
+        print(".", end="")
+    if i % (at_step * max_line_length) == 0 and i > 1:
+        print("")
