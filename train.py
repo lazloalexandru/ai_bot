@@ -24,7 +24,7 @@ if is_ipython:
 
 
 def plot_values(accuracy, train_loss, test_loss, p):
-    fig = plt.figure(1)
+    fig = plt.figure(1, figsize=(10, 8))
     plt.clf()
     ax1 = fig.add_subplot(2, 1, 1)
     ax2 = fig.add_subplot(2, 1, 2, sharex=ax1)
@@ -42,6 +42,8 @@ def plot_values(accuracy, train_loss, test_loss, p):
 
     ax2.legend(loc="upper left")
     ax2.set_facecolor('silver')
+
+    fig.tight_layout()
 
     plt.pause(0.001)  # pause a bit so that plots are updated
     if is_ipython:
@@ -83,7 +85,7 @@ def train(model, device, train_loader, optimizer, epoch, w, p):
         __global_iteration_counter += 1
 
     epoch_duration = time.time() - epoch_start_time
-    print('%.2f sec' % epoch_duration)
+    print('Epoch completed in %.2f sec' % epoch_duration)
 
     return sum(losses) / len(losses)
 
@@ -122,7 +124,7 @@ def test(model, device, test_loader, w, p):
 
             #################################################################
 
-            cu.progress_points(counter, 10000)
+            cu.progress_points(counter, 10)
             counter += 1
 
     avg_loss = sum(losses) / len(losses)
@@ -317,9 +319,11 @@ def get_params():
 
         ################ Dev Test - Data ######################
         'dev_test_data_path': 'data\\datasets\\dev_test_data',
+        # 'dev_test_data_path': 'data\\datasets\\dummy',
 
         ################ Training - Data ######################
         'training_data_path': 'data\\datasets\\training_data',
+        # 'training_data_path': 'data\\datasets\\dummy',
         'dataset_chunks': 11,
         're_balancing_weights': [5.3589, 2.1937, 1.3094, 0.3621, 0.6153, 1.3060, 2.2640],
 
