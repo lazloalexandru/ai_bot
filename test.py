@@ -411,8 +411,14 @@ def test_accuracy_cm():
     plt.show()
 
 
+def test_xxx():
+    n = 4
+    x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    print(x[:n])
+    print(x[n:])
 
-test_accuracy_cm()
+test_xxx()
+
 
 # test_dynamic_candle()
 
