@@ -144,7 +144,7 @@ def generate_chart_list_files():
     if num_charts > 0:
         train_set_size = int(num_charts * params['split_train_test'])
         __all_test_set_size = num_charts - train_set_size
-        dev_test_set_size = int(__all_test_set_size / 2)
+        dev_test_set_size = int(__all_test_set_size * params['split_dev_test_test'])
         test_set_size = __all_test_set_size - dev_test_set_size
 
         print("Number Of Charts: ", num_charts)
@@ -183,7 +183,8 @@ def get_default_params():
 
         #################### OUTPUT PARAMETERS ###########################
 
-        'split_train_test': 0.9,
+        'split_train_test': 0.95,
+        'split_dev_test_test': 0.25,
         'seed': 12,  # random generator initializer
         'output_training_file_path': "data\\training_charts.csv",
         'output_dev_test_file_path': "data\\dev_test_charts.csv",

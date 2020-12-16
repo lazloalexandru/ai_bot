@@ -131,105 +131,51 @@ def test(model, device, test_loader, w, p):
     return accuracy, avg_loss
 
 
-def load_data(p):
-    dataset_path = get_dataset_path(p)
-
+def load_data(dataset_path, batch_size):
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
-
     float_data = np.fromfile(dataset_path, dtype='float')
 
     data_size = chart.EXT_DATA_SIZE
-
     num_bytes = len(float_data)
     num_rows = int(num_bytes / data_size)
-
     chart_data = float_data.reshape(num_rows, data_size)
     dataset = []
     labels = []
 
-    print("Dataset Size:", num_rows, "      Data Size:", data_size,  "   <-   Seed:", p['seed'])
-
-    training_set_size = int(num_rows * p['split_coefficient'])
-    test_set_size = num_rows - training_set_size
-
-    print("Training Dataset Size:", training_set_size)
-    print("Test Dataset Size:", test_set_size)
+    print("Dataset Size:", num_rows, "      Data Size:", data_size)
+    print("Creating Tensors")
 
     for i in range(num_rows):
         state = chart_data[i][:-1]
         state = np.reshape(state, (chart.DATA_ROWS, chart.EXTENDED_CHART_LENGTH))
         state = torch.tensor(state, dtype=torch.float).unsqueeze(0)
 
-        target = int(chart_data[i][-1])
-        target = torch.tensor(target)
+        label = int(chart_data[i][-1])
+        label = torch.tensor(label)
 
-        dataset.append((state, target))
-        labels.append(target)
+        dataset.append((state, label))
+        labels.append(label)
 
         if i % 10000 == 0 and i > 1:
             print(".", end="")
         if i % 1000000 == 0 and i > 1:
             print("")
-
     print("")
-    print("Splitting Data / Resampling ...")
 
-    #####################################################################################################
-    # Precalculated Re-Balancing Weights
-
-    print("Dataset Re-balancing Weights:", p['re_balancing_weights'])
-    w = torch.tensor(p['re_balancing_weights'], dtype=torch.float).to("cuda")
-
-    #####################################################################################################
-    #  RANDOM SPLIT
-
-    training_data, test_data = torch.utils.data.random_split(
-        dataset, [training_set_size, test_set_size], generator=torch.Generator().manual_seed(p['seed'])
-    )
-
-    train_kwargs = {'batch_size': p['train_batch']}
-    test_kwargs = {'batch_size': p['test_batch']}
+    kwargs = {'batch_size': batch_size}
     cuda_kwargs = {'pin_memory': True, 'shuffle': True}
+    kwargs.update(cuda_kwargs)
 
-    train_kwargs.update(cuda_kwargs)
-    test_kwargs.update(cuda_kwargs)
+    loader = torch.utils.data.DataLoader(dataset, **kwargs)
 
-    train_loader = torch.utils.data.DataLoader(training_data, **train_kwargs)
-    test_loader = torch.utils.data.DataLoader(test_data, **test_kwargs)
-    '''
-    #####################################################################################################
-    #  STRATIFIED SPLIT
-    
-    from sklearn.model_selection import train_test_split
-
-    train_idx, test_idx = train_test_split(
-        np.arange(len(labels)),
-        test_size=0.1,
-        shuffle=True,
-        stratify=labels)
-
-    train_sampler = torch.utils.data.SubsetRandomSampler(train_idx)
-    test_sampler = torch.utils.data.SubsetRandomSampler(test_idx)
-
-    train_kwargs = {'batch_size': p['train_batch'], 'sampler': train_sampler}
-    test_kwargs = {'batch_size': p['test_batch'], 'sampler': test_sampler}
-    cuda_kwargs = {'pin_memory': True, 'shuffle': False} # Stratified sample does shuffle 
-    
-    train_kwargs.update(cuda_kwargs)
-    test_kwargs.update(cuda_kwargs)
-    
-    train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs)
-    test_loader = torch.utils.data.DataLoader(dataset, **test_kwargs)
-    '''
-
-    return train_loader, test_loader, w
+    return loader
 
 
-def get_dataset_path(p):
+def get_training_dataset_path(p):
     if p['dataset_chunks'] > 1:
-        dataset_path = p['dataset_path'] + "_" + str(p['dataset_id'])
+        dataset_path = p['training_data_path'] + "_" + str(p['dataset_id'])
     else:
-        dataset_path = p['dataset_path']
+        dataset_path = p['training_data_path']
 
     return dataset_path
 
@@ -244,23 +190,32 @@ def save_loss_history(p):
     xxx.tofile(path)
 
 
+def init_iteration_logger(p):
+    success = True
+    if p['log_iteration_loss']:
+        if p['loss_history_files_dir'] is None:
+            print(colored("ERROR! \"log_iteration_loss\" parameter set to True, but \"loss_history_files_dir\" is set to None! Specify directory!", color='red'))
+            success = False
+        if not os.path.isdir(p['loss_history_files_dir']):
+            print(colored("ERROR! Cannot find directory: " + p['loss_history_files_dir'], color='red'))
+            success = False
+
+    return success
+
+
 def main():
     plt.ion()
 
     p = get_params()
 
-    if p['log_iteration_loss']:
-        if p['loss_history_files_dir'] is None:
-            print(colored("ERROR! \"log_iteration_loss\" parameter set to True, but \"loss_history_files_dir\" is set to None! Specify directory!", color='red'))
-            return
-        if not os.path.isdir(p['loss_history_files_dir']):
-            print(colored("ERROR! Cannot find directory: " + p['loss_history_files_dir'], color='red'))
-            return
+    if not init_iteration_logger(p):
+        return
 
     device = torch.device("cuda")
 
     model = Net(get_params()['num_classes']).to(device)
     optimizer = optim.AdamW(model.parameters(), lr=p['learning_rate'], weight_decay=p['weight_decay'])
+    w_re_balance = torch.tensor(p['re_balancing_weights'], dtype=torch.float).to("cuda")
 
     resume_idx = p['resume_epoch_idx']
 
@@ -284,11 +239,13 @@ def main():
     test_losses = []
 
     train_loader = None
-    test_loader = None
-    w_re_balance = None
+
+    test_loader = load_data(p['dev_test_data_path'], p['train_batch'])
 
     if p['dataset_chunks'] == 1:
-        train_loader, test_loader, w_re_balance = load_data(p)
+        train_loader = load_data(get_training_dataset_path(p), p['train_batch'])
+
+    print("Dataset Re-balancing Weights:", p['re_balancing_weights'])
 
     data_reload_counter = p['data_reload_counter_start']
 
@@ -301,7 +258,7 @@ def main():
                 gc.collect()
 
                 p['dataset_id'] = data_reload_counter % p['dataset_chunks']
-                train_loader, test_loader, w_re_balance = load_data(p)
+                train_loader, test_loader = load_data(p)
                 data_reload_counter += 1
 
         if train_loader is not None and test_loader is not None:
@@ -344,17 +301,18 @@ def get_params():
         ################# Model ###############################
         'num_classes': 7,
 
-        ################ Training - Dataset ###################
-        'dataset_path': 'data\\datasets\\extended_dataset_x',
+        ################ Dev Test - Data ######################
+        'dev_test_data_path': 'data\\datasets\\dev_test_data',
+
+        ################ Training - Data ######################
+        'training_data_path': 'data\\datasets\\training_data_x',
         'dataset_chunks': 1,
         're_balancing_weights': [5.3589, 2.1937, 1.3094, 0.3621, 0.6153, 1.3060, 2.2640],
 
         'split_coefficient': 0.9,
-        'seed': 19,
 
         'data_reload_counter_start': 0,
-        'change_dataset_at_epoch_step': 50,
-
+        'change_dataset_at_epoch_step': 5,
         ################ Training #############################
         'train_batch': 128,
         'test_batch': 1024,

@@ -503,12 +503,12 @@ def get_default_params():
 
         'no_charts': True,
 
-        'chart_list_file': "data\\test_charts.csv",
-        'dataset_name': "small",
-        'charts_per_batch': 20,
-        'num_samples_per_dataset': 1000,
+        'chart_list_file': "data\\training_charts.csv",
+        'dataset_name': "training_data",
+        'charts_per_batch': 200,
+        'num_samples_per_dataset': 1000000,
 
-        'num_cores': 1
+        'num_cores': 16
     }
     return params
 
