@@ -12,6 +12,7 @@ import chart
 import gc
 import common as cu
 import time
+from dataset_generator import get_marker
 
 __global_iteration_counter = 0
 __iteration_loss_history = []
@@ -22,32 +23,23 @@ if is_ipython:
     from IPython import display
 
 
-def plot_values(accuracy, train_loss, test_loss):
-    fig = plt.figure(2)
+def plot_values(accuracy, train_loss, test_loss, p):
+    fig = plt.figure(1)
     plt.clf()
-    plt.title('Training...')
-    plt.xlabel('Episode')
-    plt.ylabel('Accuracy')
+    ax1 = fig.add_subplot(2, 1, 1)
+    ax2 = fig.add_subplot(2, 1, 2, sharex=ax1)
 
-    ax1 = plt.gca()
-    color = 'tab:blue'
-    ax1.set_xlabel('Epoch')
-    ax1.set_ylabel('Accuracy', color=color)
-    ax1.plot(accuracy, color=color)
-    ax1.tick_params(axis='y', labelcolor=color)
-    plt.plot(accuracy)
+    ax1.plot(train_loss, color='tab:orange', label="train")
+    ax1.plot(test_loss, color='tab:red', label="test")
+    ax1.legend(loc="upper left")
 
-    ax2 = ax1.twinx()
+    accuracy = np.array(accuracy).T
 
-    color = 'tab:orange'
-    ax2.set_ylabel('loss', color=color)
-    ax2.plot(train_loss, color=color)
-    ax2.tick_params(axis='y', labelcolor=color)
-
-    color = 'tab:red'
-    ax2.set_ylabel('loss', color=color)
-    ax2.plot(test_loss, color=color)
-    ax2.tick_params(axis='y', labelcolor=color)
+    for i in range(p['num_classes']):
+        _, c = get_marker(i)
+        ax2.plot(accuracy[i], color=c, label=str(i))
+    ax2.legend(loc="upper left")
+    ax2.set_facecolor('silver')
 
     plt.pause(0.001)  # pause a bit so that plots are updated
     if is_ipython:
@@ -94,11 +86,16 @@ def train(model, device, train_loader, optimizer, epoch, w, p):
     return sum(losses) / len(losses)
 
 
-def test(model, device, test_loader, w):
+def test(model, device, test_loader, w, p):
     start_time = time.time()
+
     model.eval()
+
     losses = []
     correct = 0
+
+    confusion = np.zeros((p['num_classes'], p['num_classes']))
+
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
@@ -107,14 +104,26 @@ def test(model, device, test_loader, w):
 
             losses.append(F.nll_loss(output, target, weight=w).item())
 
-            pred = output.argmax(dim=1, keepdim=True)
-            correct += pred.eq(target.view_as(pred)).sum().item()
+            prediction = output.argmax(dim=1, keepdim=True)
+
+            ################ CONFUSION MATRIX ###############################
+            tgt = target.view_as(prediction)
+            prd = prediction
+
+            n = len(prd)
+            for k in range(n):
+                confusion[tgt[k][0]][prd[k][0]] += 1
+            #################################################################
 
     avg_loss = sum(losses) / len(losses)
-    accuracy = 100.0 * correct / len(test_loader.dataset)
+    accuracy = cu.calc_accuracy_from_confusion_matrix(confusion, p['num_classes'])
 
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} *({:.0f}%)'.format(
-        avg_loss, correct, len(test_loader.dataset), accuracy))
+    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{}'.format(
+        avg_loss, correct, len(test_loader.dataset)), " Classes: ", end="")
+
+    for i in range(7):
+        print("%.1f" % (100 * accuracy[i]) + str("%"), " ", end="")
+    print("")
 
     duration = time.time() - start_time
     print('%.2f sec\n' % duration)
@@ -297,7 +306,7 @@ def main():
 
         if train_loader is not None and test_loader is not None:
             train_loss = train(model, device, train_loader, optimizer, epoch, w_re_balance, p)
-            accuracy, test_loss = test(model, device, test_loader, w_re_balance)
+            accuracy, test_loss = test(model, device, test_loader, w_re_balance, p)
 
             if test_loss > p['loss_ceiling']:
                 test_loss = p['loss_ceiling']
@@ -305,7 +314,7 @@ def main():
             train_losses.append(train_loss)
             test_losses.append(test_loss)
             accuracy_history.append(accuracy)
-            plot_values(accuracy_history, train_losses, test_losses)
+            plot_values(accuracy_history, train_losses, test_losses, p)
 
             if epoch % p['checkpoint_at_epoch_step'] == 0:
                 torch.save(model.state_dict(), "checkpoints\\checkpoint_" + str(epoch))
@@ -336,25 +345,25 @@ def get_params():
         'num_classes': 7,
 
         ################ Training - Dataset ###################
-        'dataset_path': 'data\\datasets\\extended_dataset',
-        'dataset_chunks': 9,
+        'dataset_path': 'data\\datasets\\extended_dataset_x',
+        'dataset_chunks': 1,
         're_balancing_weights': [5.3589, 2.1937, 1.3094, 0.3621, 0.6153, 1.3060, 2.2640],
 
         'split_coefficient': 0.9,
         'seed': 19,
 
-        'data_reload_counter_start': 7,
+        'data_reload_counter_start': 3,
         'change_dataset_at_epoch_step': 3,
 
         ################ Training #############################
         'train_batch': 128,
         'test_batch': 1024,
-        'learning_rate': 0.00001,
+        'learning_rate': 0.00003,
         'weight_decay': 0.01,
 
         'num_epochs': 500,
-        'checkpoint_at_epoch_step': 1,
-        'resume_epoch_idx': 36
+        'checkpoint_at_epoch_step': 100,
+        'resume_epoch_idx': None
     }
 
     return params

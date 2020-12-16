@@ -15,7 +15,6 @@ def test(model, device, test_loader, p):
     start_time = time.time()
 
     model.eval()
-    correct = 0
 
     confusion = np.zeros((p['num_classes'], p['num_classes']))
 
@@ -25,15 +24,16 @@ def test(model, device, test_loader, p):
 
             output = model(data)
 
-            pred = output.argmax(dim=1, keepdim=True)
-            correct += pred.eq(target.view_as(pred)).sum().item()
+            prediction = output.argmax(dim=1, keepdim=True)
 
-            tgt = target.view_as(pred)
-            prd = pred
+            ################ CONFUSION MATRIX ###############################
+            tgt = target.view_as(prediction)
+            prd = prediction
 
             n = len(prd)
             for k in range(n):
                 confusion[tgt[k][0]][prd[k][0]] += 1
+            #################################################################
 
             if i % 10 == 0:
                 print(".", end="")
@@ -43,7 +43,7 @@ def test(model, device, test_loader, p):
     duration = time.time() - start_time
     print('\nCompleted in %.2f sec' % duration)
 
-    accuracy = 100.0 * correct / len(test_loader.dataset)
+    accuracy = cu.calc_accuracy_from_confusion_matrix(confusion, p['num_classes'])
 
     return accuracy, confusion
 
@@ -111,9 +111,14 @@ def main():
         test_loader, labels = load_data(p)
         accuracy, cm = test(model, device, test_loader, p)
 
-        print("Accuracy: %.2f%s" % (accuracy, "%"))
+        print("Accuracy: ", end="")
+        for i in range(7):
+            print("%.1f" % (100 * accuracy[i]) + str("%"), " ", end="")
+        print("")
+
         cu.print_confusion_matrix(cm, p['num_classes'])
-        cu.plot_confusion_matrix(np.array(cm), np.array(range(p['num_classes'])), normalize=p['normalized_confusion'])
+        cu.plot_confusion_matrix(np.array(cm), np.array(range(p['num_classes'])), normalize=True)
+        cu.plot_confusion_matrix(np.array(cm), np.array(range(p['num_classes'])), normalize=False)
 
     else:
         print(colored("Could not find AI state file: " + path, color="red"))
@@ -123,9 +128,8 @@ def get_params():
     params = {
         'num_classes': 7,
         'test_batch': 1024,
-        'model_params_file_path': 'checkpoints\\checkpoint_202',
-        'dataset_path': 'data\\datasets\\test_dataset_ext',
-        'normalized_confusion': False
+        'model_params_file_path': 'checkpoints\\checkpoint_126',
+        'dataset_path': 'data\\datasets\\extended_dataset_x',
     }
 
     return params

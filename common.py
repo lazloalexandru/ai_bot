@@ -595,3 +595,15 @@ def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix'
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     plt.show()
+
+
+def calc_accuracy_from_confusion_matrix(cm, num_classes):
+    accuracy = np.zeros(num_classes)
+    for i in range(num_classes):
+        s = 0
+        for k in range(num_classes):
+            s += cm[k][i]
+        if s > 0:
+            accuracy[i] = cm[i][i] / s
+
+    return accuracy

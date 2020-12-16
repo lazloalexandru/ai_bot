@@ -373,6 +373,47 @@ def test_dynamic_candle():
     cu.show_intraday_chart(symbol, date)
 
 
+def test_accuracy_cm():
+    cm = [[1.0, 40.0, 0.0, 0.0, 0.0, 7.0, 0.0],
+          [51.0, 37.0, 45.0, 1.0, 78.0, 33.0, 0.0],
+          [0.0, 3.0, 15.0, 50.0, 2.0, 27.0, 0.0],
+          [0.0, 0.0, 10.0, 104.0, 1.0, 0.0, 0.0],
+          [8.0, 53.0, 24.0, 82.0, 100.0, 25.0, 0.0],
+          [3.0, 33.0, 3.0, 0.0, 26.0, 74.0, 2.0],
+          [3.0, 32.0, 0.0, 0.0, 1.0, 25.0, 1.0]]
+
+    cm = np.array(cm)
+    acc = cu.calc_accuracy_from_confusion_matrix(cm, 7)
+
+    for i in range(7):
+        print("%.2f" % (100*acc[i]), " ", end="")
+    print("")
+
+    x = []
+    x.append(acc)
+    acc = acc * 1.1
+    x.append(acc)
+    acc = acc * 2
+    x.append(acc)
+    acc = acc * 5
+    x.append(acc)
+
+    x = np.array(x)
+    print(x)
+
+    x = x.T
+    print("")
+
+    print(x[0])
+
+    for i in range(7):
+        plt.plot(x[i])
+    plt.show()
+
+
+
+test_accuracy_cm()
+
 # test_dynamic_candle()
 
 # test_dataset()

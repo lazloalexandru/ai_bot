@@ -227,16 +227,19 @@ def _search_patterns_in(gapper, params, df_fund):
         symbol = gapper['symbol']
         date = str(gapper['date'])
 
-        params['symbol'] = symbol
-        params['date'] = date
-
         print('\n' + symbol + ' ' + date)
 
+        df_daily = cu.get_daily_chart_for(symbol)
+        df_history, date_index = cu.get_period_before(df_daily, date, chart.DAILY_CHART_LENGTH, symbol + "_" + str(date))
         df = cu.get_chart_data_prepared_for_ai(symbol, date, params)
         open_index = cu.get_time_index(df, date, params['__chart_begin_hh'], params['__chart_begin_mm'], 0)
 
-        if df is not None and open_index is not None:
-            entries, exits = _find_trades(df, params, version)
+        if df is not None and open_index is not None and df_history is not None and date_index is not None:
+            params['symbol'] = symbol
+            params['date'] = date
+            params['date_index'] = date_index
+
+            entries, exits = _find_trades(df_history, df, params, version)
 
             n1 = len(entries)
             n2 = len(exits)
@@ -275,16 +278,16 @@ def _search_patterns_in(gapper, params, df_fund):
     return df_result, version
 
 
-def gen_state(df, entry_idx, open_idx):
-    state = chart.create_padded_state_vector(df, entry_idx, open_idx)
+def gen_state(df_history, df, entry_idx, open_idx):
+    state = chart.create_state_vector(df_history, df, entry_idx, open_idx)
 
-    state = np.reshape(state, (5, 390))
+    state = np.reshape(state, (chart.DATA_ROWS, chart.EXTENDED_CHART_LENGTH))
     state = torch.tensor(state, dtype=torch.float).unsqueeze(0).unsqueeze(0).to("cuda")
 
     return state
 
 
-def _find_trades(df, params, version):
+def _find_trades(df_history, df, params, version):
     __VERSION = 3
     version.clear()
     version.append(__VERSION)
@@ -309,7 +312,7 @@ def _find_trades(df, params, version):
     while i < close_idx:
         close = df['Close'][i]  # eliminating search in dataframe ... maybe increases exectution speed
         with torch.no_grad():
-            data = gen_state(df, i, open_idx)
+            data = gen_state(df_history, df, i, open_idx)
 
             buy_output = model(data)
             res = buy_output.max(1)[1].view(1, 1)
@@ -327,7 +330,7 @@ def _find_trades(df, params, version):
 
                 entries.append([df['Time'][i], buy_price, [], params['stop']])
 
-                sell_time, sell_price, exit_type, sell_index = _find_exit(df, i, params)
+                sell_time, sell_price, exit_type, sell_index = _find_exit(df_history, df, i, params)
 
                 exits.append([sell_time, sell_price, exit_type, sell_index])
 
@@ -342,7 +345,7 @@ def _find_trades(df, params, version):
     return entries, exits
 
 
-def _find_exit(df, entry_index, params):
+def _find_exit(df_history, df, entry_index, params):
     exit_type = None
     sold = False
     sell_price = None
@@ -362,25 +365,26 @@ def _find_exit(df, entry_index, params):
             exit_type = "STOP"
             print("  STOP", df['Time'][j], "%.2f" % sell_price, "%  stop:", str(params['stop']) + "%", end="")
         else:
-            with torch.no_grad():
-                data = gen_state(df, j, open_idx)
+            if params['ai_exit']:
+                with torch.no_grad():
+                    data = gen_state(df_history, df, j, open_idx)
 
-                buy_output = model(data)
-                res = buy_output.max(1)[1].view(1, 1)
-                predicted_label = res[0][0].to("cpu").numpy()
+                    buy_output = model(data)
+                    res = buy_output.max(1)[1].view(1, 1)
+                    predicted_label = res[0][0].to("cpu").numpy()
 
-                if predicted_label <= 2:
+                    if predicted_label <= 3:
+                        sold = True
+                        sell_price = df.loc[j]['Close']
+                        exit_type = "SELL"
+                        print("  SELL", df['Time'][j], "%.2f" % sell_price, end="")
+            else:
+                if df['High'][j] > params['target_price']:
                     sold = True
-                    sell_price = df.loc[j]['Close']
+                    sell_price = params['target_price']
                     exit_type = "SELL"
                     print("  SELL", df['Time'][j], "%.2f" % sell_price, end="")
-        '''
-        elif df['High'][j] > params['target_price']:            
-            sold = True
-            sell_price = params['target_price']
-            exit_type = "SELL"
-            print("  SELL", df['Time'][j], "%.2f" % sell_price, end="")
-        '''
+
         j = j + 1
 
     if not sold:
@@ -476,14 +480,15 @@ def get_default_params():
 
         'stop': -5,
         'target': 10,
-        'no_parallel_trades': False,
 
-        'no_charts': True,
+        'ai_exit': False,
+        'no_parallel_trades': False,
+        'no_charts': False,
 
         'chart_list_file': "data\\test_charts.csv",
         'test_size_coef': 0.1,
 
-        'model_path': "checkpoints\\checkpoint_339",
+        'model_path': "checkpoints\\checkpoint_202",
         'num_classes': 7
     }
 
