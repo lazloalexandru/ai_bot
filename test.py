@@ -1,13 +1,14 @@
 import pandas as pd
 import numpy as np
 from termcolor import colored
-from chart import DAY_IN_MINUTES
 import chart
 import common as cu
 import torch
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import mplfinance as mpf
+import torch.nn.functional as F
+import torch.nn as nn
 
 
 def test6():
@@ -419,6 +420,42 @@ def test_xxx():
     print(x[n:])
 
 
+def test_nll_loss():
+
+    w = [1/5.3589, 1/2.1937, 1/1.3094, 1/0.3621, 1/0.6153, 1/1.3060, 1/2.2640]
+    print("WWWWW", sum(w))
+
+    # input is of size N x C = 3 x 5
+    x = torch.zeros(3, 5, requires_grad=False)
+    x[0][0] = 1
+    x[1][1] = 1
+    x[2][2] = 1
+    print(x, "\n")
+
+    y = torch.tensor([3, 3, 3])
+
+    print(F.log_softmax(x, dim=1), "y =>", y)
+
+    print("Loss:")
+    w = torch.tensor([1, 1, 1, 1, 1], dtype=torch.float)
+    z3 = F.nll_loss(F.log_softmax(x, dim=1), y, reduction='none', weight=w)
+    z33 = F.nll_loss(F.log_softmax(x, dim=1), y, reduction='mean', weight=w)
+    print(z3, "Mean:", z33)
+    w = torch.tensor([1, 1, 1, 2, 1], dtype=torch.float)
+    z3 = F.nll_loss(F.log_softmax(x, dim=1), y, reduction='none', weight=w)
+    z33 = F.nll_loss(F.log_softmax(x, dim=1), y, reduction='mean', weight=w)
+    print(z3, "Mean:", z33)
+    print()
+
+
+def test_rebalance_weights_1():
+    x = [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2]
+    h, w = cu.calc_rebalancing_weigths_INVERSE(x, 3)
+
+    print(h)
+    print(w)
+
+
 # test_xxx()
 
 
@@ -426,12 +463,16 @@ def test_xxx():
 
 # test_dataset()
 
+# test_nll_loss()
+
 # test_stratified_sampler()
-cu.analyze_ext_dataset_balance('data\\datasets\\training_data_0', num_classes=7)
-# cu.analyze_divided_dataset_balance('data\\datasets\\dataset', 9, num_classes=7)
+# cu.analyze_ext_dataset_balance('data\\datasets\\test_data', num_classes=7)
+# cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 11, num_classes=7)
 
 # test_split()
 # merge()
 
 # test_rebalance_weights('data\\winner_datasets_2\\winner_dataset_4')
+
+# test_rebalance_weights_1()
 # test_split()

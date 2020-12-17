@@ -128,7 +128,7 @@ def get_params():
     params = {
         'num_classes': 7,
         'test_batch': 1024,
-        'model_params_file_path': 'checkpoints\\checkpoint_4',
+        'model_params_file_path': 'checkpoints\\checkpoint_102',
         'dataset_path': 'data\\datasets\\test_data',
     }
 

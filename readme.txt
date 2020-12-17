@@ -11,7 +11,8 @@ CUDA memory access is not as efficient in some cases!!!
 - Make sure batch cycle time does not decrease significantly
 
 DATASET
-Rebalancing weigths for dataset [5.3589, 2.1937, 1.3094, 0.3621, 0.6153, 1.306, 2.264]
+Rebalancing weigths for dataset
+[5.3572, 2.1931, 1.0335, 0.3307, 0.6982, 1.6349, 3.1002]
 
 
 

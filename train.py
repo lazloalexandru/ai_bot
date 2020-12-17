@@ -328,8 +328,7 @@ def get_params():
         'training_data_path': 'data\\datasets\\training_data',
         # 'training_data_path': 'data\\datasets\\dummy',
         'dataset_chunks': 11,
-        # 're_balancing_weights': [5.3589, 2.1937, 1.3094, 0.3621, 0.6153, 1.3060, 2.2640],
-        're_balancing_weights': [1/5.3589, 1/2.1937, 1/1.3094, 1/0.3621, 1/0.6153, 1/1.3060, 1/2.2640],
+        're_balancing_weights': [5.3572, 2.1931, 1.0335, 0.3307, 0.6982, 1.6349, 3.1002],
 
         'data_reload_counter_start': 0,
         'change_dataset_at_epoch_step': 1,

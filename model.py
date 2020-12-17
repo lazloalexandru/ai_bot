@@ -6,7 +6,7 @@ class Net(nn.Module):
     def __init__(self, output_classes):
         super(Net, self).__init__()
 
-        self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(0.1)
         self.max_pool = nn.MaxPool2d(kernel_size=(1, 2), stride=2)
 
         k = 3

@@ -516,7 +516,7 @@ def analyze_divided_dataset_balance(dataset_path, num_dataset_chunks, num_classe
 
         float_data = np.fromfile(path)
 
-        chart_size = chart.DATA_ROWS * chart.DAY_IN_MINUTES
+        chart_size = chart.DATA_ROWS * chart.EXTENDED_CHART_LENGTH
         label_size = 1
         data_size = chart_size + label_size
 

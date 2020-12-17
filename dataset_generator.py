@@ -495,18 +495,15 @@ def get_default_params():
         'trading_begin_mm': 40,
 
         'stop_buy': 2,
-        'target_short': -10,
-
-        'stop_sell': -5,
-        'target_long': 10,
+        'stop_sell': -2,
 
 
         'no_charts': True,
 
-        'chart_list_file': "data\\training_charts.csv",
-        'dataset_name': "training_data",
+        'chart_list_file': "data\\dev_test_charts.csv",
+        'dataset_name': "dev_test_data",
         'charts_per_batch': 200,
-        'num_samples_per_dataset': 1000000,
+        'num_samples_per_dataset': 2000000,
 
         'num_cores': 16
     }
