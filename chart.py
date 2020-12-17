@@ -22,6 +22,8 @@ def save_state_chart(state, t, symbol, date, idx, length):
     v = s[4]
     t = t[:length]
 
+    print("len(o):", len(o), "len(t):", len(t))
+
     dx = pd.DataFrame({
         'Time': t,
         'Open': o,

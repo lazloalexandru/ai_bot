@@ -268,13 +268,13 @@ def plot_matrix():
 
 
 def test_dataset():
-    dataset_path = 'data\\datasets\\test_dataset'
+    dataset_path = 'data\\datasets\\dev_test_data'
 
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
     float_data = np.fromfile(dataset_path, dtype='float')
 
-    chart_size_bytes = chart.DATA_ROWS * chart.DAY_IN_MINUTES
+    chart_size_bytes = chart.DATA_ROWS * chart.EXTENDED_CHART_LENGTH
     label_size_bytes = 1
     data_size = chart_size_bytes + label_size_bytes
 
@@ -293,10 +293,11 @@ def test_dataset():
     }
     symbol = "AAL"
     date = "2020-02-26"
-    df = cu.get_chart_data_prepared_for_ai(symbol, date, p)
+    df = cu.get_intraday_chart_for(symbol, date)
     t = df.Time.to_list()
+    idx = 1250
 
-    chart.save_state_chart(chart_data[100][:-1], t, "---", "", 0)
+    chart.save_state_chart(chart_data[idx][:-1], t, "---", "___", idx, chart.EXTENDED_CHART_LENGTH)
 
 
 def pad_to512():
@@ -417,7 +418,8 @@ def test_xxx():
     print(x[:n])
     print(x[n:])
 
-test_xxx()
+
+# test_xxx()
 
 
 # test_dynamic_candle()
@@ -425,7 +427,7 @@ test_xxx()
 # test_dataset()
 
 # test_stratified_sampler()
-# cu.analyze_ext_dataset_balance('data\\datasets\\test_dataset_ext', num_classes=7)
+cu.analyze_ext_dataset_balance('data\\datasets\\training_data_0', num_classes=7)
 # cu.analyze_divided_dataset_balance('data\\datasets\\dataset', 9, num_classes=7)
 
 # test_split()

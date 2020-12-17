@@ -67,7 +67,7 @@ def train(model, device, train_loader, optimizer, epoch, w, p):
         optimizer.zero_grad()
         output = model(data)
 
-        loss = F.nll_loss(output.float(), target, weight=w)
+        loss = F.nll_loss(output.float(), target, weight=w, reduction='mean')
 
         losses.append(loss.item())
         if p['log_iteration_loss']:
@@ -147,6 +147,8 @@ def test(model, device, test_loader, w, p):
 
 
 def load_data(dataset_path, batch_size, re_balancing_weights):
+    start_time = time.time()
+
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
     float_data = np.fromfile(dataset_path, dtype='float')
 
@@ -174,13 +176,14 @@ def load_data(dataset_path, batch_size, re_balancing_weights):
 
         cu.progress_points(i, 10000)
 
-    print("")
-
     kwargs = {'batch_size': batch_size}
     cuda_kwargs = {'pin_memory': True, 'shuffle': True}
     kwargs.update(cuda_kwargs)
 
     loader = torch.utils.data.DataLoader(dataset, **kwargs)
+
+    duration = time.time() - start_time
+    print(' %.2f sec\n' % duration)
 
     return loader
 
@@ -307,7 +310,7 @@ def main():
 def get_params():
     params = {
         ################# Non Essential #######################
-        'loss_ceiling': 3,
+        'loss_ceiling': 5,
         'training_batch_log_interval': 50,
 
         ################# Learning Rate Analysis ##############
@@ -325,10 +328,11 @@ def get_params():
         'training_data_path': 'data\\datasets\\training_data',
         # 'training_data_path': 'data\\datasets\\dummy',
         'dataset_chunks': 11,
-        're_balancing_weights': [5.3589, 2.1937, 1.3094, 0.3621, 0.6153, 1.3060, 2.2640],
+        # 're_balancing_weights': [5.3589, 2.1937, 1.3094, 0.3621, 0.6153, 1.3060, 2.2640],
+        're_balancing_weights': [1/5.3589, 1/2.1937, 1/1.3094, 1/0.3621, 1/0.6153, 1/1.3060, 1/2.2640],
 
         'data_reload_counter_start': 0,
-        'change_dataset_at_epoch_step': 5,
+        'change_dataset_at_epoch_step': 1,
         ################ Training #############################
         'train_batch': 128,
         'test_batch': 1024,
