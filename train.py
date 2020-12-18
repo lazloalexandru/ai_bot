@@ -24,7 +24,7 @@ if is_ipython:
 
 
 def plot_values(accuracy, train_loss, test_loss, p):
-    fig = plt.figure(1, figsize=(10, 8))
+    fig = plt.figure(1, figsize=(10, 9))
     plt.clf()
     ax1 = fig.add_subplot(2, 1, 1)
     ax2 = fig.add_subplot(2, 1, 2, sharex=ax1)
@@ -146,7 +146,7 @@ def test(model, device, test_loader, w, p):
     return accuracy, avg_loss
 
 
-def load_data(dataset_path, batch_size, re_balancing_weights):
+def load_data(dataset_path, batch_size, re_balancing_weights, conv_input_layer):
     start_time = time.time()
 
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
@@ -165,7 +165,8 @@ def load_data(dataset_path, batch_size, re_balancing_weights):
 
     for i in range(num_rows):
         state = chart_data[i][:-1]
-        state = np.reshape(state, (chart.DATA_ROWS, chart.EXTENDED_CHART_LENGTH))
+        if conv_input_layer:
+            state = np.reshape(state, (chart.DATA_ROWS, chart.EXTENDED_CHART_LENGTH))
         state = torch.tensor(state, dtype=torch.float).unsqueeze(0)
 
         label = int(chart_data[i][-1])
@@ -262,10 +263,16 @@ def main():
     test_losses = []
 
     train_loader = None
-    test_loader = load_data(p['dev_test_data_path'], p['test_batch'], p['re_balancing_weights'])
+    test_loader = load_data(p['dev_test_data_path'],
+                            p['test_batch'],
+                            p['re_balancing_weights'],
+                            p['conv_input_layer'])
 
     if p['dataset_chunks'] == 1:
-        train_loader = load_data(get_training_dataset_path(p), p['train_batch'], p['re_balancing_weights'])
+        train_loader = load_data(get_training_dataset_path(p),
+                                 p['train_batch'],
+                                 p['re_balancing_weights'],
+                                 p['conv_input_layer'])
 
     data_reload_counter = p['data_reload_counter_start']
 
@@ -277,7 +284,10 @@ def main():
                 gc.collect()
 
                 p['dataset_id'] = data_reload_counter % p['dataset_chunks']
-                train_loader = load_data(get_training_dataset_path(p), p['train_batch'], p['re_balancing_weights'])
+                train_loader = load_data(get_training_dataset_path(p),
+                                         p['train_batch'],
+                                         p['re_balancing_weights'],
+                                         p['conv_input_layer'])
                 data_reload_counter += 1
 
         if train_loader is not None and test_loader is not None:
@@ -319,6 +329,7 @@ def get_params():
 
         ################# Model ###############################
         'num_classes': 7,
+        'conv_input_layer': False,
 
         ################ Dev Test - Data ######################
         'dev_test_data_path': 'data\\datasets\\dev_test_data',

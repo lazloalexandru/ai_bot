@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import numpy as np
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
-from model import Net
+from model_conv import Net
 
 
 def train(model, device, train_loader, optimizer, epoch):

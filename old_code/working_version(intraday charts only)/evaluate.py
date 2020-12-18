@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from torchsummary import summary
 import time
 import matplotlib.pyplot as plt
-from model import Net
+from model_conv import Net
 import chart
 import common as cu
 

@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import numpy as np
 import torch.optim as optim
 from termcolor import colored
-from model import Net
+from model_conv import Net
 import matplotlib
 import matplotlib.pyplot as plt
 import chart

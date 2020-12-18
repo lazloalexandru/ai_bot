@@ -7,7 +7,7 @@ import matplotlib.pylab as plt
 import random
 import math
 import pandas as pd
-from model import Model
+from model_conv import Model
 from ai_memory import Memory
 
 tf.compat.v1.disable_eager_execution()

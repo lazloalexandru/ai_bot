@@ -8,7 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from ai_memory import Transition
 import torch
-from model import DQN
+from model_conv import DQN
 import torch.nn.functional as F
 
 

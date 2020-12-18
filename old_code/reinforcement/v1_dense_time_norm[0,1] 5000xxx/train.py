@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from ai_memory import ReplayMemory
 from ai_memory import Transition
 import torch
-from model import DQN
+from model_conv import DQN
 import torch.optim as optim
 import torch.nn.functional as F
 import os

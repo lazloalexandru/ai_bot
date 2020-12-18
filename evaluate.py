@@ -4,7 +4,7 @@ import numpy as np
 from termcolor import colored
 from torchsummary import summary
 import time
-from model import Net
+from model_conv import Net
 import chart
 import common as cu
 
@@ -128,7 +128,7 @@ def get_params():
     params = {
         'num_classes': 7,
         'test_batch': 1024,
-        'model_params_file_path': 'checkpoints\\checkpoint_102',
+        'model_params_file_path': 'checkpoints\\checkpoint_110',
         'dataset_path': 'data\\datasets\\test_data',
     }
 

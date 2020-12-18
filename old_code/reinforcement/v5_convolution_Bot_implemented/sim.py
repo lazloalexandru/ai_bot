@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 import torch
-from model import DQN
+from model_conv import DQN
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
