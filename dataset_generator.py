@@ -439,16 +439,12 @@ def _gen_labeled_data(df_history, df, entry_idx, open_idx, gain):
         label = 0
     elif -10 <= gain < -5:
         label = 1
-    elif -5 <= gain < -2:
+    elif -5 <= gain < 5:
         label = 2
-    elif -2 <= gain < 2:
-        label = 3
-    elif 2 <= gain < 5:
-        label = 4
     elif 5 <= gain < 10:
-        label = 5
+        label = 3
     elif 10 <= gain:
-        label = 6
+        label = 4
 
     return state, label
 
@@ -461,14 +457,10 @@ def get_marker(label):
     elif label == 1:
         c = 'red'
     elif label == 2:
-        c = 'orange'
-    elif label == 3:
         c = 'yellow'
-    elif label == 4:
+    elif label == 3:
         c = 'limegreen'
-    elif label == 5:
-        c = 'seagreen'
-    elif label == 6:
+    elif label == 4:
         c = 'darkgreen'
 
     return m, c
@@ -494,8 +486,8 @@ def get_default_params():
         'trading_begin_hh': 9,
         'trading_begin_mm': 40,
 
-        'stop_buy': 2,
-        'stop_sell': -2,
+        'stop_buy': 5,
+        'stop_sell': -5,
 
 
         'no_charts': True,
@@ -503,7 +495,7 @@ def get_default_params():
         'chart_list_file': "data\\dev_test_charts.csv",
         'dataset_name': "dev_test_data",
         'charts_per_batch': 200,
-        'num_samples_per_dataset': 2000000,
+        'num_samples_per_dataset': 1000000,
 
         'num_cores': 16
     }

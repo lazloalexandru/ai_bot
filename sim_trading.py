@@ -494,7 +494,7 @@ def get_default_params():
         'test_size_coef': 0.1,
 
         'model_path': "checkpoints\\checkpoint_126",
-        'num_classes': 7
+        'num_classes': 5
     }
 
     return params

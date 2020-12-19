@@ -328,8 +328,8 @@ def get_params():
         'loss_history_files_dir': "--",
 
         ################# Model ###############################
-        'num_classes': 7,
-        'conv_input_layer': False,
+        'num_classes': 5,
+        'conv_input_layer': True,
 
         ################ Dev Test - Data ######################
         'dev_test_data_path': 'data\\datasets\\dev_test_data',
@@ -339,13 +339,13 @@ def get_params():
         'training_data_path': 'data\\datasets\\training_data',
         # 'training_data_path': 'data\\datasets\\dummy',
         'dataset_chunks': 11,
-        're_balancing_weights': [5.3572, 2.1931, 1.0335, 0.3307, 0.6982, 1.6349, 3.1002],
+        're_balancing_weights': [7.1888, 3.0813, 0.2720, 1.8304, 3.1772],
 
         'data_reload_counter_start': 0,
         'change_dataset_at_epoch_step': 1,
         ################ Training #############################
         'train_batch': 128,
-        'test_batch': 1024,
+        'test_batch': 512,
         'learning_rate': 0.0001,
         'weight_decay': 0.01,
 

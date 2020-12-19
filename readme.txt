@@ -12,7 +12,7 @@ CUDA memory access is not as efficient in some cases!!!
 
 DATASET
 Rebalancing weigths for dataset
-[5.3572, 2.1931, 1.0335, 0.3307, 0.6982, 1.6349, 3.1002]
+[7.1888, 3.0813, 0.2720, 1.8304, 3.1772]
 
 
 

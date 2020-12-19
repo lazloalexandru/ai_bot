@@ -456,6 +456,16 @@ def test_rebalance_weights_1():
     print(w)
 
 
+def test_w():
+    x = np.array([5.3572, 2.1931, 1.0335, 0.3307, 0.6982, 1.6349, 3.1002])
+    s = sum(x)
+    y = 7 * (x / s)
+    print(y)
+    print(sum(y))
+
+
+# test_w()
+
 # test_xxx()
 
 
@@ -466,8 +476,9 @@ def test_rebalance_weights_1():
 # test_nll_loss()
 
 # test_stratified_sampler()
-# cu.analyze_ext_dataset_balance('data\\datasets\\test_data', num_classes=7)
-# cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 11, num_classes=7)
+# cu.analyze_ext_dataset_balance('data\\datasets\\dev_test_data', num_classes=5)
+
+# cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 11, num_classes=5)
 
 # test_split()
 # merge()
