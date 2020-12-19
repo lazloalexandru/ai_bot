@@ -136,7 +136,7 @@ def test(model, device, test_loader, w, p):
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{}'.format(
         avg_loss, num_hits, len(test_loader.dataset)), " Classes: ", end="")
 
-    for i in range(7):
+    for i in range(p['num_classes']):
         print("%.1f" % accuracy[i] + str("%"), " ", end="")
     print("")
 
