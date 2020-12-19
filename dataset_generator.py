@@ -420,8 +420,10 @@ def _max_loss_for_entry(df_chart, entry_index, open_index, params):
 def _gen_labeled_data_for_entry(df_history, df_chart, entry_index, open_index, params):
     gain = _max_win_for_entry(df_chart, entry_index, open_index, params)
 
+    '''
     if gain < 2:
         gain = _max_loss_for_entry(df_chart, entry_index, open_index, params)
+    '''
 
     intra_day_state, label = _gen_labeled_data(df_history, df_chart, entry_index, open_index, gain)
 
@@ -435,16 +437,10 @@ def _gen_labeled_data(df_history, df, entry_idx, open_idx, gain):
 
     label = 0
 
-    if gain < -10:
+    if gain < 10:
         label = 0
-    elif -10 <= gain < -5:
-        label = 1
-    elif -5 <= gain < 5:
-        label = 2
-    elif 5 <= gain < 10:
-        label = 3
     elif 10 <= gain:
-        label = 4
+        label = 1
 
     return state, label
 
@@ -453,15 +449,9 @@ def get_marker(label):
     m = '$' + str(label) + '$'
 
     if label == 0:
-        c = 'darkred'
-    elif label == 1:
         c = 'red'
-    elif label == 2:
-        c = 'yellow'
-    elif label == 3:
-        c = 'limegreen'
-    elif label == 4:
-        c = 'darkgreen'
+    elif label == 1:
+        c = 'green'
 
     return m, c
 
@@ -492,8 +482,8 @@ def get_default_params():
 
         'no_charts': True,
 
-        'chart_list_file': "data\\dev_test_charts.csv",
-        'dataset_name': "dev_test_data",
+        'chart_list_file': "data\\training_charts.csv",
+        'dataset_name': "training_data",
         'charts_per_batch': 200,
         'num_samples_per_dataset': 1000000,
 

@@ -320,7 +320,7 @@ def main():
 def get_params():
     params = {
         ################# Non Essential #######################
-        'loss_ceiling': 5,
+        'loss_ceiling': 2,
         'training_batch_log_interval': 50,
 
         ################# Learning Rate Analysis ##############
@@ -339,7 +339,7 @@ def get_params():
         'training_data_path': 'data\\datasets\\training_data',
         # 'training_data_path': 'data\\datasets\\dummy',
         'dataset_chunks': 11,
-        're_balancing_weights': [7.1888, 3.0813, 0.2720, 1.8304, 3.1772],
+        're_balancing_weights': [0.5335, 7.9430],
 
         'data_reload_counter_start': 0,
         'change_dataset_at_epoch_step': 1,
