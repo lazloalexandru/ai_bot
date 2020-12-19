@@ -112,7 +112,7 @@ def main():
         accuracy, cm = test(model, device, test_loader, p)
 
         print("Accuracy: ", end="")
-        for i in range(7):
+        for i in range(p['num_classes']):
             print("%.1f" % accuracy[i] + str("%"), " ", end="")
         print("")
 
@@ -128,7 +128,7 @@ def get_params():
     params = {
         'num_classes': 5,
         'test_batch': 1024,
-        'model_params_file_path': 'checkpoints\\checkpoint_94',
+        'model_params_file_path': 'checkpoints\\checkpoint_29',
         'dataset_path': 'data\\datasets\\test_data',
     }
 

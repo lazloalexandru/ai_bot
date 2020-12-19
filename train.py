@@ -35,7 +35,7 @@ def plot_values(accuracy, train_loss, test_loss, p):
 
     accuracy = np.array(accuracy).T
 
-    ax2.plot(accuracy[7], color="white", label="all")
+    ax2.plot(accuracy[p['num_classes']], color="white", label="all")
     for i in range(p['num_classes']):
         _, c = get_marker(i)
         ax2.plot(accuracy[i], color=c, label=str(i))
