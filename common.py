@@ -1,5 +1,7 @@
 import os
 import itertools
+
+import torch
 from termcolor import colored
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -614,3 +616,38 @@ def progress_points(i, at_step, max_line_length=100):
         print(".", end="")
     if i % (at_step * max_line_length) == 0 and i > 1:
         print("")
+
+
+def random_split(input_path, out1_path, out2_path, split_coefficient, seed):
+    input_data_bytes = np.fromfile(input_path, dtype='float')
+
+    data_size = chart.EXT_DATA_SIZE
+    num_bytes = len(input_data_bytes)
+    num_input_samples = int(num_bytes / data_size)
+    input_samples = input_data_bytes.reshape(num_input_samples, data_size)
+
+    out1_size = int(num_input_samples * split_coefficient)
+    out2_size = num_input_samples - out1_size
+
+    print("Number Of Samples: ", num_input_samples)
+    print("Out1 Size: ", out1_size, "(%.1f" % (100 * out1_size / num_input_samples), "%)")
+    print("Out2 Size: ", out2_size, "(%.1f" % (100 * out2_size / num_input_samples), "%)")
+
+    print("Generating Random Split")
+    out1_idx, out2_idx = torch.utils.data.random_split(
+        range(num_input_samples),
+        [out1_size, out2_size],
+        generator=torch.Generator().manual_seed(seed)
+    )
+
+    write_indexed_samples_to_file(input_samples, out1_idx, out1_path)
+    write_indexed_samples_to_file(input_samples, out2_idx, out2_path)
+
+
+def write_indexed_samples_to_file(samples, indexes, path):
+    indexed_samples = []
+    n = len(indexes)
+    for i in range(0, n):
+        indexed_samples.append(samples[indexes[i]])
+    out_data = np.array(indexed_samples)
+    out_data.tofile(path)

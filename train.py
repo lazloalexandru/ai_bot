@@ -320,7 +320,7 @@ def main():
 def get_params():
     params = {
         ################# Non Essential #######################
-        'loss_ceiling': 2,
+        'loss_ceiling': 5,
         'training_batch_log_interval': 50,
 
         ################# Learning Rate Analysis ##############
@@ -328,7 +328,7 @@ def get_params():
         'loss_history_files_dir': "--",
 
         ################# Model ###############################
-        'num_classes': 5,
+        'num_classes': 2,
         'conv_input_layer': True,
 
         ################ Dev Test - Data ######################
@@ -341,7 +341,7 @@ def get_params():
         'dataset_chunks': 11,
         're_balancing_weights': [0.5335, 7.9430],
 
-        'data_reload_counter_start': 0,
+        'data_reload_counter_start': 7,
         'change_dataset_at_epoch_step': 1,
         ################ Training #############################
         'train_batch': 128,
@@ -351,7 +351,7 @@ def get_params():
 
         'num_epochs': 500,
         'checkpoint_at_epoch_step': 1,
-        'resume_epoch_idx': None
+        'resume_epoch_idx': 72
     }
 
     return params

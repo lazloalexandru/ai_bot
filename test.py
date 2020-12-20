@@ -248,9 +248,9 @@ def test_rebalance_weights(dataset_path):
 
 
 def merge():
-    cu.merge('data\\datasets\\dataset_0',
-             'data\\datasets\\dataset_1',
-             'data\\datasets\\dataset_01')
+    cu.merge('data\\datasets\\dev_test_data',
+             'data\\datasets\\test_data',
+             'data\\datasets\\xxxxx')
 
 
 def plot_matrix():
@@ -476,13 +476,19 @@ def test_w():
 # test_nll_loss()
 
 # test_stratified_sampler()
-# cu.analyze_ext_dataset_balance('data\\datasets\\dev_test_data', num_classes=2)
+# cu.analyze_ext_dataset_balance('data\\datasets\\test_data', num_classes=2)
 
-cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 11, num_classes=2)
+# cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 11, num_classes=2)
 
 # test_split()
 # merge()
-
+'''
+cu.random_split(input_path="data\\datasets\\xxxxx",
+                out1_path="data\\datasets\\x1",
+                out2_path="data\\datasets\\x2",
+                split_coefficient=0.5,
+                seed=41)
+'''
 # test_rebalance_weights('data\\winner_datasets_2\\winner_dataset_4')
 
 # test_rebalance_weights_1()
