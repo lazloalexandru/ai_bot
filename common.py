@@ -618,8 +618,8 @@ def progress_points(i, at_step, max_line_length=100):
         print("")
 
 
-def random_split(input_path, out1_path, out2_path, split_coefficient, seed):
-    input_data_bytes = np.fromfile(input_path, dtype='float')
+def random_split(input_samples_path, out1_path, out2_path, split_coefficient, seed):
+    input_data_bytes = np.fromfile(input_samples_path, dtype='float')
 
     data_size = chart.EXT_DATA_SIZE
     num_bytes = len(input_data_bytes)

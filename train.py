@@ -339,9 +339,11 @@ def get_params():
         'training_data_path': 'data\\datasets\\training_data',
         # 'training_data_path': 'data\\datasets\\dummy',
         'dataset_chunks': 11,
-        're_balancing_weights': [0.5335, 7.9430],
+        # 're_balancing_weights': [0.5335, 7.9430],
+        # 're_balancing_weights': [1, 1],
+        're_balancing_weights': [1/0.5335, 1/7.9430],
 
-        'data_reload_counter_start': 7,
+        'data_reload_counter_start': 0,
         'change_dataset_at_epoch_step': 1,
         ################ Training #############################
         'train_batch': 128,
@@ -351,7 +353,7 @@ def get_params():
 
         'num_epochs': 500,
         'checkpoint_at_epoch_step': 1,
-        'resume_epoch_idx': 72
+        'resume_epoch_idx': None
     }
 
     return params
