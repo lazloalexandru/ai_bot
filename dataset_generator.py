@@ -291,6 +291,15 @@ def _gen_dataset_from_chart(c, params):
     return dataset
 
 
+def calc_range(df_chart):
+    min_price = min(df_chart.Low.to_list())
+    max_price = max(df_chart.High.to_list())
+    if min_price <= 0:
+        min_price = 0.1
+
+    return 100*(max_price / min_price - 1)
+
+
 def _gen_labeled_data_from_chart(df_history, df_chart, params):
     entries = []
     dataset = []
@@ -302,6 +311,9 @@ def _gen_labeled_data_from_chart(df_history, df_chart, params):
 
     if trading_start_idx is None:
         trading_start_idx = df_chart.index[0]
+
+    params['stop_sell'] = - calc_range(df_chart) / params['stop_sell_factor']
+    params['stop_buy'] = calc_range(df_chart) / params['stop_buy_factor']
 
     min_price = df_chart['Low'][open_index]
     max_price = df_chart['High'][open_index]
@@ -425,21 +437,22 @@ def _gen_labeled_data_for_entry(df_history, df_chart, entry_index, open_index, p
         gain = _max_loss_for_entry(df_chart, entry_index, open_index, params)
     '''
 
-    intra_day_state, label = _gen_labeled_data(df_history, df_chart, entry_index, open_index, gain)
+    intra_day_state, label = _gen_labeled_data(df_history, df_chart, entry_index, open_index, gain, params)
 
     state = intra_day_state  # + daily state
 
     return state, label
 
 
-def _gen_labeled_data(df_history, df, entry_idx, open_idx, gain):
+def _gen_labeled_data(df_history, df, entry_idx, open_idx, gain, params):
     state = chart.create_state_vector(df_history, df, entry_idx, open_idx)
 
     label = 0
 
-    if gain < 10:
+    target = abs(2 * params['stop_sell'])
+    if gain < target:
         label = 0
-    elif 10 <= gain:
+    elif target <= gain:
         label = 1
 
     return state, label
@@ -476,8 +489,8 @@ def get_default_params():
         'trading_begin_hh': 9,
         'trading_begin_mm': 40,
 
-        'stop_buy': 5,
-        'stop_sell': -5,
+        'stop_buy_factor': 6,
+        'stop_sell_factor': 6,
 
 
         'no_charts': True,

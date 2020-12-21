@@ -7,7 +7,7 @@ import pandas as pd
 import mplfinance as mpf
 import sim_account as sim
 import matplotlib.pyplot as plt
-from model_conv import Net
+from model import Net
 import numpy as np
 import torch
 
@@ -321,7 +321,7 @@ def _find_trades(df_history, df, params, version):
             res = buy_output.max(1)[1].view(1, 1)
             predicted_label = res[0][0].to("cpu").numpy()
 
-            if predicted_label == 6:
+            if predicted_label == 1:
                 buy_price = close
 
                 print(params["symbol"], "BUY", df['Time'][i], buy_price, end="")
@@ -376,7 +376,7 @@ def _find_exit(df_history, df, entry_index, params):
                     res = buy_output.max(1)[1].view(1, 1)
                     predicted_label = res[0][0].to("cpu").numpy()
 
-                    if predicted_label <= 3:
+                    if predicted_label <= 0:
                         sold = True
                         sell_price = df.loc[j]['Close']
                         exit_type = "SELL"
@@ -488,13 +488,14 @@ def get_default_params():
 
         'ai_exit': False,
         'no_parallel_trades': False,
+
         'no_charts': False,
 
         'chart_list_file': "data\\test_charts.csv",
         'test_size_coef': 0.1,
 
-        'model_path': "checkpoints\\checkpoint_126",
-        'num_classes': 5
+        'model_path': "checkpoints\\checkpoint_106",
+        'num_classes': 2
     }
 
     return params

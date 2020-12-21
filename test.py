@@ -269,7 +269,7 @@ def plot_matrix():
 
 
 def test_dataset():
-    dataset_path = 'data\\datasets\\dev_test_data'
+    dataset_path = 'data\\datasets\\test_data'
 
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
@@ -296,7 +296,7 @@ def test_dataset():
     date = "2020-02-26"
     df = cu.get_intraday_chart_for(symbol, date)
     t = df.Time.to_list()
-    idx = 1250
+    idx = 1350
 
     chart.save_state_chart(chart_data[idx][:-1], t, "---", "___", idx, chart.EXTENDED_CHART_LENGTH)
 
@@ -471,7 +471,8 @@ def test_w():
 
 # test_dynamic_candle()
 
-# test_dataset()
+
+test_dataset()
 
 # test_nll_loss()
 
@@ -480,10 +481,12 @@ def test_w():
 
 # cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 11, num_classes=2)
 
+# test6()
+
 # test_split()
 # merge()
 '''
-cu.random_split(input_path="data\\datasets\\xxxxx",
+cu.random_split(input_samples_path="data\\datasets\\xxxxx",
                 out1_path="data\\datasets\\x1",
                 out2_path="data\\datasets\\x2",
                 split_coefficient=0.5,
