@@ -139,7 +139,7 @@ def create_state_vector(df_history, df, entry_idx, open_idx, debug=False):
     c = price[1]
     h = price[2]
     l = price[3]
-    v = cu.normalize_middle(np.array(v))
+    v = cu.normalize_0_1(np.array(v))
 
     if debug:
         print('normaliazed o:', type(o))
@@ -185,7 +185,7 @@ def create_state_vector(df_history, df, entry_idx, open_idx, debug=False):
     hc = price[1]
     hh = price[2]
     hl = price[3]
-    hv = cu.normalize_middle(np.array(hv))
+    hv = cu.normalize_0_1(np.array(hv))
 
     if debug:
         print('normalized len(ho)', len(ho))

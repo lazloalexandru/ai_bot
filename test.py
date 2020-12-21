@@ -467,12 +467,12 @@ def test_w():
 # test_w()
 
 # test_xxx()
-
+test8()
 
 # test_dynamic_candle()
 
 
-test_dataset()
+# test_dataset()
 
 # test_nll_loss()
 
@@ -486,10 +486,10 @@ test_dataset()
 # test_split()
 # merge()
 '''
-cu.random_split(input_samples_path="data\\datasets\\xxxxx",
+cu.random_split(input_samples_path="data\\datasets\\training_data_9",
                 out1_path="data\\datasets\\x1",
                 out2_path="data\\datasets\\x2",
-                split_coefficient=0.5,
+                split_coefficient=0.3,
                 seed=41)
 '''
 # test_rebalance_weights('data\\winner_datasets_2\\winner_dataset_4')
