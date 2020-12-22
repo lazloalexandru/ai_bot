@@ -499,7 +499,7 @@ def analyze_divided_dataset_balance(dataset_path, num_dataset_chunks, num_classe
     num_data = 0
 
     for dataset_idx in range(num_dataset_chunks):
-        path = dataset_path + "_" + str(dataset_idx)
+        path = dataset_path + "_" + str(dataset_idx) + ".npy"
         print(colored("Loading Data From:" + path + " ...", color="green"))
 
         chart_data = np.load(path)

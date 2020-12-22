@@ -85,7 +85,7 @@ def train(model, device, train_loader, optimizer, epoch, w, p):
         __global_iteration_counter += 1
 
     epoch_duration = time.time() - epoch_start_time
-    print('Epoch completed in %.2f sec' % epoch_duration)
+    print('Training completed in %.2f sec' % epoch_duration)
 
     return sum(losses) / len(losses)
 
@@ -186,13 +186,10 @@ def load_data(dataset_path, batch_size, re_balancing_weights, conv_input_layer):
     return loader
 
 
-def get_training_dataset_path(p):
-    if p['dataset_chunks'] > 1:
-        dataset_path = p['training_data_path'] + "_" + str(p['dataset_id'])
-    else:
-        dataset_path = p['training_data_path']
+def get_training_dataset_path(p, dataset_id):
+    dataset_path = p['training_data_path'] + "_" + str(dataset_id) + ".npy"
 
-    return dataset_path + ".npy"
+    return dataset_path
 
 
 def save_loss_history(p):
@@ -237,7 +234,7 @@ def init_ai(p):
             resume_idx = None
 
     if resume_idx is None:
-        start_idx = 1
+        start_idx = 0
     else:
         start_idx = resume_idx + 1
 
@@ -259,51 +256,53 @@ def main():
     train_losses = []
     test_losses = []
 
-    train_loader = None
     test_loader = load_data(p['dev_test_data_path'],
                             p['test_batch'],
                             p['re_balancing_weights'],
                             p['conv_input_layer'])
 
+    train_loader = None
     if p['dataset_chunks'] == 1:
-        train_loader = load_data(get_training_dataset_path(p),
+        train_loader = load_data(get_training_dataset_path(p, dataset_id=0),
                                  p['train_batch'],
                                  p['re_balancing_weights'],
                                  p['conv_input_layer'])
 
-    data_reload_counter = p['data_reload_counter_start']
-
     for epoch in range(start_idx, start_idx + num_epochs):
-        if p['dataset_chunks'] > 1 and p['change_dataset_at_epoch_step'] is not None:
-            if epoch % p['change_dataset_at_epoch_step'] == 0 or data_reload_counter == p['data_reload_counter_start']:
+        train_loss = None
+        for dataset_id in range(p['dataset_chunks']):
+            if p['dataset_chunks'] > 1:
                 del train_loader
                 torch.cuda.empty_cache()
                 gc.collect()
 
-                p['dataset_id'] = data_reload_counter % p['dataset_chunks']
-                train_loader = load_data(get_training_dataset_path(p),
+                dataset_id = epoch % p['dataset_chunks']
+                train_loader = load_data(get_training_dataset_path(p, dataset_id),
                                          p['train_batch'],
                                          p['re_balancing_weights'],
                                          p['conv_input_layer'])
-                data_reload_counter += 1
 
-        if train_loader is not None and test_loader is not None:
+            if train_loader is None or test_loader is None:
+                print(colored("Train and Test Data Loaders not Initialized!!!", color='red'))
+                break
+
             train_loss = train(model, device, train_loader, optimizer, epoch, w_re_balance, p)
-            accuracy, test_loss = test(model, device, test_loader, w_re_balance, p)
 
-            if test_loss > p['loss_ceiling']:
-                test_loss = p['loss_ceiling']
+        #################################################################################
+        # Validation
 
-            train_losses.append(train_loss)
-            test_losses.append(test_loss)
-            accuracy_history.append(accuracy)
-            plot_values(accuracy_history, train_losses, test_losses, p)
+        accuracy, test_loss = test(model, device, test_loader, w_re_balance, p)
 
-            if epoch % p['checkpoint_at_epoch_step'] == 0:
-                torch.save(model.state_dict(), "checkpoints\\checkpoint_" + str(epoch))
-        else:
-            print(colored("Train and Test Data Loaders not Initialized!!!", color='red'))
-            break
+        if test_loss > p['loss_ceiling']:
+            test_loss = p['loss_ceiling']
+
+        train_losses.append(train_loss)
+        test_losses.append(test_loss)
+        accuracy_history.append(accuracy)
+        plot_values(accuracy_history, train_losses, test_losses, p)
+
+        if epoch % p['checkpoint_at_epoch_step'] == 0:
+            torch.save(model.state_dict(), "checkpoints\\checkpoint_" + str(epoch))
 
     if p['log_iteration_loss']:
         save_loss_history(p)
@@ -329,17 +328,14 @@ def get_params():
         'conv_input_layer': True,
 
         ################ Dev Test - Data ######################
-        'dev_test_data_path': 'data\\datasets\\dev_test_data.npy',
+        'dev_test_data_path': 'data\\datasets\\merged_test_data.npy',
         # 'dev_test_data_path': 'data\\datasets\\dummy',
 
         ################ Training - Data ######################
-        'training_data_path': 'data\\datasets\\training_data_0',
+        'training_data_path': 'data\\datasets\\training_data',
         # 'training_data_path': 'data\\datasets\\dummy',
-        'dataset_chunks': 1,
+        'dataset_chunks': 2,
         're_balancing_weights': [0.6080, 2.8133],
-
-        'data_reload_counter_start': 0,
-        'change_dataset_at_epoch_step': 1,
         ################ Training #############################
         'train_batch': 128,
         'test_batch': 512,

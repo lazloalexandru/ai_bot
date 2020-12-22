@@ -474,12 +474,12 @@ def test_write_file():
 
 # test_write_file()
 
-test_dataset()
+# test_dataset()
 
 # test_nll_loss()
 
 # test_stratified_sampler()
-# cu.analyze_ext_dataset_balance('data\\datasets\\test_data', num_classes=2)
+# cu.analyze_ext_dataset_balance('data\\datasets\\x1.npy', num_classes=2)
 
 # cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 11, num_classes=2)
 
