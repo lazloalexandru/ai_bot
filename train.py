@@ -150,20 +150,17 @@ def load_data(dataset_path, batch_size, re_balancing_weights, conv_input_layer):
     start_time = time.time()
 
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
-    float_data = np.fromfile(dataset_path, dtype='float')
+    chart_data = np.load(dataset_path)
+    n = len(chart_data)
 
-    data_size = chart.EXT_DATA_SIZE
-    num_bytes = len(float_data)
-    num_rows = int(num_bytes / data_size)
-    chart_data = float_data.reshape(num_rows, data_size)
     dataset = []
     labels = []
 
     print("Dataset Re-balancing Weights:", re_balancing_weights)
-    print("Dataset Size:", num_rows, "      Data Size:", data_size)
+    print("Dataset Size:", n, "      Data Size:", chart.EXT_DATA_SIZE)
     print("Creating Tensors")
 
-    for i in range(num_rows):
+    for i in range(n):
         state = chart_data[i][:-1]
         if conv_input_layer:
             state = np.reshape(state, (chart.DATA_ROWS, chart.EXTENDED_CHART_LENGTH))
@@ -195,7 +192,7 @@ def get_training_dataset_path(p):
     else:
         dataset_path = p['training_data_path']
 
-    return dataset_path
+    return dataset_path + ".npy"
 
 
 def save_loss_history(p):
@@ -332,15 +329,14 @@ def get_params():
         'conv_input_layer': True,
 
         ################ Dev Test - Data ######################
-        'dev_test_data_path': 'data\\datasets\\dev_test_data',
+        'dev_test_data_path': 'data\\datasets\\dev_test_data.npy',
         # 'dev_test_data_path': 'data\\datasets\\dummy',
 
         ################ Training - Data ######################
-        'training_data_path': 'data\\datasets\\training_data',
+        'training_data_path': 'data\\datasets\\training_data_0',
         # 'training_data_path': 'data\\datasets\\dummy',
-        'dataset_chunks': 10,
+        'dataset_chunks': 1,
         're_balancing_weights': [0.6080, 2.8133],
-        # 're_balancing_weights': [1, 1],
 
         'data_reload_counter_start': 0,
         'change_dataset_at_epoch_step': 1,

@@ -53,7 +53,7 @@ def load_data(p):
 
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
-    float_data = np.fromfile(dataset_path, dtype='float')
+    float_data = np.load(dataset_path)
 
     data_size = chart.EXT_DATA_SIZE
 
@@ -128,8 +128,8 @@ def get_params():
     params = {
         'num_classes': 2,
         'test_batch': 1024,
-        'model_params_file_path': 'checkpoints\\checkpoint_7',
-        'dataset_path': 'data\\datasets\\test_data',
+        'model_params_file_path': 'checkpoints\\checkpoint_25',
+        'dataset_path': 'data\\datasets\\big_test_data',
     }
 
     return params

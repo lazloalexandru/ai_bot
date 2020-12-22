@@ -6,7 +6,7 @@ class Net(nn.Module):
     def __init__(self, output_classes):
         super(Net, self).__init__()
 
-        self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(0.05)
         self.max_pool = nn.MaxPool2d(kernel_size=(1, 2), stride=2)
 
         k = 3
@@ -24,22 +24,8 @@ class Net(nn.Module):
         self.conv4 = nn.Conv2d(f, f, kernel_size=(1, k), stride=1)
         self.bn4 = nn.BatchNorm2d(f)
 
-        f_prev = f
-        f = f * 2
-        self.conv5 = nn.Conv2d(f_prev, f, kernel_size=(1, k), stride=1)
-        self.bn5 = nn.BatchNorm2d(f)
-        self.conv6 = nn.Conv2d(f, f, kernel_size=(1, k), stride=1)
-        self.bn6 = nn.BatchNorm2d(f)
-
-        f_prev = f
-        f = f * 2
-        self.conv7 = nn.Conv2d(f_prev, f, kernel_size=(1, k), stride=1)
-        self.bn7 = nn.BatchNorm2d(f)
-        self.conv8 = nn.Conv2d(f, f, kernel_size=(1, k), stride=1)
-        self.bn8 = nn.BatchNorm2d(f)
-
-        linear_input_size = f * 28
-        d = 2048
+        linear_input_size = f * 95
+        d = 256
 
         print("Dense Layers %s / %s / %s / %s" % (linear_input_size, d, d, output_classes))
 
@@ -60,18 +46,7 @@ class Net(nn.Module):
         x = self.max_pool(x)
         x = self.dropout(x)
 
-        x = F.relu(self.bn5(self.conv5(x)))
-        x = F.relu(self.bn6(self.conv6(x)))
-
-        x = self.max_pool(x)
-        x = self.dropout(x)
-
-        x = F.relu(self.bn7(self.conv7(x)))
-        x = F.relu(self.bn8(self.conv8(x)))
-
-        x = self.max_pool(x)
-        x = self.dropout(x)
-
+        # print(x.shape)
         x = F.relu(self.fc1(x.view(x.size(0), -1)))
         x = self.dropout(x)
         x = self.fc2(x)

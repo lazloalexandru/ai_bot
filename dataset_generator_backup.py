@@ -15,7 +15,7 @@ ___temp_dir_name = "__temp__"
 
 
 def test_training_data():
-    zzz = np.load('data\\datasets\\extended_dataset_0')
+    zzz = np.fromfile('data\\datasets\\extended_dataset_0', dtype='float')
 
     DATA_SIZE = 2561
     n = len(zzz)
@@ -179,7 +179,7 @@ def generate_datasets_mp(params):
                         print("")
                         xxx = np.array(labeled_trades)
                         print("Labeled Dataset Size1:", len(labeled_trades), "   ", xxx.shape)
-                        np.save(dataset_path + str(dataset_id), xxx)
+                        xxx.tofile(dataset_path + str(dataset_id))
                         dataset_id += 1
                         labeled_trades = []
                         print("Labeled Dataset Size11:", len(labeled_trades))
@@ -189,7 +189,7 @@ def generate_datasets_mp(params):
         if len(labeled_trades) > 0:
             xxx = np.array(labeled_trades)
             print("Labeled Dataset Size2:", len(labeled_trades), "   ", xxx.shape)
-            np.save(dataset_path + str(dataset_id), xxx)
+            xxx.tofile(dataset_path + str(dataset_id))
             dataset_id += 1
     else:
         print("Single CPU execution", end="")
@@ -214,7 +214,7 @@ def generate_datasets_mp(params):
                     print("")
                     xxx = np.array(labeled_trades)
                     print("Labeled Dataset Size1:", len(labeled_trades), "   ", xxx.shape)
-                    np.save(dataset_path + str(dataset_id), xxx)
+                    xxx.tofile(dataset_path + str(dataset_id))
                     dataset_id += 1
                     labeled_trades = []
                     print("Labeled Dataset Size11:", len(labeled_trades))
@@ -224,7 +224,7 @@ def generate_datasets_mp(params):
             print("Labeled Dataset Size2:", len(labeled_trades), "   ", xxx.shape)
             print(xxx[0].shape)
             print(dataset_path + str(dataset_id))
-            np.save(dataset_path + str(dataset_id), xxx)
+            xxx.tofile(dataset_path + str(dataset_id))
             dataset_id += 1
 
     params['version'] = version
@@ -270,7 +270,7 @@ def _gen_dataset_from_chart(c, params):
 
         open_index = cu.get_time_index(df, date, params['__chart_begin_hh'], params['__chart_begin_mm'], 0)
 
-        if df is not None and open_index is not None:
+        if df is not None and open_index is not None and df_history is not None and date_index is not None:
             params['symbol'] = symbol
             params['date'] = date
             params['date_index'] = date_index

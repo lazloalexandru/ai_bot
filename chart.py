@@ -4,7 +4,7 @@ import pandas as pd
 
 DATA_ROWS = 5
 DAY_IN_MINUTES = 390
-DAILY_CHART_LENGTH = 122
+DAILY_CHART_LENGTH = 0
 
 EXTENDED_CHART_LENGTH = DAILY_CHART_LENGTH + DAY_IN_MINUTES
 LABEL_SIZE = 1
@@ -164,59 +164,60 @@ def create_state_vector(df_history, df, entry_idx, open_idx, debug=False):
         print('padded len(o)', len(o))
         print('padded len(v)', len(v))
 
-    ##################### HISTORY SCALING ##############################
+    if df_history is not None:
+        ##################### HISTORY SCALING ##############################
 
-    ho = df_history.Open.to_list()
-    hc = df_history.Close.to_list()
-    hh = df_history.High.to_list()
-    hl = df_history.Low.to_list()
-    hv = df_history.Volume.to_list()
+        ho = df_history.Open.to_list()
+        hc = df_history.Close.to_list()
+        hh = df_history.High.to_list()
+        hl = df_history.Low.to_list()
+        hv = df_history.Volume.to_list()
 
-    if debug:
-        print("ho:", ho)
-        print('full len(ho)', len(ho))
-        print('full len(hv)', len(hv))
+        if debug:
+            print("ho:", ho)
+            print('full len(ho)', len(ho))
+            print('full len(hv)', len(hv))
 
-    price = np.concatenate((ho, hc, hh, hl))
-    price = cu.normalize_middle(price)
-    price = price.reshape(4, len(ho))
+        price = np.concatenate((ho, hc, hh, hl))
+        price = cu.normalize_middle(price)
+        price = price.reshape(4, len(ho))
 
-    ho = price[0]
-    hc = price[1]
-    hh = price[2]
-    hl = price[3]
-    hv = cu.normalize_0_1(np.array(hv))
+        ho = price[0]
+        hc = price[1]
+        hh = price[2]
+        hl = price[3]
+        hv = cu.normalize_0_1(np.array(hv))
 
-    if debug:
-        print('normalized len(ho)', len(ho))
-        print('normalized len(hv)', len(hv))
+        if debug:
+            print('normalized len(ho)', len(ho))
+            print('normalized len(hv)', len(hv))
 
-    ##################### HISTORY PADDING ##############################
+        ##################### HISTORY PADDING ##############################
 
-    padding_size = DAILY_CHART_LENGTH - len(df_history)
-    padding = [0] * padding_size
+        padding_size = DAILY_CHART_LENGTH - len(df_history)
+        padding = [0] * padding_size
 
-    if debug:
-        print('history padding_size:', padding_size)
+        if debug:
+            print('history padding_size:', padding_size)
 
-    if padding_size > 0:
-        ho = np.concatenate((padding, ho))
-        hc = np.concatenate((padding, hc))
-        hh = np.concatenate((padding, hh))
-        hl = np.concatenate((padding, hl))
-        hv = np.concatenate((padding, hv))
+        if padding_size > 0:
+            ho = np.concatenate((padding, ho))
+            hc = np.concatenate((padding, hc))
+            hh = np.concatenate((padding, hh))
+            hl = np.concatenate((padding, hl))
+            hv = np.concatenate((padding, hv))
 
-    if debug:
-        print('padded len(o)', len(ho))
-        print('padded len(v)', len(hv))
+        if debug:
+            print('padded len(o)', len(ho))
+            print('padded len(v)', len(hv))
 
-    ##################### APPEND HISTORY ###############################
+        ##################### APPEND HISTORY ###############################
 
-    o = np.concatenate((ho, o))
-    c = np.concatenate((hc, c))
-    h = np.concatenate((hh, h))
-    l = np.concatenate((hl, l))
-    v = np.concatenate((hv, v))
+        o = np.concatenate((ho, o))
+        c = np.concatenate((hc, c))
+        h = np.concatenate((hh, h))
+        l = np.concatenate((hl, l))
+        v = np.concatenate((hv, v))
 
     state = np.concatenate((o, c, h, l, v))
 
@@ -237,10 +238,11 @@ def pad_state_to_512(state):
 def update_candle(df, params):
     idx = params['date_index']
 
-    df.at[idx, 'Open'] = params['Open']
-    df.at[idx, 'Close'] = params['Close']
-    df.at[idx, 'Low'] = params['Low']
-    df.at[idx, 'High'] = params['High']
-    df.at[idx, 'Volume'] = params['Volume']
+    if df is not None and idx is not None:
+        df.at[idx, 'Open'] = params['Open']
+        df.at[idx, 'Close'] = params['Close']
+        df.at[idx, 'Low'] = params['Low']
+        df.at[idx, 'High'] = params['High']
+        df.at[idx, 'Volume'] = params['Volume']
 
     return df

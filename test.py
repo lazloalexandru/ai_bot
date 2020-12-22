@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import mplfinance as mpf
 import torch.nn.functional as F
 import torch.nn as nn
+from array import array
 
 
 def test6():
@@ -217,7 +218,7 @@ def test_stratified_sampler():
 
 def test_rebalance_weights(dataset_path):
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
-    float_data = np.fromfile(dataset_path, dtype='float')
+    float_data = np.load(dataset_path)
 
     chart_size = chart.DATA_ROWS * chart.DAY_IN_MINUTES
     label_size = 1
@@ -269,22 +270,13 @@ def plot_matrix():
 
 
 def test_dataset():
-    dataset_path = 'data\\datasets\\test_data'
+    dataset_path = 'data\\datasets\\training_data_0.npy'
 
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
-    float_data = np.fromfile(dataset_path, dtype='float')
+    chart_data = np.load(dataset_path)
 
-    chart_size_bytes = chart.DATA_ROWS * chart.EXTENDED_CHART_LENGTH
-    label_size_bytes = 1
-    data_size = chart_size_bytes + label_size_bytes
-
-    num_bytes = len(float_data)
-    num_rows = int(num_bytes / data_size)
-
-    chart_data = float_data.reshape(num_rows, data_size)
-
-    print("Dataset Size:", num_rows, "      Data Size:", data_size)
+    print("Dataset Size:", len(chart_data), "      Data Size:", chart.EXT_DATA_SIZE)
 
     p = {
         '__chart_begin_hh': 9,
@@ -296,9 +288,10 @@ def test_dataset():
     date = "2020-02-26"
     df = cu.get_intraday_chart_for(symbol, date)
     t = df.Time.to_list()
-    idx = 1350
-
-    chart.save_state_chart(chart_data[idx][:-1], t, "---", "___", idx, chart.EXTENDED_CHART_LENGTH)
+    idx = 0
+    while idx < 5000:
+        chart.save_state_chart(chart_data[idx][:-1], t, "---", "___", idx, chart.EXTENDED_CHART_LENGTH)
+        idx += 20
 
 
 def pad_to512():
@@ -306,7 +299,7 @@ def pad_to512():
 
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
-    float_data = np.fromfile(dataset_path, dtype='float')
+    float_data = np.load(dataset_path)
 
     chart_size_bytes = chart.DATA_ROWS * chart.DAY_IN_MINUTES
     label_size_bytes = 1
@@ -464,15 +457,24 @@ def test_w():
     print(sum(y))
 
 
+def test_write_file():
+
+    x = np.asarray([3114, 2.7, 0.0, -1.0, 1.1, 5000.0001])
+    np.save("data\\test.npy", x)
+    y = np.load("data\\test.npy")
+    print(y)
+
+
 # test_w()
 
 # test_xxx()
-test8()
+# test8()
 
 # test_dynamic_candle()
 
+# test_write_file()
 
-# test_dataset()
+test_dataset()
 
 # test_nll_loss()
 
@@ -486,11 +488,11 @@ test8()
 # test_split()
 # merge()
 '''
-cu.random_split(input_samples_path="data\\datasets\\training_data_9",
+cu.random_split(input_samples_path="data\\datasets\\training_data_2.npy",
                 out1_path="data\\datasets\\x1",
                 out2_path="data\\datasets\\x2",
-                split_coefficient=0.3,
-                seed=41)
+                split_coefficient=0.38,
+                seed=9)
 '''
 # test_rebalance_weights('data\\winner_datasets_2\\winner_dataset_4')
 

@@ -1,6 +1,6 @@
 import os
 import itertools
-
+from array import array
 import torch
 from termcolor import colored
 import pandas as pd
@@ -258,18 +258,18 @@ def get_index_of_day(df, date, symbol_info=""):
 
 def get_period_before(df, date, period_length, symbol_info=""):
     date_idx = get_index_of_day(df, date, symbol_info)
-
     df_period = None
 
-    if date_idx is not None:
-        start_idx = date_idx - period_length + 1
-        if start_idx < 0:
-            start_idx = 0
+    if period_length > 0:
+        if date_idx is not None:
+            start_idx = date_idx - period_length + 1
+            if start_idx < 0:
+                start_idx = 0
 
-        df_period = df[start_idx:date_idx + 1].copy()
-        if len(df_period) == 0:
-            df_period = None
-            print(colored(symbol_info + " >> Warning! History length is zero for date: " + str(date), color="yellow"))
+            df_period = df[start_idx:date_idx + 1].copy()
+            if len(df_period) == 0:
+                df_period = None
+                print(colored(symbol_info + " >> Warning! History length is zero for date: " + str(date), color="yellow"))
 
     return df_period, date_idx
 
@@ -433,35 +433,27 @@ def shift_and_scale(x, scale_factor=5, bias=15):
 
 
 def merge(path1, path2, result_path):
-    byte_data1 = np.fromfile(path1, dtype='float')
-    byte_data2 = np.fromfile(path2, dtype='float')
+    byte_data1 = np.load(path1)
+    byte_data2 = np.load(path2)
 
     byte_data = np.concatenate((byte_data1, byte_data2))
 
-    byte_data.tofile(result_path)
+    np.save(result_path, byte_data)
 
 
 def analyze_dataset_balance(dataset_path, num_classes):
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
-    float_data = np.fromfile(dataset_path)
+    chart_data = np.load(dataset_path)
 
-    chart_size = chart.DATA_ROWS * chart.DAY_IN_MINUTES
-    label_size = 1
-    data_size = chart_size + label_size
-
-    num_bytes = len(float_data)
-    num_rows = int(num_bytes / data_size)
-
-    chart_data = float_data.reshape(num_rows, data_size)
     labels = []
 
-    for i in range(num_rows):
+    n = len(chart_data)
+    for i in range(n):
         target = int(chart_data[i][-1])
-
         labels.append(target)
 
-    print("Dataset Size:", num_rows, "      Data Size:", data_size)
+    print("Dataset Size:", n, "      Data Size:", chart.EXT_DATA_SIZE)
     hist, w = calc_rebalancing_weigths(labels, num_classes)
     print("Dataset Class Histogram:", hist)
     print("Dataset Re-balancing Weights:", w)
@@ -473,22 +465,16 @@ def analyze_dataset_balance(dataset_path, num_classes):
 def analyze_ext_dataset_balance(dataset_path, num_classes):
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
-    float_data = np.fromfile(dataset_path)
-
-    data_size = chart.EXT_DATA_SIZE
-
-    num_bytes = len(float_data)
-    num_rows = int(num_bytes / data_size)
-
-    chart_data = float_data.reshape(num_rows, data_size)
+    chart_data = np.load(dataset_path)
     labels = []
 
-    for i in range(num_rows):
+    n = len(chart_data)
+    for i in range(n):
         target = int(chart_data[i][-1])
 
         labels.append(target)
 
-    print("Dataset Size:", num_rows, "      Data Size:", data_size)
+    print("Dataset Size:", n, "      Data Size:", chart.EXT_DATA_SIZE)
     hist, w = calc_rebalancing_weigths(labels, num_classes)
     print("Dataset Class Histogram:", hist)
     print("Dataset Re-balancing Weights:", w)
@@ -516,26 +502,18 @@ def analyze_divided_dataset_balance(dataset_path, num_dataset_chunks, num_classe
         path = dataset_path + "_" + str(dataset_idx)
         print(colored("Loading Data From:" + path + " ...", color="green"))
 
-        float_data = np.fromfile(path)
+        chart_data = np.load(path)
 
-        chart_size = chart.DATA_ROWS * chart.EXTENDED_CHART_LENGTH
-        label_size = 1
-        data_size = chart_size + label_size
-
-        num_bytes = len(float_data)
-        num_rows = int(num_bytes / data_size)
-
-        chart_data = float_data.reshape(num_rows, data_size)
-
-        for i in range(num_rows):
+        n = len(chart_data)
+        for i in range(n):
             target = int(chart_data[i][-1])
             labels.append(target)
 
-        num_data += num_rows
-        print("Dataset[%s] Size: %s     Data Size: %s" % (dataset_idx, num_rows, data_size))
+        num_data += n
+        print("Dataset[%s] Size: %s     Data Size: %s" % (dataset_idx, n, chart.EXT_DATA_SIZE))
 
     print("")
-    print("Dataset Size:", num_data, "      Data Size:", data_size)
+    print("Dataset Size:", num_data, "      Data Size:", chart.EXT_DATA_SIZE)
     hist, w = calc_rebalancing_weigths(labels, num_classes)
     print("Dataset Class Histogram:", hist)
     print("Dataset Re-balancing Weights:", w)
@@ -619,12 +597,9 @@ def progress_points(i, at_step, max_line_length=100):
 
 
 def random_split(input_samples_path, out1_path, out2_path, split_coefficient, seed):
-    input_data_bytes = np.fromfile(input_samples_path, dtype='float')
+    input_samples = np.load(input_samples_path)
 
-    data_size = chart.EXT_DATA_SIZE
-    num_bytes = len(input_data_bytes)
-    num_input_samples = int(num_bytes / data_size)
-    input_samples = input_data_bytes.reshape(num_input_samples, data_size)
+    num_input_samples = len(input_samples)
 
     out1_size = int(num_input_samples * split_coefficient)
     out2_size = num_input_samples - out1_size
@@ -650,4 +625,5 @@ def write_indexed_samples_to_file(samples, indexes, path):
     for i in range(0, n):
         indexed_samples.append(samples[indexes[i]])
     out_data = np.array(indexed_samples)
-    out_data.tofile(path)
+    np.save(path, out_data)
+
