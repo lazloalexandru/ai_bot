@@ -310,18 +310,18 @@ def _gen_labeled_data_from_chart(df_history, df_chart, params):
     if trading_start_idx is None:
         trading_start_idx = df_chart.index[0]
 
-    min_price = df_chart['Low'][open_index]
-    max_price = df_chart['High'][open_index]
+    min_price = df_chart['Close'][open_index]
+    max_price = df_chart['Close'][open_index]
     vol = cu.get_premarket_volume_for(params)
 
     params['Open'] = df_chart['Open'][open_index]
 
     i = open_index
     while i <= close_index:
-        if df_chart['Low'][i] < min_price:
-            min_price = df_chart['Low'][i]
-        if df_chart['High'][i] > max_price:
-            max_price = df_chart['High'][i]
+        if df_chart['Close'][i] < min_price:
+            min_price = df_chart['Close'][i]
+        if df_chart['Close'][i] > max_price:
+            max_price = df_chart['Close'][i]
 
         vol += df_chart['Volume'][i]
 
@@ -347,7 +347,7 @@ def _gen_labeled_data_from_chart(df_history, df_chart, params):
             labeled_data = np.concatenate((state, [label]))
             dataset.append(labeled_data)
 
-            entries.append([df_chart['Time'][i], df_chart['High'][i], label])
+            entries.append([df_chart['Time'][i], df_chart['Close'][i], label])
 
         i = i + 1
 
@@ -365,11 +365,11 @@ def _max_win_for_entry(df_chart, entry_index, open_index, params):
     j = entry_index + 1
 
     while j < chart_end_idx and not sold:
-        if df_chart['Low'][j] < params['stop_SELL_price']:
+        if df_chart['Close'][j] < params['stop_SELL_price']:
             sold = True
             sell_price = params['stop_SELL_price']
-        elif df_chart['High'][j] > max_price:
-            max_price = df_chart['High'][j]
+        elif df_chart['Close'][j] > max_price:
+            max_price = df_chart['Close'][j]
             max_idx = j
 
         j = j + 1
@@ -382,9 +382,9 @@ def _max_win_for_entry(df_chart, entry_index, open_index, params):
             if max_price > 0:
                 sell_price = max_price
             else:
-                sell_price = df_chart.loc[chart_end_idx]['High']
+                sell_price = df_chart.loc[chart_end_idx]['Close']
         elif j > chart_end_idx:
-            sell_price = df_chart.loc[chart_end_idx]['High']
+            sell_price = df_chart.loc[chart_end_idx]['Close']
 
     return int(100 * (sell_price - entry_price) / entry_price)
 
@@ -401,12 +401,12 @@ def _max_loss_for_entry(df_chart, entry_index, open_index, params):
     j = entry_index + 1
 
     while j < chart_end_idx and not sold:
-        if df_chart['High'][j] > params['stop_BUY_price']:
+        if df_chart['Close'][j] > params['stop_BUY_price']:
             sold = True
             sell_price = params['stop_BUY_price']
 
-        elif df_chart['Low'][j] < min_price:
-            min_price = df_chart['Low'][j]
+        elif df_chart['Close'][j] < min_price:
+            min_price = df_chart['Close'][j]
 
         j = j + 1
 
@@ -418,9 +418,9 @@ def _max_loss_for_entry(df_chart, entry_index, open_index, params):
             if min_price < VERY_BIG_PRICE:
                 sell_price = min_price
             else:
-                sell_price = df_chart.loc[chart_end_idx]['Low']
+                sell_price = df_chart.loc[chart_end_idx]['Close']
         elif j > chart_end_idx:
-            sell_price = df_chart.loc[chart_end_idx]['Low']
+            sell_price = df_chart.loc[chart_end_idx]['Close']
 
     entry_price = df_chart['Close'][entry_index]
 
@@ -443,7 +443,7 @@ def _gen_labeled_data_for_entry(df_history, df_chart, entry_index, open_index, p
 
 
 def _gen_labeled_data(df_history, df, entry_idx, open_idx, gain, params):
-    state = chart.create_state_vector(df_history, df, entry_idx, open_idx)
+    state = chart.create_state_vector(df_history, df, entry_idx, open_idx, debug=False)
 
     label = 0
 
@@ -493,10 +493,10 @@ def get_default_params():
 
         'no_charts': True,
 
-        'chart_list_file': "data\\test_charts.csv",
-        'dataset_name': "test_data",
+        'chart_list_file': "data\\training_charts.csv",
+        'dataset_name': "training_data",
         'charts_per_batch': 200,
-        'num_samples_per_dataset': 1000000,
+        'num_samples_per_dataset': 2000000,
 
         'num_cores': 16
     }
