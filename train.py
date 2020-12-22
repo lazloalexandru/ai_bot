@@ -146,7 +146,7 @@ def test(model, device, test_loader, w, p):
     return accuracy, avg_loss
 
 
-def load_data(dataset_path, batch_size, re_balancing_weights, conv_input_layer):
+def load_data(dataset_path, batch_size, conv_input_layer):
     start_time = time.time()
 
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
@@ -156,7 +156,6 @@ def load_data(dataset_path, batch_size, re_balancing_weights, conv_input_layer):
     dataset = []
     labels = []
 
-    print("Dataset Re-balancing Weights:", re_balancing_weights)
     print("Dataset Size:", n, "      Data Size:", chart.EXT_DATA_SIZE)
     print("Creating Tensors")
 
@@ -258,14 +257,12 @@ def main():
 
     test_loader = load_data(p['dev_test_data_path'],
                             p['test_batch'],
-                            p['re_balancing_weights'],
                             p['conv_input_layer'])
 
     train_loader = None
     if p['dataset_chunks'] == 1:
         train_loader = load_data(get_training_dataset_path(p, dataset_id=0),
                                  p['train_batch'],
-                                 p['re_balancing_weights'],
                                  p['conv_input_layer'])
 
     for epoch in range(start_idx, start_idx + num_epochs):
@@ -276,10 +273,8 @@ def main():
                 torch.cuda.empty_cache()
                 gc.collect()
 
-                dataset_id = epoch % p['dataset_chunks']
                 train_loader = load_data(get_training_dataset_path(p, dataset_id),
                                          p['train_batch'],
-                                         p['re_balancing_weights'],
                                          p['conv_input_layer'])
 
             if train_loader is None or test_loader is None:
