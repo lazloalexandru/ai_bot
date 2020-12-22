@@ -290,7 +290,7 @@ def test_dataset():
     t = df.Time.to_list()
     idx = 100
     while idx < 50000:
-        chart.save_state_chart(chart_data[idx][:-1], chart_data[idx][-1], t, "---", "___", idx, chart.EXTENDED_CHART_LENGTH)
+        chart.save_state_chart(chart_data[idx][:-1], chart_data[idx][-1], t, idx, chart.EXTENDED_CHART_LENGTH)
         idx += 380
 
 
@@ -474,7 +474,7 @@ def test_write_file():
 
 # test_write_file()
 
-# test_dataset()
+test_dataset()
 
 # test_nll_loss()
 
