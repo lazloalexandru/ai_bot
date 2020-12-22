@@ -487,13 +487,13 @@ def test_write_file():
 
 # test_split()
 # merge()
-'''
-cu.random_split(input_samples_path="data\\datasets\\training_data_2.npy",
+
+cu.random_split(input_samples_path="data\\datasets\\training_data_3.npy",
                 out1_path="data\\datasets\\x1",
                 out2_path="data\\datasets\\x2",
-                split_coefficient=0.38,
+                split_coefficient=0.1,
                 seed=9)
-'''
+
 # test_rebalance_weights('data\\winner_datasets_2\\winner_dataset_4')
 
 # test_rebalance_weights_1()
