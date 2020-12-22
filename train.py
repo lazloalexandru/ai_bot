@@ -51,7 +51,7 @@ def plot_values(accuracy, train_loss, test_loss, p):
         display.display(plt.gcf())
 
 
-def train(model, device, train_loader, optimizer, epoch, w, p):
+def train(model, device, train_loader, optimizer, epoch, dataset_id, w, p):
     global __global_iteration_counter
 
     epoch_start_time = time.time()
@@ -78,8 +78,8 @@ def train(model, device, train_loader, optimizer, epoch, w, p):
 
         batch_duration = (time.time() - batch_start_time) * 1000
         if batch_idx % p['training_batch_log_interval'] == 0:
-            print('{}. Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}   {:.0f} ms'.format(
-                __global_iteration_counter, epoch, batch_idx * len(data), len(train_loader.dataset),
+            print('{}. Train Epoch: {}/{} [{}/{} ({:.0f}%)]\tLoss: {:.6f}   {:.0f} ms'.format(
+                __global_iteration_counter, epoch, dataset_id, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), sum(losses) / len(losses), batch_duration))
 
         __global_iteration_counter += 1
@@ -281,7 +281,7 @@ def main():
                 print(colored("Train and Test Data Loaders not Initialized!!!", color='red'))
                 break
 
-            train_loss = train(model, device, train_loader, optimizer, epoch, w_re_balance, p)
+            train_loss = train(model, device, train_loader, optimizer, epoch, dataset_id, w_re_balance, p)
 
         #################################################################################
         # Validation
@@ -329,7 +329,7 @@ def get_params():
         ################ Training - Data ######################
         'training_data_path': 'data\\datasets\\training_data',
         # 'training_data_path': 'data\\datasets\\dummy',
-        'dataset_chunks': 2,
+        'dataset_chunks': 11,
         're_balancing_weights': [0.6080, 2.8133],
         ################ Training #############################
         'train_batch': 128,
