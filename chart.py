@@ -12,10 +12,10 @@ LABEL_SIZE = 1
 EXT_DATA_SIZE = EXTENDED_CHART_LENGTH * DATA_ROWS + LABEL_SIZE
 
 
-def save_state_chart(state, t, symbol, date, idx, length):
+def save_state_chart(state, label, t, idx, length):
     s = state.reshape(DATA_ROWS, length)
 
-    o = s[0] * 0.95
+    o = s[0] - 0.02
     c = s[0]
     h = s[0]
     l = s[0]
@@ -30,10 +30,10 @@ def save_state_chart(state, t, symbol, date, idx, length):
         'Low': l,
         'Volume': v})
 
-    filename = symbol + "_" + date + "_" + str(idx)
+    filename = "___state___" + "_" + str(idx) + "_" + str(label)
 
     images_dir_path = "trades\\"
-    cu.show_1min_chart_normalized(dx, idx, symbol, date, images_dir_path, filename)
+    cu.show_1min_chart_normalized(dx, str("Label: ") + str(label), images_dir_path, filename)
 
 
 def create_state_vector(df_history, df, entry_idx, open_idx, debug=False):

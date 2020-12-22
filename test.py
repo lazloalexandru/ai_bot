@@ -270,7 +270,7 @@ def plot_matrix():
 
 
 def test_dataset():
-    dataset_path = 'data\\datasets\\dev_test_data.npy'
+    dataset_path = 'data\\datasets\\test_data.npy'
 
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
@@ -289,8 +289,8 @@ def test_dataset():
     df = cu.get_intraday_chart_for(symbol, date)
     t = df.Time.to_list()
     idx = 100
-    while idx < 5000:
-        chart.save_state_chart(chart_data[idx][:-1], t, "---", "___", idx, chart.EXTENDED_CHART_LENGTH)
+    while idx < 50000:
+        chart.save_state_chart(chart_data[idx][:-1], chart_data[idx][-1], t, "---", "___", idx, chart.EXTENDED_CHART_LENGTH)
         idx += 380
 
 
@@ -474,14 +474,14 @@ def test_write_file():
 
 # test_write_file()
 
-test_dataset()
+# test_dataset()
 
 # test_nll_loss()
 
 # test_stratified_sampler()
-# cu.analyze_ext_dataset_balance('data\\datasets\\x1.npy', num_classes=2)
+# cu.analyze_ext_dataset_balance('data\\datasets\\test_data.npy', num_classes=2)
 
-# cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 11, num_classes=2)
+# cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 6, num_classes=2)
 
 # test6()
 

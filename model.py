@@ -11,8 +11,8 @@ class Net(nn.Module):
 
         k = 3
 
-        f = 32
-        self.conv1 = nn.Conv2d(1, f, kernel_size=(5, k), stride=1)
+        f = 64
+        self.conv1 = nn.Conv2d(1, f, kernel_size=(2, k), stride=1)
         self.bn1 = nn.BatchNorm2d(f)
         self.conv2 = nn.Conv2d(f, f, kernel_size=(1, k), stride=1)
         self.bn2 = nn.BatchNorm2d(f)

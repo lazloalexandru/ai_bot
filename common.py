@@ -522,9 +522,9 @@ def analyze_divided_dataset_balance(dataset_path, num_dataset_chunks, num_classe
     plt.show()
 
 
-def show_1min_chart_normalized(df, symbol, date, info, save_to_dir=None, filename=None):
+def show_1min_chart_normalized(df, info, save_to_dir=None, filename=None):
     df = df.set_index(pd.Index(df.Time))
-    title = ""
+    title = str(info)
 
     if save_to_dir is None:  # Display chart
         mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', volume=True, figscale=1, figratio=[16, 9], title=title)
