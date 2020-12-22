@@ -329,10 +329,12 @@ def get_params():
         ################ Training - Data ######################
         'training_data_path': 'data\\datasets\\training_data',
         # 'training_data_path': 'data\\datasets\\dummy',
-        'dataset_chunks': 6,
-        're_balancing_weights': [0.6164, 2.6476],
+        'dataset_chunks': 5,
+        're_balancing_weights': [0.6144, 2.6843],
+
+
         ################ Training #############################
-        'train_batch': 256,
+        'train_batch': 128,
         'test_batch': 512,
         'learning_rate': 0.0001,
         'weight_decay': 0.01,

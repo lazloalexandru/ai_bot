@@ -4,7 +4,7 @@ import pandas as pd
 
 DATA_ROWS = 2
 DAY_IN_MINUTES = 390
-DAILY_CHART_LENGTH = 0
+DAILY_CHART_LENGTH = 10
 
 EXTENDED_CHART_LENGTH = DAILY_CHART_LENGTH + DAY_IN_MINUTES
 LABEL_SIZE = 1
@@ -12,7 +12,8 @@ LABEL_SIZE = 1
 EXT_DATA_SIZE = EXTENDED_CHART_LENGTH * DATA_ROWS + LABEL_SIZE
 
 
-def save_state_chart(state, label, t, idx, length):
+def save_state_chart(state, label, t, idx):
+    length = EXTENDED_CHART_LENGTH
     s = state.reshape(DATA_ROWS, length)
 
     o = s[0] - 0.02
@@ -30,6 +31,7 @@ def save_state_chart(state, label, t, idx, length):
         'Low': l,
         'Volume': v})
 
+    label = int(label)
     filename = "___state___" + "_" + str(idx) + "_" + str(label)
 
     images_dir_path = "trades\\"

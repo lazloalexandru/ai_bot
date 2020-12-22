@@ -173,7 +173,7 @@ def get_default_params():
 
         ###################### CHART PARAMETERS ##########################
 
-        'min_value_traded': 10000000,
+        'min_value_traded': 50000000,
         'day_high_above': 10,
         'day_open_above': 1,
         'min_gap_up': 5,
@@ -189,6 +189,7 @@ def get_default_params():
         'output_training_file_path': "data\\training_charts.csv",
         'output_dev_test_file_path': "data\\dev_test_charts.csv",
         'output_test_file_path': "data\\test_charts.csv"
+
     }
 
     return params

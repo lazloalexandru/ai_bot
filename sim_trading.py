@@ -48,9 +48,11 @@ def _gen_add_plot(chart_data, entries, exits):
             df_markers.loc[df.loc[entries[i][0]]['Time'], 'Price'] = float('nan')
 
             # marker for sell
+            '''
             df_markers.loc[df.loc[exits[i][0]]['Time'], 'Price'] = exits[i][1]
             adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=120, marker=r'$\Rightarrow$', color='red'))
             df_markers.loc[df.loc[exits[i][0]]['Time'], 'Price'] = float('nan')
+            '''
     else:
         print(colored("Number of entries: " + str(n1) + " Number of exits: " + str(n2) + "  => Algorithm ERROR!!!! ", color='red'))
 
@@ -237,7 +239,7 @@ def _search_patterns_in(gapper, params, df_fund):
         df = cu.get_chart_data_prepared_for_ai(symbol, date, params)
         open_index = cu.get_time_index(df, date, params['__chart_begin_hh'], params['__chart_begin_mm'], 0)
 
-        if df is not None and open_index is not None and df_history is not None and date_index is not None:
+        if df is not None and open_index is not None:
             params['symbol'] = symbol
             params['date'] = date
             params['date_index'] = date_index
@@ -465,10 +467,10 @@ def main():
     if success:
         search_patterns(params)
 
-        show_day_distribution(params)
+        # show_day_distribution(params)
         ####################################################
         # Simulation
-        simulate_pattern(params)
+        # simulate_pattern(params)
 
 
 def get_default_params():
@@ -479,7 +481,7 @@ def get_default_params():
         '__chart_end_mm': 59,
 
         'trading_begin_hh': 9,
-        'trading_begin_mm': 40,
+        'trading_begin_mm': 45,
         'last_entry_hh': 15,
         'last_entry_mm': 45,
 
@@ -494,7 +496,7 @@ def get_default_params():
         'chart_list_file': "data\\test_charts.csv",
         'test_size_coef': 0.1,
 
-        'model_path': "checkpoints\\checkpoint_106",
+        'model_path': "checkpoints\\checkpoint_7",
         'num_classes': 2
     }
 

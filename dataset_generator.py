@@ -172,8 +172,7 @@ def generate_datasets_mp(params):
                         if data_size == chart.EXT_DATA_SIZE:
                             labeled_trades.append(labeled_data)
                         else:
-                            print(colored("Algorithm ERROR!", color="red"))
-                            return
+                            print(colored("Algorithm ERROR! " + str(data_size), color="red"))
 
                     if len(labeled_trades) >= num_samples_per_dataset:
                         print("")
@@ -207,8 +206,7 @@ def generate_datasets_mp(params):
                     if data_size == chart.EXT_DATA_SIZE:
                         labeled_trades.append(labeled_data)
                     else:
-                        print(colored("Algorithm ERROR!", color="red"))
-                        return
+                        print(colored("Algorithm ERROR! " + str(data_size), color="red"))
 
                 if len(labeled_trades) >= num_samples_per_dataset:
                     print("")
@@ -485,7 +483,7 @@ def get_default_params():
         '__chart_end_mm': 59,
 
         'trading_begin_hh': 9,
-        'trading_begin_mm': 40,
+        'trading_begin_mm': 45,
 
         'stop_buy_factor': 6,
         'stop_sell_factor': 6,
@@ -493,8 +491,8 @@ def get_default_params():
 
         'no_charts': True,
 
-        'chart_list_file': "data\\training_charts.csv",
-        'dataset_name': "training_data",
+        'chart_list_file': "data\\test_charts.csv",
+        'dataset_name': "test_data",
         'charts_per_batch': 200,
         'num_samples_per_dataset': 2000000,
 

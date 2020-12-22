@@ -288,10 +288,10 @@ def test_dataset():
     date = "2020-02-26"
     df = cu.get_intraday_chart_for(symbol, date)
     t = df.Time.to_list()
-    idx = 100
-    while idx < 50000:
-        chart.save_state_chart(chart_data[idx][:-1], chart_data[idx][-1], t, idx, chart.EXTENDED_CHART_LENGTH)
-        idx += 380
+    idx = 0
+    while idx < 1000:
+        chart.save_state_chart(chart_data[idx][:-1], chart_data[idx][-1], t, idx)
+        idx += 20
 
 
 def pad_to512():
@@ -474,14 +474,14 @@ def test_write_file():
 
 # test_write_file()
 
-test_dataset()
+# test_dataset()
 
 # test_nll_loss()
 
 # test_stratified_sampler()
 # cu.analyze_ext_dataset_balance('data\\datasets\\test_data.npy', num_classes=2)
 
-# cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 6, num_classes=2)
+cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 5, num_classes=2)
 
 # test6()
 
@@ -498,3 +498,5 @@ cu.random_split(input_samples_path="data\\datasets\\training_data_3.npy",
 
 # test_rebalance_weights_1()
 # test_split()
+
+# cu.show_daily_chart("HTZ")
