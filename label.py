@@ -45,6 +45,7 @@ class LabelingTool:
         i = self.chart_idx + direction
 
         if 0 < i < n:
+            self.start_idx = None
             self.symbol = self.chart_list.iloc[i]["symbol"]
             self.date = self.chart_list.iloc[i]["date"]
             self.chart_idx = i
@@ -68,6 +69,8 @@ class LabelingTool:
             i += direction
 
         if found:
+            self.start_idx = None
+
             self.symbol = symbol
             self.date = date
 
@@ -100,7 +103,6 @@ class LabelingTool:
         # Load labels is exist
 
         self.start_marker = [float('nan')] * len(self.t)
-
         self.markers = cu.load_labels(self.symbol, self.date)
 
         if self.markers is None:
@@ -120,6 +122,7 @@ class LabelingTool:
             self.fig.canvas.mpl_connect('button_press_event', self.onclick)
             self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
             self.fig.canvas.mpl_connect('key_release_event', self.on_key_release)
+            self.fig.canvas.mpl_connect('scroll_event', self.on_scroll)
 
             # fm = plt.get_current_fig_manager()
             # fm.full_screen_toggle()
@@ -184,6 +187,17 @@ class LabelingTool:
     def onclick(self, event):
         if event.xdata is not None:
             self.mouse_click(event.button, int(round(event.xdata)))
+
+    def on_scroll(self, event):
+        # print(event.button)
+
+        if event.button == 'up':
+            self.select_chart(direction=-1)
+            sleep(0.2)
+
+        elif event.button == 'down':
+            self.select_chart(direction=1)
+            sleep(0.2)
 
     def on_key_press(self, event):
         if event.key == 'control':
