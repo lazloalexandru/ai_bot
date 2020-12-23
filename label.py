@@ -19,26 +19,34 @@ def onclick(event):
     global title, markers, start_idx, end_idx
 
     x = int(round(event.xdata))
+    if event.button == 1:
+        if ctrl_held is not None and ctrl_held:
+            print("Start: ", t[x], x)
+            start_idx = x
+            start_marker = [float('nan')] * len(t)
+            start_marker[x] = high[x] * 1.005
+        else:
+            if start_idx is not None:
+                print("End: ", t[x], x)
+                start_marker = [float('nan')] * len(t)
 
-    if ctrl_held is not None and ctrl_held:
-        print("Start: ", t[x], x)
-        start_idx = x
-        start_marker = [float('nan')] * len(t)
-        start_marker[x] = high[x] * 1.005
-    else:
-        print("End: ", t[x], x)
-        if start_idx is not None:
+                end_idx = x
+
+                if end_idx < start_idx:
+                    start_idx, end_idx = end_idx, start_idx
+
+                for i in range(start_idx, end_idx+1):
+                    markers[i] = high[i] * 1.005
+
+                start_idx = None
+    elif event.button == 3:
+        if ctrl_held is not None and ctrl_held:
+            markers = [float('nan')] * len(t)
+        else:
+            print("DEL")
+            start_idx = None
             start_marker = [float('nan')] * len(t)
 
-            end_idx = x
-
-            if end_idx < start_idx:
-                start_idx, end_idx = end_idx, start_idx
-
-            for i in range(start_idx, end_idx+1):
-                markers[i] = high[i] * 1.005
-
-            start_idx = None
 
     plot_marker()
     fig.canvas.draw()
@@ -47,6 +55,7 @@ def onclick(event):
 def plot_marker():
     global fig, axes, df, title, markers
 
+    axes[0].clear()
     adp = []
     adp.append(mpf.make_addplot(markers, scatter=True, ax=axes[0], markersize=10, marker=r'$\Downarrow$', color='green'))
     adp.append(mpf.make_addplot(start_marker, scatter=True, ax=axes[0], markersize=10, marker=r'$\Downarrow$', color='red'))
@@ -56,10 +65,9 @@ def plot_marker():
 
 
 def on_key_press(event):
-    global ctrl_held
+    global ctrl_held, start_idx, start_marker
     if event.key == 'control':
         ctrl_held = True
-
 
 def on_key_release(event):
     global ctrl_held
