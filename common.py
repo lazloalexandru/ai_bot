@@ -24,6 +24,27 @@ __datasets_dir = "data\\datasets"
 __log_dir = "log"
 
 
+def get_label_file_path(symbol, date):
+    return __intraday_charts_dir + "\\" + symbol + "\\" + symbol + "_" + str(date) + ".npy"
+
+
+def save_labels(markers, path):
+    n = len(markers)
+    x = np.zeros(n)
+
+    np.save(path, markers)
+
+
+def load_labels(symbol, date):
+    markers = None
+
+    path = get_label_file_path(symbol, date)
+    if os.path.isfile(path):
+        markers = np.load(path)
+
+    return markers
+
+
 def get_fundamentals():
 
     res = None
