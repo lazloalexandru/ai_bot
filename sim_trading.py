@@ -333,7 +333,7 @@ def _find_trades(df_history, df, params, version):
             res = buy_output.max(1)[1].view(1, 1)
             predicted_label = res[0][0].to("cpu").numpy()
 
-            if predicted_label == 1:
+            if predicted_label == 2:
                 buy_price = close
 
                 print(params["symbol"], "BUY", df['Time'][i], buy_price, end="")
@@ -511,7 +511,7 @@ def get_default_params():
         'test_size_coef': 1,
 
         'model_path': "checkpoints\\checkpoint_12",
-        'num_classes': 2
+        'num_classes': 3
     }
 
     return params

@@ -319,18 +319,19 @@ def get_params():
         'loss_history_files_dir': "--",
 
         ################# Model ###############################
-        'num_classes': 2,
+        'num_classes': 3,
         'conv_input_layer': True,
 
         ################ Dev Test - Data ######################
-        'dev_test_data_path': 'data\\datasets\\xtest_data.npy',
+        'dev_test_data_path': 'data\\datasets\\test_data.npy',
         # 'dev_test_data_path': 'data\\datasets\\dummy',
 
         ################ Training - Data ######################
-        'training_data_path': 'data\\datasets\\test_data',
+        'training_data_path': 'data\\datasets\\training_data',
         # 'training_data_path': 'data\\datasets\\dummy',
         'dataset_chunks': 5,
-        're_balancing_weights': [0.6088, 2.7977],
+        're_balancing_weights': [1.1716, 0.6125, 1.9459],
+
         ################ Training #############################
         'train_batch': 128,
         'test_batch': 512,
