@@ -270,7 +270,7 @@ def plot_matrix():
 
 
 def test_dataset():
-    dataset_path = 'data\\datasets\\test_data.npy'
+    dataset_path = 'data\\datasets\\test_data.npy.npy'
 
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
@@ -479,24 +479,22 @@ def test_write_file():
 # test_nll_loss()
 
 # test_stratified_sampler()
-# cu.analyze_ext_dataset_balance('data\\datasets\\test_data.npy', num_classes=2)
+# cu.analyze_ext_dataset_balance('data\\datasets\\x1.npy', num_classes=2)
 
-# cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 5, num_classes=2)
+# cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 11, num_classes=2)
 
 # test6()
 
 # test_split()
 # merge()
-'''
+
 cu.random_split(input_samples_path="data\\datasets\\training_data_3.npy",
                 out1_path="data\\datasets\\x1",
                 out2_path="data\\datasets\\x2",
                 split_coefficient=0.1,
                 seed=9)
-'''
+
 # test_rebalance_weights('data\\winner_datasets_2\\winner_dataset_4')
 
 # test_rebalance_weights_1()
 # test_split()
-
-# cu.show_daily_chart("HTZ")

@@ -6,13 +6,13 @@ class Net(nn.Module):
     def __init__(self, output_classes):
         super(Net, self).__init__()
 
-        self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(0.05)
         self.max_pool = nn.MaxPool2d(kernel_size=(1, 2), stride=2)
 
         k = 3
 
-        f = 128
-        self.conv1 = nn.Conv2d(1, f, kernel_size=(2, k), stride=1)
+        f = 32
+        self.conv1 = nn.Conv2d(1, f, kernel_size=(5, k), stride=1)
         self.bn1 = nn.BatchNorm2d(f)
         self.conv2 = nn.Conv2d(f, f, kernel_size=(1, k), stride=1)
         self.bn2 = nn.BatchNorm2d(f)
@@ -24,7 +24,7 @@ class Net(nn.Module):
         self.conv4 = nn.Conv2d(f, f, kernel_size=(1, k), stride=1)
         self.bn4 = nn.BatchNorm2d(f)
 
-        linear_input_size = f * 97
+        linear_input_size = f * 94
         d = 256
 
         print("Dense Layers %s / %s / %s / %s" % (linear_input_size, d, d, output_classes))

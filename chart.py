@@ -2,9 +2,9 @@ import numpy as np
 import common as cu
 import pandas as pd
 
-DATA_ROWS = 2
+DATA_ROWS = 5
 DAY_IN_MINUTES = 390
-DAILY_CHART_LENGTH = 10
+DAILY_CHART_LENGTH = 0
 
 EXTENDED_CHART_LENGTH = DAILY_CHART_LENGTH + DAY_IN_MINUTES
 LABEL_SIZE = 1
@@ -44,33 +44,46 @@ def create_state_vector(df_history, df, entry_idx, open_idx, debug=False):
     ##################### SCALING INTRA-DAY ##############################
 
     t = df.Time.to_list()
+    o = df.Open.to_list()
     c = df.Close.to_list()
+    h = df.High.to_list()
+    l = df.Low.to_list()
     v = df.Volume.to_list()
 
     idx = entry_idx - open_idx
     if debug:
         print("calc_normalized_state")
         print('open_idx:', open_idx, 'entry_idx', entry_idx, 'idx:', idx)
+        print('full len(o)', len(o))
         print('full len(v)', len(v))
 
+    o = o[:idx + 1]
     c = c[:idx + 1]
+    h = h[:idx + 1]
+    l = l[:idx + 1]
     v = v[:idx + 1]
 
     if debug:
         t = t[:idx + 1]
-        print('entry len(c)', len(c))
+        print('entry len(o)', len(o))
         print('entry len(v)', len(v))
-        print('c:', len(c), type(c), " >>> ", c)
+        print('o:', len(o), type(o), " >>> ", o)
         print('entry:', t[idx])
 
-    c = cu.normalize_middle(np.array(c))
+    price = np.concatenate((o, c, h, l))
+    price = cu.normalize_middle(price)
+    price = price.reshape(4, idx + 1)
+
+    o = price[0]
+    c = price[1]
+    h = price[2]
+    l = price[3]
     v = cu.normalize_0_1(np.array(v))
 
     if debug:
-        print('normaliazed c:', type(c), c)
-        print('normaliazed v:', type(v), v)
-        print('normaliazed o shape:', c.shape)
-        print('normaliazed len(o):', len(c))
+        print('normaliazed o:', type(o))
+        print('normaliazed o shape:', o.shape)
+        print('normaliazed len(o):', len(o))
 
     ##################### PADDING INTRA-DAY ##############################
 
@@ -80,29 +93,42 @@ def create_state_vector(df_history, df, entry_idx, open_idx, debug=False):
     if debug:
         print('padding_size:', padding_size)
 
+    o = np.concatenate((padding, o))
     c = np.concatenate((padding, c))
+    h = np.concatenate((padding, h))
+    l = np.concatenate((padding, l))
     v = np.concatenate((padding, v))
 
     if debug:
-        print('padded len(o)', len(c))
+        print('padded len(o)', len(o))
         print('padded len(v)', len(v))
 
     if df_history is not None:
         ##################### HISTORY SCALING ##############################
 
+        ho = df_history.Open.to_list()
         hc = df_history.Close.to_list()
+        hh = df_history.High.to_list()
+        hl = df_history.Low.to_list()
         hv = df_history.Volume.to_list()
 
         if debug:
-            print("hc:", hc)
-            print('full len(ho)', len(hc))
+            print("ho:", ho)
+            print('full len(ho)', len(ho))
             print('full len(hv)', len(hv))
 
-        hc = cu.normalize_middle(np.array(hc))
+        price = np.concatenate((ho, hc, hh, hl))
+        price = cu.normalize_middle(price)
+        price = price.reshape(4, len(ho))
+
+        ho = price[0]
+        hc = price[1]
+        hh = price[2]
+        hl = price[3]
         hv = cu.normalize_0_1(np.array(hv))
 
         if debug:
-            print('normalized len(hc)', len(hc))
+            print('normalized len(ho)', len(ho))
             print('normalized len(hv)', len(hv))
 
         ##################### HISTORY PADDING ##############################
@@ -114,22 +140,28 @@ def create_state_vector(df_history, df, entry_idx, open_idx, debug=False):
             print('history padding_size:', padding_size)
 
         if padding_size > 0:
+            ho = np.concatenate((padding, ho))
             hc = np.concatenate((padding, hc))
+            hh = np.concatenate((padding, hh))
+            hl = np.concatenate((padding, hl))
             hv = np.concatenate((padding, hv))
 
         if debug:
-            print('padded len(c)', len(hc))
+            print('padded len(o)', len(ho))
             print('padded len(v)', len(hv))
 
         ##################### APPEND HISTORY ###############################
 
+        o = np.concatenate((ho, o))
         c = np.concatenate((hc, c))
+        h = np.concatenate((hh, h))
+        l = np.concatenate((hl, l))
         v = np.concatenate((hv, v))
 
-    state = np.concatenate((c, v))
+    state = np.concatenate((o, c, h, l, v))
 
     if debug:
-        print('total len(c)', len(c))
+        print('total len(o)', len(o))
         print('total len(v)', len(v))
         print('len(state)', len(state))
 
