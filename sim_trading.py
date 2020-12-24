@@ -510,7 +510,7 @@ def get_default_params():
         'chart_list_file': "data\\test_charts.csv",
         'test_size_coef': 1,
 
-        'model_path': "checkpoints\\checkpoint_12",
+        'model_path': "checkpoints\\checkpoint_13",
         'num_classes': 3
     }
 

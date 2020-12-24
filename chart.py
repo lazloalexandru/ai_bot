@@ -12,6 +12,13 @@ LABEL_SIZE = 1
 EXT_DATA_SIZE = EXTENDED_CHART_LENGTH * DATA_ROWS + LABEL_SIZE
 
 
+def get_marker(label):
+    m = '$' + str(label) + '$'
+    c = 'red' if label == 0 else 'green'
+
+    return m, c
+
+
 def save_state_chart(state, label, t, idx):
     length = EXTENDED_CHART_LENGTH
     s = state.reshape(DATA_ROWS, length)

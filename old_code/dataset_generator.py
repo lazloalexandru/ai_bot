@@ -1,5 +1,7 @@
 import multiprocessing as mp
 from termcolor import colored
+
+
 import chart
 import common as cu
 import os
@@ -7,8 +9,38 @@ import pandas as pd
 import mplfinance as mpf
 import matplotlib.pyplot as plt
 import numpy as np
+import gc
 
 ___temp_dir_name = "__temp__"
+
+
+def test_training_data():
+    zzz = np.load('data\\datasets\\extended_dataset_0')
+
+    DATA_SIZE = 2561
+    n = len(zzz)
+    rows = int(n / DATA_SIZE)
+
+    print("Num Samples:", rows)
+
+    zzz = zzz.reshape(rows, DATA_SIZE)
+
+    print(zzz.shape)
+    print(zzz[0], zzz[0][-1])
+    print(zzz[1], zzz[1][-1])
+
+    xidx = 300
+    state = zzz[xidx][:-1]
+
+    print("state: ", state.shape)
+    symbol = "AAL"
+    date = "2020-04-13"
+    df = cu.get_intraday_chart_for(symbol, date)
+    t = df.Time.to_list()
+    chart.save_state_chart(state, t, "AAL", date, xidx, chart.EXTENDED_CHART_LENGTH)
+
+    cu.show_daily_chart('CGC')
+    cu.show_intraday_chart('CGC', '2018-08-16')
 
 
 def _gen_add_plot(chart_data, entries):
@@ -28,7 +60,7 @@ def _gen_add_plot(chart_data, entries):
     adp = []
 
     for i in range(0, n):
-        m, c = chart.get_marker(entries[i][2])
+        m, c = get_marker(entries[i][2])
 
         df_markers.loc[df.loc[entries[i][0]]['Time'], 'Price'] = entries[i][1] + 0.05
         adp.append(mpf.make_addplot(df_markers['Price'].tolist(), scatter=True, markersize=20, marker=m, color=c))
@@ -62,13 +94,13 @@ def _show_chart(chart_data, symbol, date, info, entries, params, save_to_dir="")
 
         if len(adp) > 0:
             mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume',
-                     savefig=path, volume=True, figscale=2, figratio=[16, 9], addplot=adp, title=title, tight_layout=True)
+                     savefig=path, volume=True, figscale=2, figratio=[16, 9], addplot=adp, title=title)
         else:
             mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume',
-                     savefig=path, volume=True, figscale=2, figratio=[16, 9], title=title, tight_layout=True)
+                     savefig=path, volume=True, figscale=2, figratio=[16, 9], title=title)
 
 
-def generate_labels_mp(params):
+def generate_datasets_mp(params):
     filter_mode = 'filter_sym' in params.keys() and 'filter_date' in params.keys()
     no_charts = 'no_charts' in params.keys() and params['no_charts']
 
@@ -105,6 +137,9 @@ def generate_labels_mp(params):
     dataset_id = 0
     num_samples_per_dataset = params['num_samples_per_dataset']
     dataset_path = cu.__datasets_dir + "\\" + params['dataset_name'] + "_"
+    print("Saving labeled trades to file (%s samples): %sxxx" % (num_samples_per_dataset, dataset_path))
+
+    df_fund = cu.get_fundamentals()
 
     cpu_count = params['num_cores']
 
@@ -129,8 +164,6 @@ def generate_labels_mp(params):
             pool.close()
             pool.join()
 
-            first_chart_idx += charts_per_batch
-
             for res in mp_results:
                 dataset = res.get(timeout=1)
                 for labeled_data in dataset:
@@ -149,6 +182,8 @@ def generate_labels_mp(params):
                         dataset_id += 1
                         labeled_trades = []
                         print("Labeled Dataset Size11:", len(labeled_trades))
+
+            first_chart_idx += charts_per_batch
 
         if len(labeled_trades) > 0:
             xxx = np.array(labeled_trades)
@@ -233,13 +268,11 @@ def _gen_dataset_from_chart(c, params):
 
         open_index = cu.get_time_index(df, date, params['__chart_begin_hh'], params['__chart_begin_mm'], 0)
 
-        labels = cu.get_production_labels_for(symbol, date)
-
-        if df is not None and open_index is not None and labels is not None:
+        if df is not None and open_index is not None:
             params['symbol'] = symbol
             params['date'] = date
             params['date_index'] = date_index
-            entries, dataset = _gen_labeled_data_from_chart(df_history, df, labels, params)
+            entries, dataset = _gen_labeled_data_from_chart(df_history, df, params)
 
             info_text = ""
 
@@ -257,7 +290,13 @@ def _gen_dataset_from_chart(c, params):
     return dataset
 
 
-def _gen_labeled_data_from_chart(df_history, df_chart, labels, params):
+def calc_range(min_price, max_price):
+    if min_price <= 0:
+        min_price = 0.1
+    return 100*(max_price / min_price - 1)
+
+
+def _gen_labeled_data_from_chart(df_history, df_chart, params):
     entries = []
     dataset = []
 
@@ -284,7 +323,8 @@ def _gen_labeled_data_from_chart(df_history, df_chart, labels, params):
 
         vol += df_chart['Volume'][i]
 
-        params['stop'] = cu.calc_range(min_price, max_price) / params['stop_factor']
+        params['stop_sell'] = - calc_range(min_price, max_price) / params['stop_sell_factor']
+        params['stop_buy'] = calc_range(min_price, max_price) / params['stop_buy_factor']
 
         if i >= trading_start_idx:
             ####################### Set Up Values For Dynamic Daily Candle #####################
@@ -297,11 +337,10 @@ def _gen_labeled_data_from_chart(df_history, df_chart, labels, params):
 
             buy_price = df_chart['Close'][i]
 
-            params['stop_SELL_price'] = buy_price * (1 - params['stop'] / 100)
-            params['stop_BUY_price'] = buy_price * (1 + params['stop'] / 100)
+            params['stop_SELL_price'] = buy_price * (1 + params['stop_sell'] / 100)
+            params['stop_BUY_price'] = buy_price * (1 + params['stop_buy'] / 100)
 
-            state = chart.create_state_vector(df_history, df_chart, i, open_index)
-            label = labels[i]
+            state, label = _gen_labeled_data_for_entry(df_history, df_chart, i, open_index, params)
 
             labeled_data = np.concatenate((state, [label]))
             dataset.append(labeled_data)
@@ -313,6 +352,119 @@ def _gen_labeled_data_from_chart(df_history, df_chart, labels, params):
     return entries, dataset
 
 
+def _max_win_for_entry(df_chart, entry_index, open_index, params):
+    sold = False
+    sell_price = None
+
+    entry_price = df_chart['Close'][entry_index]
+    chart_end_idx = df_chart.index[-1]
+
+    max_price = -1
+    j = entry_index + 1
+
+    while j < chart_end_idx and not sold:
+        if df_chart['Low'][j] < params['stop_SELL_price']:
+            sold = True
+            sell_price = params['stop_SELL_price']
+        elif df_chart['High'][j] > max_price:
+            max_price = df_chart['High'][j]
+            max_idx = j
+
+        j = j + 1
+
+    if sold:
+        if max_price > 0:
+            sell_price = max_price
+    else:
+        if j == chart_end_idx:
+            if max_price > 0:
+                sell_price = max_price
+            else:
+                sell_price = df_chart.loc[chart_end_idx]['High']
+        elif j > chart_end_idx:
+            sell_price = df_chart.loc[chart_end_idx]['High']
+
+    return int(100 * (sell_price - entry_price) / entry_price)
+
+
+def _max_loss_for_entry(df_chart, entry_index, open_index, params):
+    sold = False
+    sell_price = None
+
+    chart_end_idx = df_chart.index[-1]
+
+    VERY_BIG_PRICE = 1000000
+    min_price = VERY_BIG_PRICE
+
+    j = entry_index + 1
+
+    while j < chart_end_idx and not sold:
+        if df_chart['High'][j] > params['stop_BUY_price']:
+            sold = True
+            sell_price = params['stop_BUY_price']
+
+        elif df_chart['Low'][j] < min_price:
+            min_price = df_chart['Low'][j]
+
+        j = j + 1
+
+    if sold:
+        if min_price < VERY_BIG_PRICE:
+            sell_price = min_price
+    else:
+        if j == chart_end_idx:
+            if min_price < VERY_BIG_PRICE:
+                sell_price = min_price
+            else:
+                sell_price = df_chart.loc[chart_end_idx]['Low']
+        elif j > chart_end_idx:
+            sell_price = df_chart.loc[chart_end_idx]['Low']
+
+    entry_price = df_chart['Close'][entry_index]
+
+    return int(100 * (sell_price - entry_price) / entry_price)
+
+
+def _gen_labeled_data_for_entry(df_history, df_chart, entry_index, open_index, params):
+    gain = _max_win_for_entry(df_chart, entry_index, open_index, params)
+
+    '''
+    if gain < 2:
+        gain = _max_loss_for_entry(df_chart, entry_index, open_index, params)
+    '''
+
+    intra_day_state, label = _gen_labeled_data(df_history, df_chart, entry_index, open_index, gain, params)
+
+    state = intra_day_state  # + daily state
+
+    return state, label
+
+
+def _gen_labeled_data(df_history, df, entry_idx, open_idx, gain, params):
+    state = chart.create_state_vector(df_history, df, entry_idx, open_idx)
+
+    label = 0
+
+    target = abs(2 * params['stop_sell'])
+    if gain < target:
+        label = 0
+    elif target <= gain:
+        label = 1
+
+    return state, label
+
+
+def get_marker(label):
+    m = '$' + str(label) + '$'
+
+    if label == 0:
+        c = 'red'
+    elif label == 1:
+        c = 'green'
+
+    return m, c
+
+
 def main():
     params = get_default_params()
 
@@ -320,7 +472,7 @@ def main():
     # params['filter_date'] = '2020-03-23'
     # test_training_data()
 
-    generate_labels_mp(params)
+    generate_datasets_mp(params)
 
 
 def get_default_params():
@@ -333,15 +485,15 @@ def get_default_params():
         'trading_begin_hh': 9,
         'trading_begin_mm': 40,
 
-        'R/R': 1,
-        'stop_coef': 1,
-        'stop_factor': 6,
+        'stop_buy_factor': 6,
+        'stop_sell_factor': 6,
+
 
         'no_charts': True,
 
         'chart_list_file': "data\\training_charts.csv",
         'dataset_name': "training_data",
-        'charts_per_batch': 300,
+        'charts_per_batch': 200,
         'num_samples_per_dataset': 1000000,
 
         'num_cores': 16

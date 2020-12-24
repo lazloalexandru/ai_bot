@@ -1,6 +1,5 @@
 import os
 import itertools
-from array import array
 import torch
 from termcolor import colored
 import pandas as pd
@@ -24,8 +23,33 @@ __datasets_dir = "data\\datasets"
 __log_dir = "log"
 
 
-def get_label_file_path(symbol, date):
-    return __intraday_charts_dir + "\\" + symbol + "\\" + symbol + "_" + str(date) + ".npy"
+__labels_dir = "labels"
+__generated_labels_dir = __labels_dir + "\\automatic"
+__manual_labels_dir = __labels_dir + "\\manual"
+__production_label_dir = "data\\production_labels"
+
+
+def get_production_labels_for(symbol, date):
+    path = production_label_path_for(symbol, date)
+    labels = None
+    if os.path.isfile(path):
+        labels = np.load(path)
+    else:
+        print(colored("ERROR! Label file not found at: " + path, color="red"))
+
+    return labels
+
+
+def generated_label_path_for(symbol, date):
+    return __generated_labels_dir + "\\" + symbol + "_" + str(date) + ".npy"
+
+
+def manual_label_path_for(symbol, date):
+    return __generated_labels_dir + "\\" + symbol + "_" + str(date) + ".npy"
+
+
+def production_label_path_for(symbol, date):
+    return __production_label_dir + "\\" + symbol + "_" + str(date) + ".npy"
 
 
 def save_labels(markers, path):

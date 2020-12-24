@@ -12,7 +12,7 @@ import chart
 import gc
 import common as cu
 import time
-from dataset_generator import get_marker
+from label_generator import get_marker
 
 __global_iteration_counter = 0
 __iteration_loss_history = []
