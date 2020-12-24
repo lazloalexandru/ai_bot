@@ -290,12 +290,6 @@ def _gen_dataset_from_chart(c, params):
     return dataset
 
 
-def calc_range(min_price, max_price):
-    if min_price <= 0:
-        min_price = 0.1
-    return 100*(max_price / min_price - 1)
-
-
 def _gen_labeled_data_from_chart(df_history, df_chart, params):
     entries = []
     dataset = []
@@ -323,8 +317,8 @@ def _gen_labeled_data_from_chart(df_history, df_chart, params):
 
         vol += df_chart['Volume'][i]
 
-        params['stop_sell'] = - calc_range(min_price, max_price) / params['stop_sell_factor']
-        params['stop_buy'] = calc_range(min_price, max_price) / params['stop_buy_factor']
+        params['stop_sell'] = - cu.calc_range(min_price, max_price) / params['stop_sell_factor']
+        params['stop_buy'] = cu.calc_range(min_price, max_price) / params['stop_buy_factor']
 
         if i >= trading_start_idx:
             ####################### Set Up Values For Dynamic Daily Candle #####################

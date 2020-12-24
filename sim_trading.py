@@ -309,10 +309,22 @@ def _find_trades(df_history, df, params, version):
     if trading_start_idx is None:
         trading_start_idx = df.index[0]
 
+    min_price = df['Low'][open_idx]
+    max_price = df['High'][open_idx]
+
     model = params['nn_model']
 
     i = trading_start_idx
     while i < close_idx:
+        if df['Low'][i] < min_price:
+            min_price = df['Low'][i]
+        if df['High'][i] > max_price:
+            max_price = df['High'][i]
+
+        if not params['ai_exit']:
+            params['stop'] = - cu.calc_range(min_price, max_price) / params['stop_sell_factor']
+            params['target'] = params['R/R'] * cu.calc_range(min_price, max_price) / params['stop_sell_factor']
+
         close = df['Close'][i]  # eliminating search in dataframe ... maybe increases exectution speed
         with torch.no_grad():
             data = gen_state(df_history, df, i, open_idx)
@@ -328,7 +340,8 @@ def _find_trades(df_history, df, params, version):
 
                 stop_price = buy_price * (1 + params['stop'] / 100)
                 params['stop_price'] = stop_price
-                params['target_price'] = buy_price * (1 + params['target'] / 100)
+                if not params['ai_exit']:
+                    params['target_price'] = buy_price * (1 + params['target'] / 100)
                 params['open_idx'] = open_idx
 
                 entries.append([df['Time'][i], buy_price, [], params['stop']])
@@ -484,17 +497,20 @@ def get_default_params():
         'last_entry_mm': 45,
 
         'stop': -5,
-        'target': 10,
+        'R/R': 2,
 
-        'ai_exit': False,
-        'no_parallel_trades': False,
+        'stop_buy_factor': 6,
+        'stop_sell_factor': 6,
 
-        'no_charts': False,
+        'ai_exit': True,
+        'no_parallel_trades': True,
+
+        'no_charts': True,
 
         'chart_list_file': "data\\test_charts.csv",
-        'test_size_coef': 0.1,
+        'test_size_coef': 1,
 
-        'model_path': "checkpoints\\checkpoint_106",
+        'model_path': "checkpoints\\checkpoint_12",
         'num_classes': 2
     }
 

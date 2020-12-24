@@ -656,3 +656,8 @@ def write_indexed_samples_to_file(samples, indexes, path):
     out_data = np.array(indexed_samples)
     np.save(path, out_data)
 
+
+def calc_range(min_price, max_price):
+    if min_price <= 0:
+        min_price = 0.1
+    return 100*(max_price / min_price - 1)
