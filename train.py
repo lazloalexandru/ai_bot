@@ -340,7 +340,7 @@ def get_params():
 
         'num_epochs': 100,
         'checkpoint_at_epoch_step': 1,
-        'resume_epoch_idx': None
+        'resume_epoch_idx': 6
     }
 
     return params

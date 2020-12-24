@@ -53,20 +53,16 @@ def load_data(p):
 
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
-    float_data = np.load(dataset_path)
+    chart_data = np.load(dataset_path)
 
-    data_size = chart.EXT_DATA_SIZE
+    num = len(chart_data)
 
-    num_bytes = len(float_data)
-    num_rows = int(num_bytes / data_size)
-
-    chart_data = float_data.reshape(num_rows, data_size)
     dataset = []
     labels = []
 
-    print("Dataset Size:", num_rows, "      Data Size:", data_size)
+    print("Dataset Size:", num)
 
-    for i in range(num_rows):
+    for i in range(num):
         state = chart_data[i][:-1]
         state = np.reshape(state, (chart.DATA_ROWS, chart.EXTENDED_CHART_LENGTH))
         state = torch.tensor(state, dtype=torch.float).unsqueeze(0)
@@ -126,10 +122,10 @@ def main():
 
 def get_params():
     params = {
-        'num_classes': 2,
+        'num_classes': 3,
         'test_batch': 1024,
-        'model_params_file_path': 'checkpoints\\checkpoint_11',
-        'dataset_path': 'data\\datasets\\test_data',
+        'model_params_file_path': 'checkpoints\\checkpoint_13',
+        'dataset_path': 'data\\datasets\\test_data.npy',
     }
 
     return params
