@@ -143,7 +143,11 @@ class LabelingTool:
         label_info = "Labeled" if self.labeled else "Unlabeled"
         title = self.symbol + " " + str(self.date) + "  ->  " + label_info
         self.fig.suptitle(title, y=0.95)
-        self.fig.patch.set_facecolor('palegreen' if self.labeled else "white")
+
+        if self.labeled:
+            self.fig.patch.set_facecolor("orange" if np.isnan(self.markers).all() else 'palegreen')
+        else:
+            self.fig.patch.set_facecolor("white")
 
         self.fig.canvas.draw()
 

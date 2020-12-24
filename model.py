@@ -6,12 +6,12 @@ class Net(nn.Module):
     def __init__(self, output_classes):
         super(Net, self).__init__()
 
-        self.dropout = nn.Dropout(0.05)
+        self.dropout = nn.Dropout(0.1)
         self.max_pool = nn.MaxPool2d(kernel_size=(1, 2), stride=2)
 
         k = 3
 
-        f = 32
+        f = 128
         self.conv1 = nn.Conv2d(1, f, kernel_size=(5, k), stride=1)
         self.bn1 = nn.BatchNorm2d(f)
         self.conv2 = nn.Conv2d(f, f, kernel_size=(1, k), stride=1)

@@ -463,6 +463,12 @@ def test_write_file():
     print(y)
 
 
+x = [float('nan')] * 5
+y = [float('nan')] * 5
+x[1]=1
+print()
+
+
 # test_w()
 # test_xxx()
 # test8()

@@ -323,21 +323,21 @@ def get_params():
         'conv_input_layer': True,
 
         ################ Dev Test - Data ######################
-        'dev_test_data_path': 'data\\datasets\\dev_test_data.npy',
+        'dev_test_data_path': 'data\\datasets\\xtest_data.npy',
         # 'dev_test_data_path': 'data\\datasets\\dummy',
 
         ################ Training - Data ######################
-        'training_data_path': 'data\\datasets\\training_data',
+        'training_data_path': 'data\\datasets\\test_data',
         # 'training_data_path': 'data\\datasets\\dummy',
-        'dataset_chunks': 4,
-        're_balancing_weights': [0.6080, 2.8133],
+        'dataset_chunks': 5,
+        're_balancing_weights': [0.6088, 2.7977],
         ################ Training #############################
         'train_batch': 128,
         'test_batch': 512,
         'learning_rate': 0.0001,
         'weight_decay': 0.01,
 
-        'num_epochs': 500,
+        'num_epochs': 100,
         'checkpoint_at_epoch_step': 1,
         'resume_epoch_idx': None
     }
