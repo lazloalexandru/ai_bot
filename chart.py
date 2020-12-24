@@ -4,7 +4,7 @@ import pandas as pd
 
 DATA_ROWS = 5
 DAY_IN_MINUTES = 390
-DAILY_CHART_LENGTH = 0
+DAILY_CHART_LENGTH = 10
 
 EXTENDED_CHART_LENGTH = DAILY_CHART_LENGTH + DAY_IN_MINUTES
 LABEL_SIZE = 1
@@ -16,11 +16,11 @@ def save_state_chart(state, label, t, idx):
     length = EXTENDED_CHART_LENGTH
     s = state.reshape(DATA_ROWS, length)
 
-    o = s[0] - 0.02
-    c = s[0]
-    h = s[0]
-    l = s[0]
-    v = s[1]
+    o = s[0]
+    c = s[1]
+    h = s[2]
+    l = s[3]
+    v = s[4]
     t = t[:length]
 
     dx = pd.DataFrame({

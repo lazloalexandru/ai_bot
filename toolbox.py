@@ -31,7 +31,7 @@ def plot_matrix():
 
 
 def test_dataset():
-    dataset_path = 'data\\datasets\\test_data.npy.npy'
+    dataset_path = 'data\\datasets\\test_data.npy'
 
     print(colored("Loading Data From:" + dataset_path + " ...", color="green"))
 
@@ -55,12 +55,15 @@ def test_dataset():
         idx += 20
 
 
+test_dataset()
+
 # cu.analyze_ext_dataset_balance('data\\datasets\\x1.npy', num_classes=2)
 # cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 11, num_classes=2)
 # merge()
-
+'''
 cu.random_split(input_samples_path="data\\datasets\\training_data_3.npy",
                 out1_path="data\\datasets\\x1",
                 out2_path="data\\datasets\\x2",
                 split_coefficient=0.1,
                 seed=9)
+'''
