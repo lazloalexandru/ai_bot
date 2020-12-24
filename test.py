@@ -8,8 +8,6 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import mplfinance as mpf
 import torch.nn.functional as F
-import torch.nn as nn
-from array import array
 
 
 def test6():
@@ -466,35 +464,15 @@ def test_write_file():
 
 
 # test_w()
-
 # test_xxx()
 # test8()
-
 # test_dynamic_candle()
-
 # test_write_file()
-
 # test_dataset()
-
 # test_nll_loss()
-
 # test_stratified_sampler()
-# cu.analyze_ext_dataset_balance('data\\datasets\\x1.npy', num_classes=2)
-
-# cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 11, num_classes=2)
-
 # test6()
-
 # test_split()
-# merge()
-
-cu.random_split(input_samples_path="data\\datasets\\training_data_3.npy",
-                out1_path="data\\datasets\\x1",
-                out2_path="data\\datasets\\x2",
-                split_coefficient=0.1,
-                seed=9)
-
 # test_rebalance_weights('data\\winner_datasets_2\\winner_dataset_4')
-
 # test_rebalance_weights_1()
 # test_split()

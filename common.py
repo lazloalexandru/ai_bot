@@ -355,6 +355,14 @@ def get_intraday_chart_for(symbol, date):
     return df
 
 
+def intraday_chart_exists_for(symbol, date):
+    date = date.replace("-", "")
+
+    path = __intraday_charts_dir + "\\" + symbol + "\\" + symbol + "_" + date + ".csv"
+
+    return os.path.isfile(path)
+
+
 def show_daily_chart(symbol):
     df = get_daily_chart_for(symbol)
     df = df.set_index(pd.Index(df.Time))

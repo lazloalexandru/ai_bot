@@ -30,6 +30,7 @@ def write_indexed_chart_list_to_file(chart_list, index_list, path):
 
 def _get_active_days_for(symbol, params):
     df = cu.get_daily_chart_for(symbol)
+    df["avg_vol_20"] = df["Volume"].rolling(window=20).mean()
     df.Time = pd.to_datetime(df.Time, format="%Y-%m-%d")
 
     relevant_days_list = []
@@ -69,33 +70,41 @@ def _get_active_days_for(symbol, params):
                             save_gap = True
 
             if save_gap:
-                t1 = df["Time"][df.index[i - 1]].strftime("%Y-%m-%d")
-                t2 = df["Time"][df.index[i]].strftime("%Y-%m-%d")
-                print(symbol, t1, t2)
-                relevant_days_list.append([0, t1, symbol])
-                relevant_days_list.append([gap, t2, symbol])
+                date = df["Time"][df.index[i]].strftime("%Y-%m-%d")
+                print(symbol, date, "    <-    GAP:", gap, end="")
+
+                if cu.intraday_chart_exists_for(symbol, date):
+                    relevant_days_list.append([gap, date, symbol])
+                    print("")
+                else:
+                    print("  *** NO CHART ***")
 
             save_range = False
             if params['big_range'] is not None:
                 if range_ > params['big_range']:
                     if df.loc[i, 'High'] > params['big_range_high']:
                         if df.loc[i, 'Volume'] * df.loc[i, 'Close'] > params['big_range_value_traded']:
-                            save_range = True
+                            if df.loc[i, 'avg_vol_20'] * params['big_range_r_vol'] < df.loc[i, 'Volume']:
+                                save_range = True
 
             if params['small_range'] is not None:
                 if range_ > params['small_range']:
                     if df.loc[i, 'High'] > params['small_range_high']:
                         if df.loc[i, 'Volume'] > params['small_range_volume']:
-                            save_range = True
+                            if df.loc[i, 'avg_vol_20'] * params['small_range_r_vol'] < df.loc[i, 'Volume']:
+                                save_range = True
 
             if save_range:
-                t1 = df["Time"][df.index[i - 1]].strftime("%Y-%m-%d")
-                t2 = df["Time"][df.index[i]].strftime("%Y-%m-%d")
-                print(symbol, t1, t2)
-                relevant_days_list.append([0, t1, symbol])
-                relevant_days_list.append([range_, t2, symbol])
+                date = df["Time"][df.index[i]].strftime("%Y-%m-%d")
+                print(symbol, date, "    <-    RANGE:", range_, end="")
 
-    print(symbol + " Relevant Days (Gap-Ups + Big movers): " + str(int(len(relevant_days_list)/2)))
+                if cu.intraday_chart_exists_for(symbol, date):
+                    relevant_days_list.append([range_, date, symbol])
+                    print("")
+                else:
+                    print("  *** NO CHART ***")
+
+    # print(symbol, " Relevant Days (Gap-Ups + Big movers):", len(relevant_days_list), "\n")
     return relevant_days_list
 
 
@@ -153,9 +162,19 @@ def generate_chart_list_files():
             generator=torch.Generator().manual_seed(params['seed'])
         )
 
+        write_indexed_chart_list_to_file(chart_list, range(num_charts), params['all_tradeable_charts_file_path'])
         write_indexed_chart_list_to_file(chart_list, train_idx, params['output_training_file_path'])
         write_indexed_chart_list_to_file(chart_list, dev_test_idx, params['output_dev_test_file_path'])
         write_indexed_chart_list_to_file(chart_list, test_idx, params['output_test_file_path'])
+
+
+def generate_list_of_available_charts(chart_list_file_path):
+    df = pd.read_csv(chart_list_file_path)
+
+    n = len(df)
+    print("Input -> Number of daily charts:", n)
+    for i in range(n):
+        print(df.symbol[i], df.date[i])
 
 
 def _main():
@@ -172,6 +191,7 @@ def get_default_params():
         'big_range': 10,
         'big_range_high': 2,
         'big_range_value_traded': 200000000,
+        'big_range_r_vol': 2,
 
         'small_gap_up': 10,
         'small_gap_up_open': 2,
@@ -180,15 +200,17 @@ def get_default_params():
         'small_range': 10,
         'small_range_high': 2,
         'small_range_volume': 10000000,
+        'small_range_r_vol': 2,
 
         #################### OUTPUT PARAMETERS ###########################
 
         'split_train_test': 0.95,
         'split_dev_test_test': 0.25,
         'seed': 91,  # random generator initializer
-        'output_training_file_path': "data\\training_charts_.csv",
-        'output_dev_test_file_path': "data\\dev_test_charts_.csv",
-        'output_test_file_path': "data\\test_charts_.csv"
+        'output_training_file_path': "data\\training_charts.csv",
+        'output_dev_test_file_path': "data\\dev_test_charts.csv",
+        'output_test_file_path': "data\\test_charts.csv",
+        'all_tradeable_charts_file_path': "data\\all_tradeable_charts.csv"
     }
 
     return params
