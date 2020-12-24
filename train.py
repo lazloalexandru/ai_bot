@@ -127,7 +127,7 @@ def test(model, device, test_loader, w, p):
             cu.progress_points(counter, 10)
             counter += 1
 
-    avg_loss = sum(losses) / len(losses)
+    avg_loss = sum(losses) / len(test_loader.dataset)
     accuracy = cu.calc_accuracy_from_confusion_matrix(confusion, p['num_classes'])
     overall_accuracy = 100.0 * num_hits / len(test_loader.dataset)
 
