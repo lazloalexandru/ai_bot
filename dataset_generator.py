@@ -331,7 +331,7 @@ def _gen_labeled_data_from_chart(df_history, df_chart, params):
 
             buy_price = df_chart['Close'][i]
 
-            params['stop_SELL_price'] = buy_price * (1 + params['stop_sell'] / 100)
+            params['stop_SELL_price'] = buy_price * (1 + params['stop_sell_coef'] * params['stop_sell'] / 100)
             params['stop_BUY_price'] = buy_price * (1 + params['stop_buy'] / 100)
 
             state, label = _gen_labeled_data_for_entry(df_history, df_chart, i, open_index, params)
@@ -422,14 +422,12 @@ def _max_loss_for_entry(df_chart, entry_index, open_index, params):
 def _gen_labeled_data_for_entry(df_history, df_chart, entry_index, open_index, params):
     gain = _max_win_for_entry(df_chart, entry_index, open_index, params)
 
-    '''
-    if gain < 2:
+    if gain < params['stop_buy'] * params['stop_buy_coef']:
         gain = _max_loss_for_entry(df_chart, entry_index, open_index, params)
-    '''
 
     intra_day_state, label = _gen_labeled_data(df_history, df_chart, entry_index, open_index, gain, params)
 
-    state = intra_day_state  # + daily state
+    state = intra_day_state
 
     return state, label
 
@@ -439,11 +437,12 @@ def _gen_labeled_data(df_history, df, entry_idx, open_idx, gain, params):
 
     label = 0
 
-    target = abs(2 * params['stop_sell'])
-    if gain < target:
+    if gain < params['stop_sell']:
         label = 0
-    elif target <= gain:
+    elif params['stop_sell'] <= gain < params['stop_buy']:
         label = 1
+    elif params['stop_buy'] <= gain:
+        label = 2
 
     return state, label
 
@@ -454,6 +453,8 @@ def get_marker(label):
     if label == 0:
         c = 'red'
     elif label == 1:
+        c = 'yellow'
+    elif label == 2:
         c = 'green'
 
     return m, c
@@ -479,6 +480,8 @@ def get_default_params():
         'trading_begin_hh': 9,
         'trading_begin_mm': 40,
 
+        'stop_buy_coef': 0.5,
+        'stop_sell_coef': 0.3,
         'stop_buy_factor': 6,
         'stop_sell_factor': 6,
 
