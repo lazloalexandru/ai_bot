@@ -58,7 +58,7 @@ def test_dataset():
 # test_dataset()
 
 # cu.analyze_ext_dataset_balance('data\\datasets\\test_data.npy', num_classes=2)
-# cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 5, num_classes=2)
+cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 5, num_classes=2)
 # merge()
 '''
 cu.random_split(input_samples_path="data\\datasets\\training_data_3.npy",

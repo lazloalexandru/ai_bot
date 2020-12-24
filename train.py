@@ -12,7 +12,7 @@ import chart
 import gc
 import common as cu
 import time
-from label_generator import get_marker
+from chart import get_marker
 
 __global_iteration_counter = 0
 __iteration_loss_history = []
@@ -319,7 +319,7 @@ def get_params():
         'loss_history_files_dir': "--",
 
         ################# Model ###############################
-        'num_classes': 3,
+        'num_classes': 2,
         'conv_input_layer': True,
 
         ################ Dev Test - Data ######################
@@ -330,7 +330,7 @@ def get_params():
         'training_data_path': 'data\\datasets\\training_data',
         # 'training_data_path': 'data\\datasets\\dummy',
         'dataset_chunks': 5,
-        're_balancing_weights': [1.1716, 0.6125, 1.9459],
+        're_balancing_weights': [0.7326, 1.5747],
 
         ################ Training #############################
         'train_batch': 128,
@@ -340,7 +340,7 @@ def get_params():
 
         'num_epochs': 100,
         'checkpoint_at_epoch_step': 1,
-        'resume_epoch_idx': 6
+        'resume_epoch_idx': None
     }
 
     return params
