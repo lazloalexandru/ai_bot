@@ -38,7 +38,7 @@ class LabelingTool:
 
         self.chart_idx = 0
 
-        self.select_chart(1)
+        self.select_chart(direction=1)
 
     def skip_to_next_chart(self, direction):
         n = len(self.chart_list)
@@ -62,15 +62,15 @@ class LabelingTool:
             symbol = self.chart_list.iloc[i]["symbol"]
             date = self.chart_list.iloc[i]["date"]
 
-            path = cu.get_label_file_path(symbol, date)
-            if not os.path.isfile(path):
+            _, label_type = cu.get_labels(symbol, date)
+            if label_type == 0:
                 found = True
 
             i += direction
 
         if found:
             self.start_idx = None
-
+            self.chart_idx = i-1
             self.symbol = symbol
             self.date = date
 
@@ -109,11 +109,11 @@ class LabelingTool:
         self.start_marker = [float('nan')] * len(self.t)
         self.markers = [float('nan')] * len(self.t)
 
-    def select_chart(self, direction):
-        if self.review_mode:
-            self.skip_to_next_chart(direction)
-        else:
+    def select_chart(self, direction, select_unlabeled_only=False):
+        if select_unlabeled_only:
             self.skip_to_next_unlabeled_chart(direction)
+        else:
+            self.skip_to_next_chart(direction)
 
         print("")
         print(self.symbol, self.date)
@@ -220,7 +220,6 @@ class LabelingTool:
             self.mouse_click(event.button, int(round(event.xdata)))
 
     def on_scroll(self, event):
-        # print(event.button)
 
         if event.button == 'up':
             self.select_chart(direction=-1)
@@ -233,6 +232,9 @@ class LabelingTool:
     def on_key_press(self, event):
         if event.key == 'control':
             self.set_ctrl(True)
+
+        elif event.key == 'pagedown':
+            self.select_chart(direction=1, select_unlabeled_only=True)
 
         elif event.key == 'delete':
 
@@ -248,7 +250,7 @@ class LabelingTool:
 
             self.plot_marker()
 
-        elif event.key == 'enter':
+        elif event.key == 'enter' or event.key == ' ':
 
             self.manually_labeled = True
             self.save_labels()

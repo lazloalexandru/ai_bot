@@ -85,6 +85,28 @@ def test_labels():
 
     print("\nFinished!")
 
+
+def label_coverage(chart_list_path):
+    chart_list = pd.read_csv(chart_list_path)
+
+    n = len(chart_list)
+
+    print("Number of charts:", n)
+
+    num = 0
+    for i, chart1 in chart_list.iterrows():
+        print(chart1['symbol'], chart1['date'])
+
+        _, label_type = cu.get_labels(chart1['symbol'], chart1['date'])
+
+        if label_type == 1:
+            num += 1
+
+    print("Coverage (%s/%s):" % (num, n), "%.2f" % (100*num/n) + "%")
+
+
+label_coverage("data\\all_tradeable_charts.csv")
+
 # test_labels()
 # cu.get_labels("ABIO", "20200528")
 
@@ -95,7 +117,7 @@ def test_labels():
 # cu.analyze_ext_dataset_balance('data\\datasets\\test_data.npy', num_classes=2)
 
 
-cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 4, num_classes=2)
+# cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 4, num_classes=2)
 
 # merge()
 '''
