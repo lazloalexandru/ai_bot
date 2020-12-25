@@ -95,7 +95,7 @@ class LabelingTool:
     def load_markers(self):
         self.start_idx = None
         self.start_marker = [float('nan')] * len(self.t)
-        labels, label_type = cu.load_labels(self.symbol, self.date)
+        labels, label_type = cu.get_labels(self.symbol, self.date)
 
         if labels is None:
             self.manually_labeled = False
@@ -173,9 +173,9 @@ class LabelingTool:
         self.fig.suptitle(title, y=0.95)
 
         if self.manually_labeled:
-            self.fig.patch.set_facecolor("orange" if np.isnan(self.markers).all() else 'palegreen')
+            self.fig.patch.set_facecolor("red" if np.isnan(self.markers).all() else 'limegreen')
         else:
-            self.fig.patch.set_facecolor("yellow")
+            self.fig.patch.set_facecolor("white")
 
         self.fig.canvas.draw()
 

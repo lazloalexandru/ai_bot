@@ -297,9 +297,8 @@ def _gen_label_for_entry(df_chart, entry_index, params):
 def main():
     params = get_default_params()
 
-    # params['filter_sym'] = 'DENN'
-    # params['filter_date'] = '2020-03-23'
-    # test_training_data()
+    # params['filter_sym'] = 'ABIO'
+    # params['filter_date'] = '2020-05-28'
 
     generate_labels_mp(params)
 

@@ -3,10 +3,7 @@ import numpy as np
 from termcolor import colored
 import chart
 import common as cu
-import torch
-import matplotlib.pyplot as plt
-import mplfinance as mpf
-import torch.nn.functional as F
+from time import sleep
 
 
 def merge():
@@ -71,13 +68,27 @@ def contamination_test(chart_list_path1, chart_list_path2):
             if chart2['symbol'] == chart1['symbol']:
                 if chart2['date'] == chart1['date']:
                     print(chart1['symbol'], chart1['date'], end="")
-                    print(colored("=============================================", color='red'))
+                    print(colored(" ===================CONTAMINATION===============", color='red'))
                     num_contamination += 1
 
     print("Contamination:", num_contamination)
 
 
-contamination_test("data\\test_charts.csv", "data\\training_charts.csv")
+def test_labels():
+    chart_list = pd.read_csv("data\\all_tradeable_charts.csv")
+
+    print("Num charts:", len(chart_list))
+
+    for _, chart1 in chart_list.iterrows():
+        print(chart1['symbol'], chart1['date'])
+        cu.get_labels(chart1['symbol'], chart1['date'])
+
+    print("\nFinished!")
+
+# test_labels()
+# cu.get_labels("ABIO", "20200528")
+
+# contamination_test("data\\test_charts.csv", "data\\training_charts.csv")
 
 # test_dataset()
 

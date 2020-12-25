@@ -26,18 +26,6 @@ __log_dir = "log"
 __labels_dir = "labels"
 __generated_labels_dir = __labels_dir + "\\automatic"
 __manual_labels_dir = __labels_dir + "\\manual"
-__production_label_dir = "data\\production_labels"
-
-
-def get_production_labels_for(symbol, date):
-    path = get_production_label_path_for(symbol, date)
-    labels = None
-    if os.path.isfile(path):
-        labels = np.load(path)
-    else:
-        print(colored("ERROR! Label file not found at: " + path, color="red"))
-
-    return labels
 
 
 def get_generated_label_path_for(symbol, date):
@@ -50,12 +38,7 @@ def get_manual_label_path_for(symbol, date):
     return __manual_labels_dir + "\\" + symbol + "_" + str(date) + ".npy"
 
 
-def get_production_label_path_for(symbol, date):
-    date = date.replace("-", "")
-    return __production_label_dir + "\\" + symbol + "_" + str(date) + ".npy"
-
-
-def load_labels(symbol, date):
+def get_labels(symbol, date):
     date = date.replace("-", "")
     labels = None
     label_type = None
