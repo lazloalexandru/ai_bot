@@ -333,7 +333,7 @@ def _find_trades(df_history, df, params, version):
             res = buy_output.max(1)[1].view(1, 1)
             predicted_label = res[0][0].to("cpu").numpy()
 
-            if predicted_label == 2:
+            if predicted_label == 1:
                 buy_price = close
 
                 print(params["symbol"], "BUY", df['Time'][i], buy_price, end="")
@@ -503,15 +503,15 @@ def get_default_params():
         'stop_sell_factor': 6,
 
         'ai_exit': True,
-        'no_parallel_trades': True,
+        'no_parallel_trades': False,
 
-        'no_charts': True,
+        'no_charts': False,
 
         'chart_list_file': "data\\test_charts.csv",
-        'test_size_coef': 1,
+        'test_size_coef': 0.1,
 
-        'model_path': "checkpoints\\checkpoint_13",
-        'num_classes': 3
+        'model_path': "checkpoints\\checkpoint_3",
+        'num_classes': 2
     }
 
     return params
