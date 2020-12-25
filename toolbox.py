@@ -55,10 +55,34 @@ def test_dataset():
         idx += 20
 
 
+def contamination_test(chart_list_path1, chart_list_path2):
+    chart_list1 = pd.read_csv(chart_list_path1)
+    chart_list2 = pd.read_csv(chart_list_path2)
+
+    print("Num charts1:", len(chart_list1))
+    print("Num charts2:", len(chart_list2))
+
+    num_contamination = 0
+
+    for _, chart1 in chart_list1.iterrows():
+        print(chart1['symbol'], chart1['date'])
+
+        for _, chart2 in chart_list2.iterrows():
+            if chart2['symbol'] == chart1['symbol']:
+                if chart2['date'] == chart1['date']:
+                    print(chart1['symbol'], chart1['date'], end="")
+                    print(colored("=============================================", color='red'))
+                    num_contamination += 1
+
+    print("Contamination:", num_contamination)
+
+
+contamination_test("data\\test_charts.csv", "data\\training_charts.csv")
+
 # test_dataset()
 
 # cu.analyze_ext_dataset_balance('data\\datasets\\test_data.npy', num_classes=2)
-cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 5, num_classes=2)
+# cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 5, num_classes=2)
 # merge()
 '''
 cu.random_split(input_samples_path="data\\datasets\\training_data_3.npy",

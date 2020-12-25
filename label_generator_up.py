@@ -13,6 +13,21 @@ import numpy as np
 ___temp_dir_name = "__temp__"
 
 
+def cmean(x, half_period):
+    n = len(x)
+    avg = np.zeros(n)
+    for i in range(n):
+        s = 0
+        m = 0
+        for j in range(i-half_period, i+half_period+1):
+            if 0 <= j < n:
+                s += x[j]
+                m += 1
+        avg[i] = s / m
+
+    return avg
+
+
 def _gen_add_plot(chart_data, entries):
     df = chart_data.copy()
 
@@ -45,6 +60,8 @@ def _show_chart(chart_data, symbol, date, info, entries, save_to_dir=""):
     df = df.set_index(pd.Index(df.Time))
 
     adp = _gen_add_plot(chart_data, entries)
+    adp.append(mpf.make_addplot(df["avg_s"].tolist(), color='yellow'))
+    adp.append(mpf.make_addplot(df["avg_l"].tolist(), color='blue'))
 
     plt.rcParams['figure.dpi'] = 240
     plt.rcParams['figure.figsize'] = [1.0, 1.0]
@@ -156,6 +173,10 @@ def _gen_labels_for_chart(chart_info, params):
         open_index = cu.get_time_index(df, date, params['__chart_begin_hh'], params['__chart_begin_mm'], 0)
 
         if df is not None and open_index is not None:
+            xxx = df["Close"].tolist()
+            df["avg_s"] = cmean(xxx, 5)
+            df["avg_l"] = cmean(xxx, 10)
+
             params['symbol'] = symbol
             params['date'] = date
             entries = _gen_labels_from_chart_data(df, params)
@@ -317,7 +338,7 @@ def get_default_params():
         'R/R': 1,
         'stop_factor': 6,
 
-        'no_charts': True,
+        'no_charts': False,
 
         'chart_list_file': "data\\all_tradeable_charts.csv",
         'label_name': "xxxx_auto_labeled",

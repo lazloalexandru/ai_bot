@@ -78,31 +78,31 @@ def _get_active_days_for(symbol, params):
                     print("")
                 else:
                     print("  *** NO CHART ***")
+            else:
+                save_range = False
+                if params['big_range'] is not None:
+                    if range_ > params['big_range']:
+                        if df.loc[i, 'High'] > params['big_range_high']:
+                            if df.loc[i, 'Volume'] * df.loc[i, 'Close'] > params['big_range_value_traded']:
+                                if df.loc[i, 'avg_vol_20'] * params['big_range_r_vol'] < df.loc[i, 'Volume']:
+                                    save_range = True
 
-            save_range = False
-            if params['big_range'] is not None:
-                if range_ > params['big_range']:
-                    if df.loc[i, 'High'] > params['big_range_high']:
-                        if df.loc[i, 'Volume'] * df.loc[i, 'Close'] > params['big_range_value_traded']:
-                            if df.loc[i, 'avg_vol_20'] * params['big_range_r_vol'] < df.loc[i, 'Volume']:
-                                save_range = True
+                if params['small_range'] is not None:
+                    if range_ > params['small_range']:
+                        if df.loc[i, 'High'] > params['small_range_high']:
+                            if df.loc[i, 'Volume'] > params['small_range_volume']:
+                                if df.loc[i, 'avg_vol_20'] * params['small_range_r_vol'] < df.loc[i, 'Volume']:
+                                    save_range = True
 
-            if params['small_range'] is not None:
-                if range_ > params['small_range']:
-                    if df.loc[i, 'High'] > params['small_range_high']:
-                        if df.loc[i, 'Volume'] > params['small_range_volume']:
-                            if df.loc[i, 'avg_vol_20'] * params['small_range_r_vol'] < df.loc[i, 'Volume']:
-                                save_range = True
+                if save_range:
+                    date = df["Time"][df.index[i]].strftime("%Y-%m-%d")
+                    print(symbol, date, "    <-    RANGE:", range_, end="")
 
-            if save_range:
-                date = df["Time"][df.index[i]].strftime("%Y-%m-%d")
-                print(symbol, date, "    <-    RANGE:", range_, end="")
-
-                if cu.intraday_chart_exists_for(symbol, date):
-                    relevant_days_list.append([range_, date, symbol])
-                    print("")
-                else:
-                    print("  *** NO CHART ***")
+                    if cu.intraday_chart_exists_for(symbol, date):
+                        relevant_days_list.append([range_, date, symbol])
+                        print("")
+                    else:
+                        print("  *** NO CHART ***")
 
     # print(symbol, " Relevant Days (Gap-Ups + Big movers):", len(relevant_days_list), "\n")
     return relevant_days_list

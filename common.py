@@ -30,7 +30,7 @@ __production_label_dir = "data\\production_labels"
 
 
 def get_production_labels_for(symbol, date):
-    path = production_label_path_for(symbol, date)
+    path = get_production_label_path_for(symbol, date)
     labels = None
     if os.path.isfile(path):
         labels = np.load(path)
@@ -40,33 +40,42 @@ def get_production_labels_for(symbol, date):
     return labels
 
 
-def generated_label_path_for(symbol, date):
+def get_generated_label_path_for(symbol, date):
+    date = date.replace("-", "")
     return __generated_labels_dir + "\\" + symbol + "_" + str(date) + ".npy"
 
 
-def manual_label_path_for(symbol, date):
-    return __generated_labels_dir + "\\" + symbol + "_" + str(date) + ".npy"
+def get_manual_label_path_for(symbol, date):
+    date = date.replace("-", "")
+    return __manual_labels_dir + "\\" + symbol + "_" + str(date) + ".npy"
 
 
-def production_label_path_for(symbol, date):
+def get_production_label_path_for(symbol, date):
+    date = date.replace("-", "")
     return __production_label_dir + "\\" + symbol + "_" + str(date) + ".npy"
 
 
-def save_labels(markers, path):
-    n = len(markers)
-    x = np.zeros(n)
-
-    np.save(path, markers)
-
-
 def load_labels(symbol, date):
-    markers = None
+    date = date.replace("-", "")
+    labels = None
+    label_type = None
 
-    path = get_label_file_path(symbol, date)
+    path = get_manual_label_path_for(symbol, date)
     if os.path.isfile(path):
-        markers = np.load(path)
+        print(colored("Manual labels loaded  ->  " + path, color='green'))
+        labels = np.load(path)
+        label_type = 1
+    else:
+        print(colored("No manual labeling found: " + path, color='yellow'))
+        path = get_generated_label_path_for(symbol, date)
+        if os.path.isfile(path):
+            print("Automatic labels loaded  -> ", path)
+            labels = np.load(path)
+            label_type = 0
+        else:
+            print(colored("ERROR! No label for: " + symbol + " " + date, color="red"))
 
-    return markers
+    return labels, label_type
 
 
 def get_fundamentals():

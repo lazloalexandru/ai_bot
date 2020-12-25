@@ -28,7 +28,7 @@ class LabelingTool:
         self.start_idx = None
         self.markers = None
         self.start_marker = None
-        self.labeled = None
+        self.manually_labeled = None
 
         self.review_mode = review_mode
         self.chart_list = pd.read_csv(chart_list_file_path)
@@ -74,14 +74,48 @@ class LabelingTool:
             self.symbol = symbol
             self.date = date
 
+    def init_markers_from(self, labels):
+        self.markers = [float('nan')] * len(self.t)
+        n = len(labels)
+
+        for i in range(n):
+            if labels[i] == 1:
+                self.markers[i] = self.high[i]
+
+    def labels_from_markers(self):
+        n = len(self.t)
+        labels = np.zeros(n)
+
+        for i in range(n):
+            if not np.isnan(self.markers[i]):
+                labels[i] = 1
+
+        return labels
+
+    def load_markers(self):
+        self.start_idx = None
+        self.start_marker = [float('nan')] * len(self.t)
+        labels, label_type = cu.load_labels(self.symbol, self.date)
+
+        if labels is None:
+            self.manually_labeled = False
+            self.markers = [float('nan')] * len(self.t)
+        else:
+            self.init_markers_from(labels)
+            self.manually_labeled = True if label_type == 1 else False
+
+    def clear_markers(self):
+        self.start_idx = None
+        self.start_marker = [float('nan')] * len(self.t)
+        self.markers = [float('nan')] * len(self.t)
+
     def select_chart(self, direction):
         if self.review_mode:
             self.skip_to_next_chart(direction)
-            print("1")
         else:
-            print("2")
             self.skip_to_next_unlabeled_chart(direction)
 
+        print("")
         print(self.symbol, self.date)
 
         ########################################################################
@@ -100,22 +134,16 @@ class LabelingTool:
         self.high = self.df.High.to_list()
 
         ########################################################################
-        # Load labels is exist
+        # Load labels if exist
 
         self.start_marker = [float('nan')] * len(self.t)
-        self.markers = cu.load_labels(self.symbol, self.date)
-
-        if self.markers is None:
-            self.labeled = False
-            self.markers = [float('nan')] * len(self.t)
-        else:
-            self.labeled = True
+        self.load_markers()
 
         ########################################################################
 
         if not self.initialized:
             self.initialized = True
-            label_info = "Labeled" if self.labeled else "Unlabeled"
+            label_info = "Labeled" if self.manually_labeled else "Unlabeled"
             title = self.symbol + " " + str(self.date) + "  ->  " + label_info
             self.fig, self.axes = mpf.plot(self.df, type='candle', volume=True, title=title, returnfig=True, tight_layout=True)
 
@@ -140,14 +168,14 @@ class LabelingTool:
 
         mpf.plot(self.df, type='candle', ax=self.axes[0], addplot=adp, tight_layout=True)
 
-        label_info = "Labeled" if self.labeled else "Unlabeled"
+        label_info = "Labeled" if self.manually_labeled else "Unlabeled"
         title = self.symbol + " " + str(self.date) + "  ->  " + label_info
         self.fig.suptitle(title, y=0.95)
 
-        if self.labeled:
+        if self.manually_labeled:
             self.fig.patch.set_facecolor("orange" if np.isnan(self.markers).all() else 'palegreen')
         else:
-            self.fig.patch.set_facecolor("white")
+            self.fig.patch.set_facecolor("yellow")
 
         self.fig.canvas.draw()
 
@@ -182,7 +210,6 @@ class LabelingTool:
             if self.ctrl_held is not None and self.ctrl_held:
                 self.markers = [float('nan')] * len(self.t)
             else:
-                print("DEL")
                 self.start_idx = None
                 self.start_marker = [float('nan')] * len(self.t)
 
@@ -209,18 +236,21 @@ class LabelingTool:
 
         elif event.key == 'delete':
 
-            path = cu.get_label_file_path(self.symbol, self.date)
-            if os.path.isfile(path):
-                print("Removed:", path)
-                os.remove(path)
+            if self.manually_labeled:
+                path = cu.get_manual_label_path_for(self.symbol, self.date)
+                if os.path.isfile(path):
+                    print("Removed:", path)
+                    os.remove(path)
 
-            self.labeled = False
-            self.markers = [float('nan')] * len(self.t)
+                    self.load_markers()
+            else:
+                self.clear_markers()
+
             self.plot_marker()
 
-        elif event.key == ' ':
+        elif event.key == 'enter':
 
-            self.labeled = True
+            self.manually_labeled = True
             self.save_labels()
             self.plot_marker()
 
@@ -237,9 +267,12 @@ class LabelingTool:
             self.set_ctrl(False)
 
     def save_labels(self):
-        path = cu.get_label_file_path(self.symbol, self.date)
-        cu.save_labels(self.markers, path)
-        print("Save labels: ", path)
+        path = cu.get_manual_label_path_for(self.symbol, self.date)
+
+        labels = self.labels_from_markers()
+
+        np.save(path, labels)
+        print("Saved labels  -> ", path)
 
 
 def labeling():
