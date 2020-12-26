@@ -330,8 +330,7 @@ def get_params():
         'training_data_path': 'data\\datasets\\training_data',
         # 'training_data_path': 'data\\datasets\\dummy',
         'dataset_chunks': 4,
-        're_balancing_weights': [0.7289, 1.5920],
-
+        're_balancing_weights': [0.7044, 1.7228],
 
         ################ Training #############################
         'train_batch': 128,

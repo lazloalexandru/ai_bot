@@ -339,8 +339,8 @@ def get_default_params():
 
         'no_charts': True,
 
-        'chart_list_file': "data\\test_charts.csv",
-        'dataset_name': "test_data",
+        'chart_list_file': "data\\training_charts.csv",
+        'dataset_name': "training_data",
         'charts_per_batch': 300,
         'num_samples_per_dataset': 1000000,
 
