@@ -105,7 +105,7 @@ def label_coverage(chart_list_path):
     print("Coverage (%s/%s):" % (num, n), "%.2f" % (100*num/n) + "%")
 
 
-# label_coverage("data\\all_tradeable_charts.csv")
+label_coverage("data\\all_tradeable_charts.csv")
 
 # test_labels()
 # cu.get_labels("ABIO", "20200528")
