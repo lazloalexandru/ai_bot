@@ -4,7 +4,7 @@ import pandas as pd
 
 DATA_ROWS = 5
 DAY_IN_MINUTES = 390
-DAILY_CHART_LENGTH = 10
+DAILY_CHART_LENGTH = 0
 
 EXTENDED_CHART_LENGTH = DAILY_CHART_LENGTH + DAY_IN_MINUTES
 LABEL_SIZE = 1
@@ -78,14 +78,14 @@ def create_state_vector(df_history, df, entry_idx, open_idx, debug=False):
         print('entry:', t[idx])
 
     price = np.concatenate((o, c, h, l))
-    price = cu.normalize_middle(price)
+    price = cu.scale_to_1(price)
     price = price.reshape(4, idx + 1)
 
     o = price[0]
     c = price[1]
     h = price[2]
     l = price[3]
-    v = cu.normalize_0_1(np.array(v))
+    v = cu.scale_to_1(np.array(v))
 
     if debug:
         print('normaliazed o:', type(o))
@@ -125,14 +125,14 @@ def create_state_vector(df_history, df, entry_idx, open_idx, debug=False):
             print('full len(hv)', len(hv))
 
         price = np.concatenate((ho, hc, hh, hl))
-        price = cu.normalize_middle(price)
+        price = cu.scale_to_1(price)
         price = price.reshape(4, len(ho))
 
         ho = price[0]
         hc = price[1]
         hh = price[2]
         hl = price[3]
-        hv = cu.normalize_0_1(np.array(hv))
+        hv = cu.scale_to_1(np.array(hv))
 
         if debug:
             print('normalized len(ho)', len(ho))

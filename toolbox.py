@@ -47,9 +47,9 @@ def test_dataset():
     df = cu.get_intraday_chart_for(symbol, date)
     t = df.Time.to_list()
     idx = 0
-    while idx < 1000:
+    while idx < 10000:
         chart.save_state_chart(chart_data[idx][:-1], chart_data[idx][-1], t, idx)
-        idx += 20
+        idx += 100
 
 
 def contamination_test(chart_list_path1, chart_list_path2):
@@ -105,7 +105,7 @@ def label_coverage(chart_list_path):
     print("Coverage (%s/%s):" % (num, n), "%.2f" % (100*num/n) + "%")
 
 
-label_coverage("data\\all_tradeable_charts.csv")
+# label_coverage("data\\all_tradeable_charts.csv")
 
 # test_labels()
 # cu.get_labels("ABIO", "20200528")
@@ -117,7 +117,7 @@ label_coverage("data\\all_tradeable_charts.csv")
 # cu.analyze_ext_dataset_balance('data\\datasets\\test_data.npy', num_classes=2)
 
 
-# u.analyze_divided_dataset_balance('data\\datasets\\training_data', 4, num_classes=2)
+# cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 1, num_classes=2)
 
 # merge()
 '''

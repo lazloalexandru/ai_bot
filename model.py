@@ -24,7 +24,7 @@ class Net(nn.Module):
         self.conv4 = nn.Conv2d(f, f, kernel_size=(1, k), stride=1)
         self.bn4 = nn.BatchNorm2d(f)
 
-        linear_input_size = f * 97
+        linear_input_size = f * 94
         d = 256
 
         print("Dense Layers %s / %s / %s / %s" % (linear_input_size, d, d, output_classes))

@@ -68,7 +68,7 @@ def _show_chart(chart_data, symbol, date, info, entries, params, save_to_dir="")
                      savefig=path, volume=True, figscale=2, figratio=[16, 9], title=title, tight_layout=True)
 
 
-def generate_labels_mp(params):
+def generate_labeled_data_mp(params):
     filter_mode = 'filter_sym' in params.keys() and 'filter_date' in params.keys()
     no_charts = 'no_charts' in params.keys() and params['no_charts']
 
@@ -233,9 +233,9 @@ def _gen_dataset_from_chart(c, params):
 
         open_index = cu.get_time_index(df, date, params['__chart_begin_hh'], params['__chart_begin_mm'], 0)
 
-        labels, _ = cu.get_labels(symbol, date)
+        labels, label_type = cu.get_labels(symbol, date)
 
-        if df is not None and open_index is not None and labels is not None:
+        if df is not None and open_index is not None and labels is not None and label_type==1:
             params['symbol'] = symbol
             params['date'] = date
             params['date_index'] = date_index
@@ -320,7 +320,7 @@ def main():
     # params['filter_date'] = '2020-03-23'
     # test_training_data()
 
-    generate_labels_mp(params)
+    generate_labeled_data_mp(params)
 
 
 def get_default_params():

@@ -465,7 +465,7 @@ def test_write_file():
 
 x = [float('nan')] * 5
 y = [float('nan')] * 5
-x[1]=1
+x[1] = 1
 print()
 
 
