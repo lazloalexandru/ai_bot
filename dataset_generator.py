@@ -235,7 +235,7 @@ def _gen_dataset_from_chart(c, params):
 
         labels, label_type = cu.get_labels(symbol, date)
 
-        if df is not None and open_index is not None and labels is not None and label_type==1:
+        if df is not None and open_index is not None and labels is not None and label_type == 1:
             params['symbol'] = symbol
             params['date'] = date
             params['date_index'] = date_index
@@ -339,8 +339,8 @@ def get_default_params():
 
         'no_charts': True,
 
-        'chart_list_file': "data\\training_charts.csv",
-        'dataset_name': "training_data",
+        'chart_list_file': "data\\test_charts.csv",
+        'dataset_name': "test_data",
         'charts_per_batch': 300,
         'num_samples_per_dataset': 1000000,
 
