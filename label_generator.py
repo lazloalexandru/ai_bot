@@ -1,6 +1,7 @@
 import multiprocessing as mp
 from termcolor import colored
 
+import pivots as pvt
 
 import chart
 import common as cu
@@ -176,6 +177,9 @@ def _gen_labels_from_chart_data(df_chart, params):
 
     labels = np.zeros(len(df_chart))
 
+    df_chart['ema5'] = cu.ema(df_chart['Close'].to_list(), 5)
+    df_chart['ema8'] = cu.ema(df_chart['Close'].to_list(), 8)
+
     date = params['date']
     symbol = params['symbol']
     open_index = cu.get_time_index(df_chart, date, params['__chart_begin_hh'], params['__chart_begin_mm'], 0)
@@ -316,11 +320,14 @@ def get_default_params():
         'R/R': 1,
         'stop_factor': 6,
 
-        'no_charts': True,
+        'mavs_p': 5,
+        'mavl_p': 8,
+
+        'no_charts': False,
 
         'chart_list_file': "data\\all_tradeable_charts.csv",
         'label_name': "xxxx_auto_labeled",
-        'num_cores': 16
+        'num_cores': 1
     }
     return params
 

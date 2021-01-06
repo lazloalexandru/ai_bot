@@ -226,7 +226,7 @@ def _search_patterns_in(gapper, params, df_fund):
 
     if not filter_mode_on:
         search_needed = True
-    elif filter_mode_on and gapper['sym'] == params['filter_sym'] and gapper['date'] == params['filter_date']:
+    elif filter_mode_on and gapper['symbol'] == params['filter_sym'] and gapper['date'] == params['filter_date']:
         search_needed = True
 
     if search_needed:
@@ -368,6 +368,8 @@ def _find_exit(df_history, df, entry_index, params):
     entry_price = df['Close'][entry_index]
     chart_end_idx = df.index[-1]
 
+    model = params['nn_model']
+
     j = entry_index + 1
 
     while j < chart_end_idx and not sold:
@@ -377,11 +379,18 @@ def _find_exit(df_history, df, entry_index, params):
             exit_type = "STOP"
             print("  STOP", df['Time'][j], "%.2f" % sell_price, "%  stop:", str(params['stop']) + "%", end="")
         else:
-            if df[params['ema_s']][j] < df[params['ema_l']][j]:
-                sold = True
-                sell_price = df['Close'][j]
-                exit_type = "SELL"
-                print("  SELL", df['Time'][j], "%.2f" % sell_price, end="")
+            with torch.no_grad():
+                data = gen_state(df_history, df, j, params['open_idx'])
+
+                res = model(data)
+                res = res.max(1)[1].view(1, 1)
+                predicted_label = res[0][0].to("cpu").numpy()
+
+                if predicted_label == 0:
+                    sold = True
+                    sell_price = df['Close'][j]
+                    exit_type = "SELL"
+                    print("  SELL", df['Time'][j], "%.2f" % sell_price, end="")
 
         j = j + 1
 
@@ -452,8 +461,8 @@ def init_ai(params):
 def main():
     params = get_default_params()
 
-    # params['filter_sym'] = 'KBSF'
-    # params['filter_date'] = '2017-11-09'
+    params['filter_sym'] = 'SOLO'
+    params['filter_date'] = '2019-02-13'
 
     params, success = init_ai(params)
 
@@ -485,13 +494,13 @@ def get_default_params():
         'ema_l': 'ema5',
 
         'stop_sell_factor': 6,
-        'no_parallel_trades': True,
+        'no_parallel_trades': False,
         'no_charts': False,
 
         'chart_list_file': "data\\test_charts.csv",
         'test_size_coef': 0.1,
 
-        'model_path': "checkpoints\\checkpoint_50",
+        'model_path': "checkpoints\\checkpoint_62",
         'num_classes': 2
     }
 
