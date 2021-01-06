@@ -68,6 +68,9 @@ def _show_1min_chart(chart_data, symbol, date, info, entries, exits, params, sav
 
     adp = _gen_add_plot(chart_data, entries, exits)
 
+    adp.append(mpf.make_addplot(df[params['ema_s']].tolist(), color='yellow'))
+    adp.append(mpf.make_addplot(df[params['ema_l']].tolist(), color='green'))
+
     title = info + symbol + " " + date
 
     if save_to_dir == "":  # Display chart
@@ -234,7 +237,7 @@ def _search_patterns_in(gapper, params, df_fund):
 
         df_daily = cu.get_daily_chart_for(symbol)
         df_history, date_index = cu.get_period_before(df_daily, date, chart.DAILY_CHART_LENGTH, symbol + "_" + str(date))
-        df = cu.get_chart_data_prepared_for_ai(symbol, date, params)
+        df = cu.get_chart_data_prepared_for_ai_ema(symbol, date, params)
         open_index = cu.get_time_index(df, date, params['__chart_begin_hh'], params['__chart_begin_mm'], 0)
 
         if df is not None and open_index is not None:
@@ -321,9 +324,7 @@ def _find_trades(df_history, df, params, version):
         if df['High'][i] > max_price:
             max_price = df['High'][i]
 
-        if not params['ai_exit']:
-            params['stop'] = - cu.calc_range(min_price, max_price) / params['stop_sell_factor']
-            params['target'] = params['R/R'] * cu.calc_range(min_price, max_price) / params['stop_sell_factor']
+        params['stop'] = - cu.calc_range(min_price, max_price) / params['stop_sell_factor']
 
         close = df['Close'][i]  # eliminating search in dataframe ... maybe increases exectution speed
         with torch.no_grad():
@@ -340,8 +341,6 @@ def _find_trades(df_history, df, params, version):
 
                 stop_price = buy_price * (1 + params['stop'] / 100)
                 params['stop_price'] = stop_price
-                if not params['ai_exit']:
-                    params['target_price'] = buy_price * (1 + params['target'] / 100)
                 params['open_idx'] = open_idx
 
                 entries.append([df['Time'][i], buy_price, [], params['stop']])
@@ -368,9 +367,6 @@ def _find_exit(df_history, df, entry_index, params):
 
     entry_price = df['Close'][entry_index]
     chart_end_idx = df.index[-1]
-    open_idx = params['open_idx']
-
-    model = params['nn_model']
 
     j = entry_index + 1
 
@@ -381,25 +377,11 @@ def _find_exit(df_history, df, entry_index, params):
             exit_type = "STOP"
             print("  STOP", df['Time'][j], "%.2f" % sell_price, "%  stop:", str(params['stop']) + "%", end="")
         else:
-            if params['ai_exit']:
-                with torch.no_grad():
-                    data = gen_state(df_history, df, j, open_idx)
-
-                    buy_output = model(data)
-                    res = buy_output.max(1)[1].view(1, 1)
-                    predicted_label = res[0][0].to("cpu").numpy()
-
-                    if predicted_label <= 0:
-                        sold = True
-                        sell_price = df.loc[j]['Close']
-                        exit_type = "SELL"
-                        print("  SELL", df['Time'][j], "%.2f" % sell_price, end="")
-            else:
-                if df['High'][j] > params['target_price']:
-                    sold = True
-                    sell_price = params['target_price']
-                    exit_type = "SELL"
-                    print("  SELL", df['Time'][j], "%.2f" % sell_price, end="")
+            if df[params['ema_s']][j] < df[params['ema_l']][j]:
+                sold = True
+                sell_price = df['Close'][j]
+                exit_type = "SELL"
+                print("  SELL", df['Time'][j], "%.2f" % sell_price, end="")
 
         j = j + 1
 
@@ -497,20 +479,19 @@ def get_default_params():
         'last_entry_mm': 45,
 
         'stop': -5,
-        'R/R': 2,
 
-        'stop_buy_factor': 6,
+
+        'ema_s': 'ema3',
+        'ema_l': 'ema5',
+
         'stop_sell_factor': 6,
-
-        'ai_exit': True,
-        'no_parallel_trades': False,
-
+        'no_parallel_trades': True,
         'no_charts': False,
 
         'chart_list_file': "data\\test_charts.csv",
         'test_size_coef': 0.1,
 
-        'model_path': "checkpoints\\checkpoint_3",
+        'model_path': "checkpoints\\checkpoint_50",
         'num_classes': 2
     }
 

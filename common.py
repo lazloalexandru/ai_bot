@@ -195,6 +195,29 @@ def get_chart_data_prepared_for_ai(symbol, date, p):
     return df
 
 
+def get_chart_data_prepared_for_ai_ema(symbol, date, p):
+    date = str(date).replace("-", "")
+    df = get_intraday_chart_for(symbol, date)
+
+    if df is not None:
+        idx = get_time_index(df, date, p['__chart_begin_hh'], p['__chart_begin_mm'], 0)
+        if idx is not None:
+            df = df[idx:]
+            df.reset_index(drop=True, inplace=True)
+
+        idx = get_time_index(df, date, p['__chart_end_hh'], p['__chart_end_mm'], 0)
+        if idx is not None:
+
+            df['ema3'] = ema(df['Close'].to_list(), 3)
+            df['ema5'] = ema(df['Close'].to_list(), 5)
+            df['ema8'] = ema(df['Close'].to_list(), 8)
+
+            df = df[:idx+1]
+            df.reset_index(drop=True, inplace=True)
+
+    return df
+
+
 def get_list_of_files(dir_path):
     files = []
 
@@ -677,3 +700,17 @@ def calc_range(min_price, max_price):
     if min_price <= 0:
         min_price = 0.1
     return 100*(max_price / min_price - 1)
+
+
+def ema(x, length):
+    multiplier = 2 / (length + 1)
+
+    n = len(x)
+    s = x.copy()
+
+    if 0 < length < n:
+        s[length] = sum(x[n-length:]) / length
+
+        for i in range(length, n):
+            s[i] = x[i] * multiplier + s[i-1] * (1 - multiplier)
+    return s

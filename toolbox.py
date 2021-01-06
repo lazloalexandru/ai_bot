@@ -114,7 +114,7 @@ def label_coverage(chart_list_path):
 
 # test_dataset()
 
-cu.analyze_ext_dataset_balance('data\\datasets\\test_data.npy', num_classes=2)
+# cu.analyze_ext_dataset_balance('data\\datasets\\test_data.npy', num_classes=2)
 
 
 # cu.analyze_divided_dataset_balance('data\\datasets\\training_data', 1, num_classes=2)

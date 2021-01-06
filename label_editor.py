@@ -161,12 +161,13 @@ class LabelingTool:
 
     def plot_marker(self):
         self.axes[0].clear()
+        self.axes[2].clear()
 
         adp = []
-        adp.append(mpf.make_addplot(self.markers, scatter=True, ax=self.axes[0], markersize=10, marker=r'$\Downarrow$', color='green'))
-        adp.append(mpf.make_addplot(self.start_marker, scatter=True, ax=self.axes[0], markersize=10, marker=r'$\Downarrow$', color='red'))
+        adp.append(mpf.make_addplot(self.markers, scatter=True, ax=self.axes[0], markersize=40, marker=r'$\Downarrow$', color='green'))
+        adp.append(mpf.make_addplot(self.start_marker, scatter=True, ax=self.axes[0], markersize=40, marker=r'$\Downarrow$', color='red'))
 
-        mpf.plot(self.df, type='candle', ax=self.axes[0], addplot=adp, tight_layout=True)
+        mpf.plot(self.df, type='candle', ax=self.axes[0], volume=self.axes[2], addplot=adp, tight_layout=True)
 
         label_info = "Labeled" if self.manually_labeled else "Unlabeled"
         title = self.symbol + " " + str(self.date) + "  ->  " + label_info
