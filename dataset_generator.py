@@ -233,7 +233,7 @@ def _gen_dataset_from_chart(c, params):
 
         open_index = cu.get_time_index(df, date, params['__chart_begin_hh'], params['__chart_begin_mm'], 0)
 
-        labels, label_type = cu.get_labels(symbol, date)
+        labels, label_type = cu.get_automatic_labels(symbol, date)
 
         if df is not None and open_index is not None and labels is not None:  # and label_type == 1:
             params['symbol'] = symbol

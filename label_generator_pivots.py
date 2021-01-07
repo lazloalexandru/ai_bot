@@ -38,12 +38,18 @@ def _gen_add_plot(chart_data, entries):
     return adp
 
 
-def _show_chart(chart_data, symbol, date, info, entries, save_to_dir=""):
+def _show_chart(chart_data, symbol, date, info, entries, params, save_to_dir=""):
     df = chart_data.copy()
 
     df = df.set_index(pd.Index(df.Time))
 
     adp = _gen_add_plot(chart_data, entries)
+
+    ms = "ema" + str(params['mavs_p'])
+    ml = "ema" + str(params['mavl_p'])
+
+    adp.append(mpf.make_addplot(df[ms].tolist(), color='yellow'))
+    adp.append(mpf.make_addplot(df[ml].tolist(), color='green'))
 
     plt.rcParams['figure.dpi'] = 240
     plt.rcParams['figure.figsize'] = [1.0, 1.0]
@@ -167,6 +173,7 @@ def _gen_labels_for_chart(chart_info, params):
                                 date=date,
                                 info="",
                                 entries=entries,
+                                params=params,
                                 save_to_dir="" if filter_mode_on else images_dir_path)
 
 
@@ -175,8 +182,11 @@ def _gen_labels_from_chart_data(df_chart, params):
 
     labels = np.zeros(len(df_chart))
 
-    df_chart['ema5'] = cu.ema(df_chart['Close'].to_list(), 5)
-    df_chart['ema8'] = cu.ema(df_chart['Close'].to_list(), 8)
+    ms = "ema" + str(params['mavs_p'])
+    ml = "ema" + str(params['mavl_p'])
+
+    df_chart[ms] = cu.ema(df_chart['Close'].to_list(), params['mavs_p'])
+    df_chart[ml] = cu.ema(df_chart['Close'].to_list(), params['mavl_p'])
 
     date = params['date']
     symbol = params['symbol']
@@ -190,6 +200,9 @@ def _gen_labels_from_chart_data(df_chart, params):
     min_price = df_chart['Low'][open_index]
     max_price = df_chart['High'][open_index]
 
+    uptrend_start_index = open_index
+    uptrend_best_entry_price = df_chart['Close'][open_index]
+
     i = open_index
     while i <= close_index:
         if df_chart['Low'][i] < min_price:
@@ -197,16 +210,35 @@ def _gen_labels_from_chart_data(df_chart, params):
         if df_chart['High'][i] > max_price:
             max_price = df_chart['High'][i]
 
-        params['stop'] = cu.calc_range(min_price, max_price) / params['stop_factor']
-
         if i >= trading_start_idx:
+            if df_chart[ms][i - 1] < df_chart[ml][i - 1] and df_chart[ms][i] > df_chart[ml][i]:
+                uptrend_best_entry_price = df_chart['Close'][i]
+                uptrend_start_index = i
 
-            buy_price = df_chart['Close'][i]
+            uptrend = True
+            j = uptrend_start_index
+            uptrend_best_exit_price = df_chart['Close'][j]
+            uptrend_best_exit_index = j
+            while j <= close_index and uptrend:
+                if uptrend_best_exit_price < df_chart['High'][j]:
+                    uptrend_best_exit_price = df_chart['High'][j]
+                    uptrend_best_exit_index = j
 
-            params['stop_SELL_price'] = buy_price * (1 - params['stop'] / 100)
-            params['stop_BUY_price'] = buy_price * (1 + params['stop'] / 100)
+                if df_chart[ms][j] < df_chart[ml][j]:
+                    uptrend = False
+                j += 1
 
-            label = _gen_label_for_entry(df_chart, i, params)
+            gain = 100 * (uptrend_best_exit_price / uptrend_best_entry_price - 1)
+            min_gain = cu.calc_range(min_price, max_price) / params['range_gain_ratio']
+
+            # print(df_chart['Time'][i], uptrend_best_entry_price, uptrend_best_exit_price, df_chart[ms][i] > df_chart[ml][i], gain, min_gain, df_chart['Time'][uptrend_best_exit_index])
+
+            label = 0
+
+            if df_chart[ms][i] > df_chart[ml][i]:
+                if i <= uptrend_best_exit_index:
+                    if gain > params['min_gain'] and gain > min_gain:
+                        label = 1
 
             labels[i] = label
             entries.append([df_chart['Time'][i], df_chart['High'][i], label])
@@ -218,100 +250,11 @@ def _gen_labels_from_chart_data(df_chart, params):
     return entries
 
 
-def _max_win_for_entry(df_chart, entry_index, params):
-    sold = False
-    sell_price = None
-    pivot_found = False
-
-    ms = "ema" + str(params['mavs_p'])
-    ml = "ema" + str(params['mavl_p'])
-
-    entry_price = df_chart['Close'][entry_index]
-    chart_end_idx = df_chart.index[-1]
-
-    max_price = -1
-    j = entry_index + 1
-
-    while j < chart_end_idx and not sold and not pivot_found:
-        if df_chart[ms][j-1] > df_chart[ml][j-1] and df_chart[ms][j] <= df_chart[ml][j]:
-            pivot_found = True
-
-        if df_chart['Low'][j] < params['stop_SELL_price']:
-            sold = True
-            sell_price = params['stop_SELL_price']
-        elif df_chart['High'][j] > max_price:
-            max_price = df_chart['High'][j]
-        j = j + 1
-
-    if sold:
-        if max_price > 0:
-            sell_price = max_price
-    else:
-        if j <= chart_end_idx:
-            if max_price > 0:
-                sell_price = max_price
-            else:
-                sell_price = df_chart.loc[chart_end_idx]['High']
-        elif j > chart_end_idx:
-            sell_price = df_chart.loc[chart_end_idx]['High']
-
-    return int(100 * (sell_price - entry_price) / entry_price)
-
-
-def _max_loss_for_entry(df_chart, entry_index, params):
-    sold = False
-    sell_price = None
-
-    chart_end_idx = df_chart.index[-1]
-
-    VERY_BIG_PRICE = 1000000
-    min_price = VERY_BIG_PRICE
-
-    j = entry_index + 1
-
-    while j < chart_end_idx and not sold:
-        if df_chart['High'][j] > params['stop_BUY_price']:
-            sold = True
-            sell_price = params['stop_BUY_price']
-
-        elif df_chart['Low'][j] < min_price:
-            min_price = df_chart['Low'][j]
-        j = j + 1
-
-    if sold:
-        if min_price < VERY_BIG_PRICE:
-            sell_price = min_price
-    else:
-        if j == chart_end_idx:
-            if min_price < VERY_BIG_PRICE:
-                sell_price = min_price
-            else:
-                sell_price = df_chart.loc[chart_end_idx]['Low']
-        elif j > chart_end_idx:
-            sell_price = df_chart.loc[chart_end_idx]['Low']
-
-    entry_price = df_chart['Close'][entry_index]
-
-    return int(100 * (sell_price - entry_price) / entry_price)
-
-
-def _gen_label_for_entry(df_chart, entry_index, params):
-    gain = _max_win_for_entry(df_chart, entry_index, params)
-
-    if gain < (params['R/R'] * params['stop']):
-        label = 0
-    else:
-        if gain > 5:
-            label = 1
-
-    return label
-
-
 def main():
     params = get_default_params()
 
-    # params['filter_sym'] = 'ABIO'
-    # params['filter_date'] = '2020-05-28'
+    # params['filter_sym'] = 'AACG'
+    # params['filter_date'] = '2019-08-28'
 
     generate_labels_mp(params)
 
@@ -327,10 +270,11 @@ def get_default_params():
         'trading_begin_mm': 40,
 
         'R/R': 1,
-        'stop_factor': 6,
+        'range_gain_ratio': 6,
+        'min_gain': 3,
 
-        'mavs_p': 5,
-        'mavl_p': 8,
+        'mavs_p': 8,
+        'mavl_p': 13,
 
         'no_charts': True,
 

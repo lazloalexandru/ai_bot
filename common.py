@@ -61,6 +61,22 @@ def get_labels(symbol, date):
     return labels, label_type
 
 
+def get_automatic_labels(symbol, date):
+    date = date.replace("-", "")
+    labels = None
+    label_type = None
+
+    path = get_generated_label_path_for(symbol, date)
+    if os.path.isfile(path):
+        print("Automatic labels loaded  -> ", path)
+        labels = np.load(path)
+        label_type = 0
+    else:
+        print(colored("ERROR! No label for: " + symbol + " " + date + "  ... " + path, color="red"))
+
+    return labels, label_type
+
+
 def get_fundamentals():
 
     res = None

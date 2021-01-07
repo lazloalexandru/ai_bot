@@ -461,8 +461,8 @@ def init_ai(params):
 def main():
     params = get_default_params()
 
-    params['filter_sym'] = 'SOLO'
-    params['filter_date'] = '2019-02-13'
+    # params['filter_sym'] = 'SOLO'
+    # params['filter_date'] = '2019-02-13'
 
     params, success = init_ai(params)
 
@@ -500,7 +500,7 @@ def get_default_params():
         'chart_list_file': "data\\test_charts.csv",
         'test_size_coef': 0.1,
 
-        'model_path': "checkpoints\\checkpoint_62",
+        'model_path': "checkpoints\\checkpoint_17",
         'num_classes': 2
     }
 
