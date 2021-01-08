@@ -284,8 +284,6 @@ def _gen_labeled_data_from_chart(df_history, df_chart, labels, params):
 
         vol += df_chart['Volume'][i]
 
-        params['stop'] = cu.calc_range(min_price, max_price) / params['stop_factor']
-
         if i >= trading_start_idx:
             ####################### Set Up Values For Dynamic Daily Candle #####################
             params['Close'] = df_chart['Close'][i]
@@ -296,9 +294,6 @@ def _gen_labeled_data_from_chart(df_history, df_chart, labels, params):
             ###################################################################################
 
             buy_price = df_chart['Close'][i]
-
-            params['stop_SELL_price'] = buy_price * (1 - params['stop'] / 100)
-            params['stop_BUY_price'] = buy_price * (1 + params['stop'] / 100)
 
             state = chart.create_state_vector(df_history, df_chart, i, open_index)
             label = labels[i]
@@ -332,10 +327,6 @@ def get_default_params():
 
         'trading_begin_hh': 9,
         'trading_begin_mm': 40,
-
-        'R/R': 1,
-        'stop_coef': 1,
-        'stop_factor': 6,
 
         'no_charts': True,
 

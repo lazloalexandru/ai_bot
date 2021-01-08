@@ -68,18 +68,21 @@ def _show_1min_chart(chart_data, symbol, date, info, entries, exits, params, sav
 
     adp = _gen_add_plot(chart_data, entries, exits)
 
-    adp.append(mpf.make_addplot(df[params['ema_s']].tolist(), color='yellow'))
-    adp.append(mpf.make_addplot(df[params['ema_l']].tolist(), color='green'))
+    ms = "ema" + str(params['mavs_p'])
+    ml = "ema" + str(params['mavl_p'])
+
+    adp.append(mpf.make_addplot(df[ms].tolist(), color='yellow'))
+    adp.append(mpf.make_addplot(df[ml].tolist(), color='green'))
 
     title = info + symbol + " " + date
 
     if save_to_dir == "":  # Display chart
         if len(adp) > 0:
             mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', volume=True,
-                     figscale=1, figratio=[16, 9], addplot=adp, vlines=[df.loc[idx_b]['Time']], title=title)
+                     figscale=1, figratio=[16, 9], addplot=adp, vlines=[df.loc[idx_b]['Time']], title=title, tight_layout=True)
         else:
             mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', volume=True,
-                     figscale=1, figratio=[16, 9], vlines=[df.loc[idx_b]['Time']], title=title)
+                     figscale=1, figratio=[16, 9], vlines=[df.loc[idx_b]['Time']], title=title, tight_layout=True)
     else:  # Save Chart in file
         cu.make_dir(save_to_dir)
         path = save_to_dir + "\\" + symbol + '_' + date + ".png"
@@ -87,10 +90,10 @@ def _show_1min_chart(chart_data, symbol, date, info, entries, exits, params, sav
 
         if len(adp) > 0:
             mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', savefig=path, volume=True,
-                     figscale=2, figratio=[16, 9], addplot=adp, vlines=[df.loc[idx_b]['Time']], title=title)
+                     figscale=2, figratio=[16, 9], addplot=adp, vlines=[df.loc[idx_b]['Time']], title=title, tight_layout=True)
         else:
             mpf.plot(df, type='candle', ylabel='Price', ylabel_lower='Volume', savefig=path, volume=True,
-                     figscale=2, figratio=[16, 9], vlines=[df.loc[idx_b]['Time']], title=title)
+                     figscale=2, figratio=[16, 9], vlines=[df.loc[idx_b]['Time']], title=title, tight_layout=True)
 
 
 def save_simulation_report(sim_params, stats, sim_report_file_path):
@@ -317,6 +320,9 @@ def _find_trades(df_history, df, params, version):
 
     model = params['nn_model']
 
+    ms = "ema" + str(params['mavs_p'])
+    ml = "ema" + str(params['mavl_p'])
+
     i = trading_start_idx
     while i < close_idx:
         if df['Low'][i] < min_price:
@@ -334,7 +340,7 @@ def _find_trades(df_history, df, params, version):
             res = buy_output.max(1)[1].view(1, 1)
             predicted_label = res[0][0].to("cpu").numpy()
 
-            if predicted_label == 1:
+            if predicted_label == 1 and df[ms][i] > df[ml][i]:
                 buy_price = close
 
                 print(params["symbol"], "BUY", df['Time'][i], buy_price, end="")
@@ -365,6 +371,9 @@ def _find_exit(df_history, df, entry_index, params):
     sold = False
     sell_price = None
 
+    ms = "ema" + str(params['mavs_p'])
+    ml = "ema" + str(params['mavl_p'])
+
     entry_price = df['Close'][entry_index]
     chart_end_idx = df.index[-1]
 
@@ -379,14 +388,21 @@ def _find_exit(df_history, df, entry_index, params):
             exit_type = "STOP"
             print("  STOP", df['Time'][j], "%.2f" % sell_price, "%  stop:", str(params['stop']) + "%", end="")
         else:
-            with torch.no_grad():
-                data = gen_state(df_history, df, j, params['open_idx'])
+            if params['ai_exit']:
+                with torch.no_grad():
+                    data = gen_state(df_history, df, j, params['open_idx'])
 
-                res = model(data)
-                res = res.max(1)[1].view(1, 1)
-                predicted_label = res[0][0].to("cpu").numpy()
+                    res = model(data)
+                    res = res.max(1)[1].view(1, 1)
+                    predicted_label = res[0][0].to("cpu").numpy()
 
-                if predicted_label == 0:
+                    if predicted_label == 0:
+                        sold = True
+                        sell_price = df['Close'][j]
+                        exit_type = "SELL"
+                        print("  SELL", df['Time'][j], "%.2f" % sell_price, end="")
+            else:
+                if df[ms][j] < df[ml][j]:
                     sold = True
                     sell_price = df['Close'][j]
                     exit_type = "SELL"
@@ -482,25 +498,25 @@ def get_default_params():
         '__chart_end_hh': 15,
         '__chart_end_mm': 59,
 
-        'trading_begin_hh': 9,
-        'trading_begin_mm': 40,
+        'trading_begin_hh': 10,
+        'trading_begin_mm': 20,
         'last_entry_hh': 15,
         'last_entry_mm': 45,
 
-        'stop': -5,
+        # 'stop': -5,
+        'ai_exit': False,
 
+        'mavs_p': 5,
+        'mavl_p': 8,
 
-        'ema_s': 'ema3',
-        'ema_l': 'ema5',
-
-        'stop_sell_factor': 6,
-        'no_parallel_trades': False,
-        'no_charts': False,
+        'stop_sell_factor': 4,
+        'no_parallel_trades': True,
+        'no_charts': True,
 
         'chart_list_file': "data\\test_charts.csv",
-        'test_size_coef': 0.1,
+        'test_size_coef': 1.0,
 
-        'model_path': "checkpoints\\checkpoint_17",
+        'model_path': "checkpoints\\checkpoint_44",
         'num_classes': 2
     }
 

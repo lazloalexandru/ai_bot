@@ -224,9 +224,9 @@ def get_chart_data_prepared_for_ai_ema(symbol, date, p):
         idx = get_time_index(df, date, p['__chart_end_hh'], p['__chart_end_mm'], 0)
         if idx is not None:
 
-            df['ema3'] = ema(df['Close'].to_list(), 3)
             df['ema5'] = ema(df['Close'].to_list(), 5)
             df['ema8'] = ema(df['Close'].to_list(), 8)
+            df['ema13'] = ema(df['Close'].to_list(), 13)
 
             df = df[:idx+1]
             df.reset_index(drop=True, inplace=True)
