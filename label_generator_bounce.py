@@ -198,7 +198,6 @@ def _gen_labels_from_chart_data(df_chart, params):
     max_price = df_chart['High'][open_index]
 
     uptrend_start_index = trading_start_idx
-    uptrend_best_entry_price = df_chart['Close'][trading_start_idx]
 
     i = open_index
     while i <= close_index:
@@ -209,7 +208,6 @@ def _gen_labels_from_chart_data(df_chart, params):
 
         if i >= trading_start_idx:
             if df_chart[ms][i - 1] < df_chart[ml][i - 1] and df_chart[ms][i] > df_chart[ml][i]:
-                uptrend_best_entry_price = df_chart['Close'][i]
                 uptrend_start_index = i
 
             uptrend = True
@@ -225,7 +223,7 @@ def _gen_labels_from_chart_data(df_chart, params):
                     uptrend = False
                 j += 1
 
-            gain = 100 * (uptrend_best_exit_price / uptrend_best_entry_price - 1)
+            gain = 100 * (uptrend_best_exit_price / df_chart['Close'][i] - 1)
             min_gain = cu.calc_range(min_price, max_price) / params['range_gain_ratio']
 
             # print(df_chart['Time'][i], uptrend_best_entry_price, uptrend_best_exit_price, df_chart[ms][i] > df_chart[ml][i],
@@ -268,8 +266,8 @@ def get_default_params():
         'trading_begin_mm': 40,
 
         'R/R': 1,
-        'range_gain_ratio': 5,
-        'min_gain': 3,
+        'range_gain_ratio': 6,
+        'min_gain': 2,
 
         'mavs_p': 5,
         'mavl_p': 8,
